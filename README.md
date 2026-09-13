@@ -34,9 +34,28 @@ The user interacts through a VS Code-like interface featuring **Monaco Editor**,
 
 ## Milestones
 
-- [ ] **M1**: LangGraph workflow skeleton with working human-in-the-loop interrupt/resume (API-driven).
+- [x] **M1**: LangGraph workflow skeleton with working human-in-the-loop interrupt/resume (API-driven).
 - [ ] **M2**: Monaco-based IDE shell with streaming console tabs wired to backend.
 - [ ] **M3**: CEO agent integrated end-to-end: upload → critique → approval gate (with revision loop).
 - [ ] **M4**: Developer + QA agents integrated with sandboxed execution; live file tree population.
 - [ ] **M5**: Security agent integrated; SAST + automated patching + zip export.
 - [ ] **M6**: Beta hardening: reconnect logic, session cleanup, audit summary polish.
+
+---
+
+## Getting Started
+
+### Backend Setup & Tests
+
+```bash
+# 1. Install dependencies
+pip install -r backend/requirements.txt
+
+# 2. Run automated test suite
+$env:PYTHONPATH="backend"
+python -m pytest backend/tests -v
+
+# 3. Start development server
+python -m uvicorn app.main:app --app-dir backend --reload --port 8000
+```
+
