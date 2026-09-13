@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TARA — Tech-Architecture & Automated Review Assistant</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Monaco Editor loader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.js"></script>
+</head>
+<body class="dark-theme">
+  <!-- App Container -->
+  <div id="app" class="ide-container">
+    
+    <!-- Top Header -->
+    <header class="ide-header">
+      <div class="brand-section">
+        <div class="logo-wrapper">
+          <img src="/assets/logo.png" alt="TARA Star Logo" class="brand-logo" id="brand-logo-img">
+          <div class="logo-glow"></div>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">TARA</h1>
+          <span class="brand-tagline">Tech-Architecture & Automated Review Assistant</span>
+        </div>
+      </div>
+
+      <!-- Stepper Indicator -->
+      <div class="stepper-container" id="workflow-stepper">
+        <div class="step-item active" data-step="spec">
+          <div class="step-bullet">1</div>
+          <span class="step-label">Spec Upload</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-item" data-step="ceo">
+          <div class="step-bullet">2</div>
+          <span class="step-label">CEO Critique</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-item" data-step="gate">
+          <div class="step-bullet">3</div>
+          <span class="step-label">HITL Gate</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-item" data-step="build">
+          <div class="step-bullet">4</div>
+          <span class="step-label">Dev + QA</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-item" data-step="security">
+          <div class="step-bullet">5</div>
+          <span class="step-label">Security SAST</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step-item" data-step="package">
+          <div class="step-bullet">6</div>
+          <span class="step-label">Release</span>
+        </div>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="header-actions">
+        <div class="session-badge" id="session-badge">
+          <span class="status-dot online"></span>
+          <span id="session-id-text">Session: Initializing...</span>
+        </div>
+        <button id="btn-download-zip" class="btn btn-outline" disabled title="Available after security completion">
+          <svg class="icon" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export ZIP
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace-body">
+      
+      <!-- Left Sidebar: Spec Input & File Tree -->
+      <aside class="sidebar-panel">
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab active" data-panel="spec-panel">
+            <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            PRD Specification
+          </button>
+          <button class="sidebar-tab" data-panel="files-panel">
+            <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            File Explorer
+            <span class="badge" id="files-count-badge">0</span>
+          </button>
+        </div>
+
+        <!-- Panel 1: PRD Specification -->
+        <div class="sidebar-content active" id="spec-panel">
+          <div class="sample-preset-row">
+            <label for="preset-select">Preset Spec:</label>
+            <select id="preset-select" class="preset-dropdown">
+              <option value="cache">In-Memory Cache Microservice</option>
+              <option value="auth">JWT Auth & Rate Limiter</option>
+              <option value="webhook">Webhook Dispatcher Service</option>
+            </select>
+          </div>
+
+          <div class="upload-box" id="drop-zone">
+            <input type="file" id="file-upload-input" accept=".md,.pdf,.txt" class="file-hidden">
+            <svg class="upload-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p class="upload-hint">Drag & drop PRD (<strong>.md</strong>, <strong>.pdf</strong>) or browse</p>
+          </div>
+
+          <div class="editor-textarea-wrapper">
+            <label class="section-label">PRD Content</label>
+            <textarea id="prd-input-textarea" class="prd-textarea" spellcheck="false" placeholder="Paste product requirements or user stories here..."></textarea>
+          </div>
+
+          <button id="btn-start-pipeline" class="btn btn-primary btn-block">
+            <span class="btn-icon">⚡</span>
+            <span>Launch Consultancy Pipeline</span>
+          </button>
+        </div>
+
+        <!-- Panel 2: File Explorer -->
+        <div class="sidebar-content" id="files-panel">
+          <div class="file-tree-header">
+            <span class="section-label">GENERATED ARTIFACTS</span>
+          </div>
+          <div class="file-tree-view" id="file-tree-container">
+            <div class="empty-state-notice">
+              <p>No files generated yet.</p>
+              <small>Run pipeline to generate code modules.</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Area: Editor, Diff Viewer, and Audit Summary -->
+      <main class="center-stage">
+        <div class="stage-nav">
+          <div class="nav-tabs">
+            <button class="stage-tab active" data-view="editor-view">
+              <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Source Editor
+              <span class="active-file-pill" id="active-filename-pill">main.py</span>
+            </button>
+            <button class="stage-tab" data-view="diff-view" id="tab-diff-view">
+              <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              3-Way Diff Viewer
+              <span class="badge badge-accent">Dev → QA → Security</span>
+            </button>
+            <button class="stage-tab" data-view="audit-view">
+              <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Audit Report
+            </button>
+          </div>
+          <div class="stage-status-indicator" id="stage-status-text">
+            Ready for PRD
+          </div>
+        </div>
+
+        <!-- View 1: Source Editor -->
+        <div class="stage-content active" id="editor-view">
+          <div id="monaco-editor-container" class="editor-frame"></div>
+          <div id="fallback-editor-container" class="fallback-frame" style="display:none;">
+            <pre><code id="fallback-code-content"># Generating code...</code></pre>
+          </div>
+        </div>
+
+        <!-- View 2: 3-Way Diff Viewer -->
+        <div class="stage-content" id="diff-view">
+          <div class="diff-header-bar">
+            <div class="diff-selector">
+              <label>Select File:</label>
+              <select id="diff-file-selector" class="preset-dropdown"></select>
+            </div>
+            <div class="diff-legend">
+              <span class="legend-item original"><span class="legend-box"></span> Developer Code</span>
+              <span class="legend-item refactored"><span class="legend-box"></span> QA Refactored</span>
+              <span class="legend-item hardened"><span class="legend-box"></span> Security Hardened</span>
+            </div>
+          </div>
+          <div class="diff-columns-grid">
+            <div class="diff-column">
+              <div class="diff-col-title dev-badge">1. Software Developer</div>
+              <pre class="diff-code-box" id="diff-dev-box"><code>Waiting for build phase...</code></pre>
+            </div>
+            <div class="diff-column">
+              <div class="diff-col-title qa-badge">2. QA Engineer (Refactored)</div>
+              <pre class="diff-code-box" id="diff-qa-box"><code>Waiting for QA refactoring...</code></pre>
+            </div>
+            <div class="diff-column">
+              <div class="diff-col-title sec-badge">3. Security Officer (Hardened)</div>
+              <pre class="diff-code-box" id="diff-sec-box"><code>Waiting for security analysis...</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 3: Audit Summary -->
+        <div class="stage-content" id="audit-view">
+          <div class="audit-wrapper" id="audit-content-container">
+            <div class="empty-state-notice">
+              <p>Audit report will be generated after the Security phase completes.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Observability / Agent Console -->
+        <section class="console-drawer" id="console-drawer">
+          <div class="console-bar">
+            <div class="console-tabs">
+              <button class="console-tab active" data-agent="all">All Agents</button>
+              <button class="console-tab" data-agent="CEO">CEO Evaluator</button>
+              <button class="console-tab" data-agent="Developer">Developer</button>
+              <button class="console-tab" data-agent="QA">QA Engineer</button>
+              <button class="console-tab" data-agent="Security">Security Officer</button>
+            </div>
+            <div class="console-controls">
+              <button class="btn-icon-sm" id="btn-clear-console" title="Clear Console">🧹</button>
+            </div>
+          </div>
+          <div class="console-output" id="console-log-stream">
+            <div class="log-line info">
+              <span class="timestamp">[SYSTEM]</span>
+              <span class="log-msg">TARA Multi-Agent Orchestrator initialized. Waiting to launch.</span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+    </div>
+
+    <!-- Human-in-the-Loop (HITL) Approval Gate Modal -->
+    <div class="modal-overlay" id="approval-gate-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <div class="modal-badge pulse-dot"></div>
+            <h3>HUMAN-IN-THE-LOOP APPROVAL GATE</h3>
+          </div>
+          <div class="revision-counter" id="modal-revision-pill">Round #0</div>
+        </div>
+
+        <div class="modal-body">
+          <div class="critique-header">
+            <div class="verdict-banner" id="modal-verdict-banner">
+              <span class="verdict-label">Executive Verdict:</span>
+              <span class="verdict-val" id="modal-verdict-text">VIABLE</span>
+            </div>
+          </div>
+
+          <div class="critique-section">
+            <h4>Market & Commercial Viability</h4>
+            <p id="modal-market-text" class="critique-paragraph"></p>
+          </div>
+
+          <div class="critique-grid">
+            <div class="critique-col">
+              <h4>Feature Gaps Identified</h4>
+              <ul id="modal-gaps-list" class="styled-list gaps"></ul>
+            </div>
+            <div class="critique-col">
+              <h4>Architectural Flaws</h4>
+              <ul id="modal-flaws-list" class="styled-list flaws"></ul>
+            </div>
+          </div>
+
+          <div class="critique-section">
+            <h4>CEO Recommendation</h4>
+            <p id="modal-recommendation-text" class="critique-paragraph highlight"></p>
+          </div>
+
+          <!-- Notes Input for Request Changes -->
+          <div class="feedback-input-box" id="feedback-input-wrapper">
+            <label for="feedback-notes-input">Stakeholder Feedback / Revision Notes:</label>
+            <textarea id="feedback-notes-input" placeholder="Provide guidance, add constraints, or clarify missing features..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-danger" id="btn-gate-reject">
+            Reject & Terminate
+          </button>
+          <div class="modal-footer-right">
+            <button class="btn btn-warning" id="btn-gate-request-changes">
+              Request Changes (Loop Back)
+            </button>
+            <button class="btn btn-success" id="btn-gate-approve">
+              Approve & Proceed to Build ➔
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
