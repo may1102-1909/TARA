@@ -1,8 +1,13 @@
-# TARA — Tech-Architecture & Automated Review Assistant
+<p align="center">
+  <img src="./assets/logo.png" alt="TARA Logo" width="120" style="border-radius: 16px;" />
+</p>
 
-> Autonomous software consultancy inside a web-based IDE powered by multi-agent orchestration.
+<h1 align="center">TARA</h1>
+<p align="center"><strong>Tech-Architecture & Automated Review Assistant</strong></p>
+<p align="center"><em>Autonomous software consultancy inside a web-based IDE powered by multi-agent orchestration.</em></p>
 
 ---
+
 
 ## Overview
 
