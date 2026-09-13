@@ -47,66 +47,13 @@ class CEOCritique(BaseModel):
     )
 
 
-def evaluate_prd_with_gemini(
-    prd_text: str,
-    revision_count: int,
-    human_notes: List[str]
-) -> Optional[CEOCritique]:
-    """Evaluates PRD using Google GenAI SDK (Gemini) with structured schema output."""
-    global client
-    if client is None:
-        api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "gemini_api_key", "")
-        if not api_key:
-            return None
-        try:
-            client = genai.Client()
-        except Exception:
-            return None
-
-    try:
-        system_instruction = (
-            "You are the CEO and Principal Technical Evaluator of an autonomous software consultancy. "
-            "Critically analyze the given Product Requirements Document (PRD) for technical feasibility, "
-            "architectural clarity, missing feature gaps, and structural flaws. "
-            "Provide strict, actionable recommendations. If revision notes are provided, incorporate them thoroughly."
-        )
-
-        prompt = f"### Product Requirements Document:\n\n{prd_text}\n\n"
-        if revision_count > 0:
-            notes_str = "\n- ".join(human_notes) if human_notes else "None"
-            prompt += (
-                f"### Revision Round: #{revision_count}\n"
-                f"### Stakeholder Feedback to Incorporate:\n- {notes_str}\n\n"
-            )
-        prompt += "Evaluate the spec and generate a structured critique according to the schema."
-
-        response = client.models.generate_content(
-            model=settings.default_model or "gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                response_schema=CEOCritique,
-            ),
-        )
-
-        if response.parsed and isinstance(response.parsed, CEOCritique):
-            return response.parsed
-        if response.text:
-            return CEOCritique.model_validate_json(response.text)
-    except Exception as exc:
-        logger.warning("Gemini evaluation error, falling back to local heuristic evaluator: %s", exc)
-        return None
-
-    return None
-
-
 def evaluate_prd_fallback(
     prd_text: str,
-    revision_count: int,
-    human_notes: List[str]
+    revision_count: int = 0,
+    human_notes: Optional[List[str]] = None,
 ) -> CEOCritique:
     """Deterministic fallback evaluator when LLM API keys are not supplied or network fails."""
+    notes = human_notes or []
     is_revision = revision_count > 0
 
     # Analyze PRD content
@@ -128,7 +75,7 @@ def evaluate_prd_fallback(
         structural_flaws.append("Document is terse; needs more architectural detail.")
 
     if is_revision:
-        feedback_summary = "; ".join(human_notes) if human_notes else "No specific notes"
+        feedback_summary = "; ".join(notes) if notes else "No specific notes"
         verdict = Verdict.APPROVED
         recommendation = (
             f"Revision {revision_count} addressed stakeholder feedback ({feedback_summary}). "
@@ -150,15 +97,57 @@ def evaluate_prd_fallback(
 
 
 def evaluate_prd(
-    prd_text: str,
-    revision_count: int,
-    human_notes: List[str]
+    prd_content: str,
+    revision_count: int = 0,
+    human_notes: Optional[List[str]] = None,
 ) -> CEOCritique:
-    """Dispatches evaluation to Gemini if API key configured, otherwise uses local evaluator."""
-    critique = evaluate_prd_with_gemini(prd_text, revision_count, human_notes)
-    if critique is not None:
-        return critique
-    return evaluate_prd_fallback(prd_text, revision_count, human_notes)
+    """Evaluates a PRD from a CEO perspective and returns a structured CEOCritique."""
+    global client
+    if client is None and os.getenv("GEMINI_API_KEY"):
+        try:
+            client = genai.Client()
+        except Exception:
+            client = None
+
+    if client is not None:
+        try:
+            system_instruction = (
+                "You are an expert Chief Executive Officer (CEO). Your role is to critically "
+                "evaluate Product Requirement Documents (PRDs) for strategic alignment, "
+                "market viability, missing requirements, and operational feasibility. "
+                "Be candid, concise, and rigorous in your evaluation."
+            )
+
+            prompt = f"Evaluate the following Product Requirement Document (PRD):\n\n{prd_content}"
+            if revision_count and revision_count > 0:
+                notes_str = "\n- ".join(human_notes or []) if human_notes else "None"
+                prompt += (
+                    f"\n\n### Revision Round: #{revision_count}\n"
+                    f"### Stakeholder Feedback to Incorporate:\n- {notes_str}\n"
+                )
+
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=CEOCritique,
+                temperature=0.2,  # Low temperature for consistent analytical evaluation
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",  # Use "gemini-2.5-pro" for deep reasoning on complex PRDs
+                contents=prompt,
+                config=config,
+            )
+
+            # response.parsed contains the automatically deserialized CEOCritique instance
+            if response.parsed and isinstance(response.parsed, CEOCritique):
+                return response.parsed
+            if response.text:
+                return CEOCritique.model_validate_json(response.text)
+        except Exception as exc:
+            logger.warning("Gemini evaluation error, falling back to local heuristic evaluator: %s", exc)
+
+    return evaluate_prd_fallback(prd_content, revision_count, human_notes or [])
 
 
 def ceo_node(state: AgentState) -> Dict[str, Any]:
