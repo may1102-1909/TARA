@@ -5,8 +5,32 @@ Handles revision loops when re-entered with human feedback notes.
 """
 
 import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
-from app.graph.state import AgentState, CEOCritique
+from pydantic import BaseModel, Field
+
+from app.graph.state import AgentState
+
+
+class Verdict(str, Enum):
+    APPROVED = "APPROVED"
+    NEEDS_REVISION = "NEEDS_REVISION"
+    REJECTED = "REJECTED"
+
+
+class CEOCritique(BaseModel):
+    verdict: Verdict = Field(
+        description="Overall evaluation verdict for the PRD."
+    )
+    feature_gaps: list[str] = Field(
+        description="Missing features, edge cases, or unaddressed user needs."
+    )
+    structural_flaws: list[str] = Field(
+        description="Architectural, scope, feasibility, or logic flaws."
+    )
+    recommendation: str = Field(
+        description="Strategic direction and key action items for the product team."
+    )
 
 
 def evaluate_prd_fallback(prd_text: str, revision_count: int, human_notes: List[str]) -> CEOCritique:
@@ -33,37 +57,24 @@ def evaluate_prd_fallback(prd_text: str, revision_count: int, human_notes: List[
     
     if is_revision:
         feedback_summary = "; ".join(human_notes) if human_notes else "No specific notes"
-        verdict = "viable"
+        verdict = Verdict.APPROVED
         recommendation = (
             f"Revision {revision_count} addressed stakeholder feedback ({feedback_summary}). "
             "Proceed with implementation in Python adhering to standard library best practices."
         )
-        raw_commentary = (
-            f"[CEO Review - Revision {revision_count}]\n"
-            f"Stakeholder feedback incorporated: {feedback_summary}.\n"
-            "The updated proposition addresses earlier critique. Recommended for build phase."
-        )
     else:
-        verdict = "viable" if len(structural_flaws) == 0 else "needs_revision"
+        verdict = Verdict.APPROVED if len(structural_flaws) == 0 else Verdict.NEEDS_REVISION
         recommendation = (
             "The core value proposition is sound. Focus development on a modular Python architecture "
             "with clear separation of concerns, robust logging, and SAST-ready structure."
         )
-        raw_commentary = (
-            "[CEO Review - Initial Evaluation]\n"
-            "Market Opportunity: High potential for automated workflow optimization.\n"
-            f"Identified {len(feature_gaps)} potential feature gaps and {len(structural_flaws)} structural considerations.\n"
-            "Verdict: Proceed to human sign-off."
-        )
 
-    return {
-        "verdict": verdict,
-        "market_viability": "Strong product-market alignment for developer productivity and rapid prototyping.",
-        "feature_gaps": feature_gaps if feature_gaps else ["No major feature gaps detected in current scope."],
-        "structural_flaws": structural_flaws if structural_flaws else ["No fatal structural flaws identified."],
-        "recommendation": recommendation,
-        "raw_commentary": raw_commentary
-    }
+    return CEOCritique(
+        verdict=verdict,
+        feature_gaps=feature_gaps if feature_gaps else ["No major feature gaps detected in current scope."],
+        structural_flaws=structural_flaws if structural_flaws else ["No fatal structural flaws identified."],
+        recommendation=recommendation,
+    )
 
 
 def ceo_node(state: AgentState) -> Dict[str, Any]:
@@ -83,12 +94,12 @@ def ceo_node(state: AgentState) -> Dict[str, Any]:
         "agent": "CEO",
         "stage": "ceo_review",
         "revision": revision_count,
-        "message": f"CEO evaluation completed (Verdict: {critique['verdict'].upper()}). Waiting at Human Approval Gate.",
+        "message": f"CEO evaluation completed (Verdict: {critique.verdict.value}). Waiting at Human Approval Gate.",
         "timestamp": timestamp,
     }
     
     return {
-        "ceo_critique": critique,
+        "ceo_critique": critique.model_dump(),
         "revision_count": revision_count,
         "user_action": None,  # Reset for gate decision
         "current_stage": "ceo_reviewed",
