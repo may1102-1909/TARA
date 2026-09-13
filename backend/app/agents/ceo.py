@@ -10,12 +10,20 @@ import logging
 import os
 from enum import Enum
 from typing import Any, Dict, List, Optional
+from google import genai
+from google.genai import types
 from pydantic import BaseModel, Field
 
 from app.graph.state import AgentState
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Client picks up environment variable GEMINI_API_KEY automatically
+try:
+    client = genai.Client()
+except Exception:
+    client = None
 
 
 class Verdict(str, Enum):
@@ -45,15 +53,17 @@ def evaluate_prd_with_gemini(
     human_notes: List[str]
 ) -> Optional[CEOCritique]:
     """Evaluates PRD using Google GenAI SDK (Gemini) with structured schema output."""
-    api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "gemini_api_key", "")
-    if not api_key:
-        return None
+    global client
+    if client is None:
+        api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "gemini_api_key", "")
+        if not api_key:
+            return None
+        try:
+            client = genai.Client()
+        except Exception:
+            return None
 
     try:
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=api_key)
         system_instruction = (
             "You are the CEO and Principal Technical Evaluator of an autonomous software consultancy. "
             "Critically analyze the given Product Requirements Document (PRD) for technical feasibility, "
