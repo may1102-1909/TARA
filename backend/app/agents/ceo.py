@@ -8,11 +8,18 @@ Supports both live Google Gemini (via google-genai) and deterministic local eval
 import datetime
 import logging
 import os
+import sys
+from pathlib import Path
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
+
+# Ensure backend root is on sys.path for direct script execution
+_backend_dir = str(Path(__file__).resolve().parent.parent.parent)
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
 from app.graph.state import AgentState
 from app.core.config import settings
@@ -178,3 +185,20 @@ def ceo_node(state: AgentState) -> Dict[str, Any]:
         "current_stage": "ceo_reviewed",
         "logs": [log_entry],
     }
+
+
+if __name__ == "__main__":
+    sample_prd = """
+    # Feature: One-Click Checkout
+    Goal: Allow users to buy items without passing through the cart.
+    Target Audience: Mobile shoppers.
+    Requirements: Add a 'Buy Now' button on product pages.
+    """
+
+    critique: CEOCritique = evaluate_prd(sample_prd)
+
+    print(f"Verdict: {critique.verdict}")
+    print(f"Gaps: {critique.feature_gaps}")
+    print(f"Flaws: {critique.structural_flaws}")
+    print(f"Recommendation: {critique.recommendation}")
+
