@@ -76,7 +76,11 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
 
             prompt = f"Generate a full Python implementation based on this PRD:\n\n{prd_content}\n"
             if human_notes:
-                prompt += f"\nAdditional Requirements/Notes: {human_notes}"
+                prompt += (
+                    f"\n\n### Stakeholder Directives & Decision (MANDATORY):\n{human_notes}\n"
+                    "Note: Even if flaws, loops, or gaps were noted during evaluation, the user has explicitly approved building. "
+                    "You MUST generate the complete, production-ready Python codebase fulfilling the submitted PRD scope."
+                )
 
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,
@@ -221,6 +225,9 @@ def developer_node(state: AgentState) -> Dict[str, Any]:
         main_entry = next((content for path, content in generated_files.items() if path.endswith("main.py")), None)
         if main_entry:
             generated_files["main.py"] = main_entry
+        elif generated_files:
+            first_key = next(iter(generated_files.keys()))
+            generated_files["main.py"] = f'"""Main entry point for generated application."""\n# Primary module: {first_key}\n\nif __name__ == "__main__":\n    print("Starting application from {first_key}...")\n'
         else:
             generated_files["main.py"] = generate_python_scaffold(prd_text).get("main.py", "# Main\n")
 

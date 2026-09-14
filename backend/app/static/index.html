@@ -269,10 +269,13 @@
             <p id="modal-recommendation-text" class="critique-paragraph highlight"></p>
           </div>
 
-          <!-- Notes Input for Request Changes -->
+          <!-- Notes Input for Request Changes or Directives -->
           <div class="feedback-input-box" id="feedback-input-wrapper">
-            <label for="feedback-notes-input">Stakeholder Feedback / Revision Notes:</label>
-            <textarea id="feedback-notes-input" placeholder="Provide guidance, add constraints, or clarify missing features..."></textarea>
+            <label for="feedback-notes-input">Stakeholder Directives / Revision Notes (Optional):</label>
+            <textarea id="feedback-notes-input" placeholder="Add specific guidance, or leave blank and click 'Approve & Build Code Anyway' to generate code immediately..."></textarea>
+            <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
+              💡 <strong>Tip:</strong> Even if gaps or flaws were flagged, clicking <strong>Approve & Build Code Anyway</strong> instructs the Developer agent to proceed and generate full Python code for your submitted PRD.
+            </small>
           </div>
         </div>
 

@@ -189,7 +189,10 @@ class TaraIDE {
     this.diffFileSelector.addEventListener("change", (e) => this.renderDiff(e.target.value));
 
     // Approval gate actions
-    this.btnGateApprove.addEventListener("click", () => this.submitDecision("approve"));
+    this.btnGateApprove.addEventListener("click", () => {
+      const notes = this.feedbackNotesInput.value.trim();
+      this.submitDecision("approve", notes);
+    });
     this.btnGateRequestChanges.addEventListener("click", () => {
       const notes = this.feedbackNotesInput.value.trim();
       if (!notes) {
@@ -359,11 +362,26 @@ class TaraIDE {
   }
 
   openApprovalModal(critique, revisionCount = 0) {
-    this.modalVerdictText.textContent = (critique.verdict || "VIABLE").toUpperCase();
+    const verdict = (critique.verdict || "VIABLE").toUpperCase();
+    this.modalVerdictText.textContent = verdict;
     this.modalMarketText.textContent = critique.market_viability || "Sound product market fit.";
     this.modalRecommendationText.textContent = critique.recommendation || "Recommended to proceed.";
     this.modalRevisionPill.textContent = `Revision Round #${revisionCount}`;
     this.feedbackNotesInput.value = "";
+
+    // Reset button states & adapt label if critique flagged flaws
+    this.btnGateApprove.disabled = false;
+    this.btnGateRequestChanges.disabled = false;
+    this.btnGateReject.disabled = false;
+
+    const hasFlaws = (critique.structural_flaws && critique.structural_flaws.length > 0) || (critique.feature_gaps && critique.feature_gaps.length > 0);
+    if (verdict === "NEEDS_REVISION" || verdict === "REJECTED" || hasFlaws) {
+      this.btnGateApprove.innerHTML = `<span>Approve & Build Code Anyway ➔</span>`;
+    } else {
+      this.btnGateApprove.innerHTML = `<span>Approve & Proceed to Build ➔</span>`;
+    }
+    this.btnGateRequestChanges.innerHTML = `<span>Request Changes (Loop Back)</span>`;
+    this.btnGateReject.innerHTML = `<span>Reject & Terminate</span>`;
 
     // Gaps
     this.modalGapsList.innerHTML = "";
@@ -389,8 +407,32 @@ class TaraIDE {
   }
 
   async submitDecision(action, notes = "") {
-    this.appendLog("HITL", `Submitting decision: ${action.toUpperCase()}` + (notes ? ` (${notes})` : ""));
-    this.stageStatusText.textContent = `Resuming: ${action.toUpperCase()}...`;
+    // 1. Immediately close the modal so user is never frozen waiting
+    this.closeApprovalModal();
+
+    // 2. Prevent duplicate clicks
+    this.btnGateApprove.disabled = true;
+    this.btnGateRequestChanges.disabled = true;
+    this.btnGateReject.disabled = true;
+
+    if (action === "approve") {
+      this.setStepperStep("build");
+      this.stageStatusText.textContent = "Approved! Generating full Python code for your PRD...";
+      this.appendLog("HITL", `Human Approved: Proceeding to build code for PRD` + (notes ? ` with directives: "${notes}"` : " (overriding evaluation flaws)"));
+      this.btnStartPipeline.disabled = true;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚙️</span><span>Agents Building Code...</span>`;
+    } else if (action === "request_changes") {
+      this.setStepperStep("ceo");
+      this.stageStatusText.textContent = "Re-evaluating PRD with your feedback notes...";
+      this.appendLog("HITL", `Requested revision loop with notes: ${notes}`);
+      this.btnStartPipeline.disabled = true;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">🔄</span><span>Revising Spec...</span>`;
+    } else {
+      this.stageStatusText.textContent = "Workflow Rejected by Stakeholder";
+      this.appendLog("HITL", "Pipeline halted per human decision.");
+      this.btnStartPipeline.disabled = false;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Restart Pipeline</span>`;
+    }
 
     try {
       const res = await fetch(`/api/sessions/${this.sessionId}/decide`, {
@@ -405,6 +447,8 @@ class TaraIDE {
     } catch (err) {
       alert("Failed to submit decision: " + err.message);
       this.appendLog("SYSTEM", `Decision submission error: ${err.message}`);
+      this.btnStartPipeline.disabled = false;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Launch Consultancy Pipeline</span>`;
     }
   }
 
