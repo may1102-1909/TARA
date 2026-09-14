@@ -165,6 +165,17 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 12: Tier 1 E2B Cloud MicroVM Sandbox Setup
+- **What was done:**
+  - Configured `E2B_API_KEY` in root and backend `.env` files.
+  - Installed and pinned `e2b-code-interpreter>=2.10.0` in `backend/requirements.txt`.
+  - Updated `backend/app/sandbox/runner.py` to use `Sandbox.create()`, automatic installation of SAST tools (`bandit`, `flake8`) on the cloud microVM, and graceful error handling for `CommandExitException`.
+  - Verified live command execution and dynamic Bandit SAST running directly in cloud-isolated E2B MicroVMs.
+- **Why we built it:**
+  - Provides genuine cloud-isolated hardware virtualization for running untrusted user code and security scans without any danger to the host computer.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -181,4 +192,5 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/main.py` | Hosted locally via Uvicorn on `http://127.0.0.1:8000` | Makes Web IDE and API accessible locally in real time. |
 | 2026-09-14 | `backend/app/core/llm.py` & agents | Built automatic high-quota model failover chain | `gemini-3.6-flash` has a strict preview limit of 20 requests/day (`429 RESOURCE_EXHAUSTED`), while `gemini-2.5-flash` was deprecated for new users (`404 NOT_FOUND`). Added `call_gemini_with_fallback` defaulting to `gemini-3.5-flash` and `gemini-3.5-flash-lite` to guarantee abundant free tier quota and zero interruptions. |
 | 2026-09-14 | `backend/app/sandbox/` & `security.py` | Built 3-Tier Sandbox Runner, real Bandit/Flake8/AST SAST, and Web IDE 'Run in Sandbox' | Replaced mock strings with real Bandit JSON parsing mapped to OWASP Top 10, isolated execution sandbox, and live terminal execution in the browser. |
+| 2026-09-14 | `backend/app/sandbox/runner.py` & `.env` | Enabled Tier 1 E2B Cloud MicroVM Sandbox with user API key | Cloud hardware-level isolation for running untrusted code and SAST scans. |
 | 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |

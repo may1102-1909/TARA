@@ -263,40 +263,78 @@ class E2BSandbox(BaseSandbox):
     def __init__(self, session_id: str, api_key: Optional[str] = None):
         super().__init__(session_id)
         self.tier_name = "E2BSandbox"
-        self.api_key = api_key or os.getenv("E2B_API_KEY")
+        from app.core.config import settings
+        self.api_key = api_key or settings.e2b_api_key or os.getenv("E2B_API_KEY")
         self.files_cache: Dict[str, str] = {}
-        # Lazy initialization
         self.sandbox_instance = None
+        self._sast_tools_installed = False
 
     def _ensure_sandbox(self):
         if self.sandbox_instance is None:
             from e2b_code_interpreter import Sandbox
-            self.sandbox_instance = Sandbox(api_key=self.api_key)
+            self.sandbox_instance = Sandbox.create(api_key=self.api_key)
 
     def write_files(self, files: Dict[str, str]) -> None:
         self.files_cache.update(files)
         try:
             self._ensure_sandbox()
             for path, content in files.items():
-                self.sandbox_instance.files.write(path, content)
+                clean_path = path.replace("\\", "/").lstrip("/")
+                self.sandbox_instance.files.write(clean_path, content)
         except Exception as exc:
             logger.warning("E2B write_files error: %s", exc)
 
     def read_files(self) -> Dict[str, str]:
-        # Return updated cache or read from sandbox
-        return self.files_cache
+        if self.sandbox_instance is None:
+            return self.files_cache
+        updated = {}
+        for path in self.files_cache:
+            clean_path = path.replace("\\", "/").lstrip("/")
+            try:
+                content = self.sandbox_instance.files.read(clean_path)
+                if content is not None:
+                    updated[path] = content
+                else:
+                    updated[path] = self.files_cache[path]
+            except Exception:
+                updated[path] = self.files_cache[path]
+        return updated
 
     def run_command(self, cmd: List[str], timeout: int = 30) -> ExecutionResult:
         start_time = time.time()
         try:
             self._ensure_sandbox()
-            command_str = " ".join(cmd)
-            exec_out = self.sandbox_instance.commands.run(command_str, timeout=timeout)
+            cmd_str = " ".join(cmd)
+            # If command involves bandit or flake8, ensure they are installed in E2B microVM
+            if ("bandit" in cmd_str or "flake8" in cmd_str) and not self._sast_tools_installed:
+                try:
+                    self.sandbox_instance.commands.run("pip install bandit flake8", timeout=60)
+                    self._sast_tools_installed = True
+                except Exception as inst_err:
+                    logger.warning("Failed to install SAST tools in E2B: %s", inst_err)
+
+            stdout = ""
+            stderr = ""
+            exit_code = 0
+            try:
+                exec_out = self.sandbox_instance.commands.run(cmd_str, timeout=timeout)
+                stdout = exec_out.stdout or ""
+                stderr = exec_out.stderr or ""
+                exit_code = exec_out.exit_code or 0
+            except Exception as e:
+                # E2B throws CommandExitException when commands return non-zero exit code (e.g. bandit findings)
+                if hasattr(e, "exit_code"):
+                    stdout = getattr(e, "stdout", "") or ""
+                    stderr = getattr(e, "stderr", "") or ""
+                    exit_code = getattr(e, "exit_code", 1) or 1
+                else:
+                    raise
+
             duration = (time.time() - start_time) * 1000
             return ExecutionResult(
-                stdout=exec_out.stdout or "",
-                stderr=exec_out.stderr or "",
-                exit_code=exec_out.exit_code or 0,
+                stdout=stdout,
+                stderr=stderr,
+                exit_code=exit_code,
                 duration_ms=round(duration, 2),
                 sandbox_tier=self.tier_name
             )
@@ -316,6 +354,7 @@ class E2BSandbox(BaseSandbox):
                 self.sandbox_instance.kill()
             except Exception:
                 pass
+            self.sandbox_instance = None
 
 
 def _is_docker_available() -> bool:
@@ -334,7 +373,9 @@ def _is_docker_available() -> bool:
 
 def _is_e2b_available() -> bool:
     """Checks if E2B_API_KEY is configured and library is installed."""
-    if not os.getenv("E2B_API_KEY"):
+    from app.core.config import settings
+    api_key = settings.e2b_api_key or os.getenv("E2B_API_KEY")
+    if not api_key:
         return False
     try:
         import e2b_code_interpreter

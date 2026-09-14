@@ -12,6 +12,7 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 def _load_env() -> None:
     candidates = [
+        BASE_DIR.parent / ".env",
         BASE_DIR / ".env",
         BASE_DIR / "backend" / ".env",
         Path.cwd() / ".env"
@@ -45,5 +46,6 @@ class Settings(BaseModel):
     default_model: str = os.getenv("TARA_LLM_MODEL", "gemini-3.5-flash")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    e2b_api_key: str = os.getenv("E2B_API_KEY", "")
 
 settings = Settings()
