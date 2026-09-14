@@ -52,6 +52,8 @@ class AgentState(TypedDict, total=False):
     # Security Hardening & Audit
     security_patches: Dict[str, str]
     security_findings: List[SecurityFinding]
+    security_report: Optional[Dict[str, Any]]
+    security_passed: Optional[bool]
     audit_summary: Optional[AuditSummary]
     
     # Workflow Stage & Stream Logs
