@@ -153,8 +153,14 @@
               Audit Report
             </button>
           </div>
-          <div class="stage-status-indicator" id="stage-status-text">
-            Ready for PRD
+          <div class="stage-nav-right" style="display:flex; align-items:center; gap:12px;">
+            <button class="btn btn-sm btn-success" id="btn-run-code" disabled title="Execute generated code inside isolated sandbox" style="padding: 4px 10px; font-size: 0.72rem;">
+              <span class="btn-icon">▶️</span>
+              <span>Run in Sandbox</span>
+            </button>
+            <div class="stage-status-indicator" id="stage-status-text">
+              Ready for PRD
+            </div>
           </div>
         </div>
 
@@ -213,6 +219,7 @@
               <button class="console-tab" data-agent="Developer">Developer</button>
               <button class="console-tab" data-agent="QA">QA Engineer</button>
               <button class="console-tab" data-agent="Security">Security Officer</button>
+              <button class="console-tab" data-agent="terminal" id="tab-terminal">💻 Sandbox Terminal</button>
             </div>
             <div class="console-controls">
               <button class="btn-icon-sm" id="btn-clear-console" title="Clear Console">🧹</button>

@@ -45,7 +45,7 @@ def call_gemini_with_fallback(
             )
         except Exception as exc:
             err_str = str(exc)
-            if any(k in err_str for k in ("404", "429", "RESOURCE_EXHAUSTED", "NOT_FOUND")):
+            if any(k in err_str for k in ("404", "429", "RESOURCE_EXHAUSTED", "NOT_FOUND", "503", "UNAVAILABLE")):
                 logger.warning(
                     "Model %s failed (%s). Trying next fallback model...",
                     model_name,

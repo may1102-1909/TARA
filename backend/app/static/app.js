@@ -72,6 +72,7 @@ class TaraIDE {
     this.consoleLogStream = document.getElementById("console-log-stream");
     this.dropZone = document.getElementById("drop-zone");
     this.fileUploadInput = document.getElementById("file-upload-input");
+    this.btnRunCode = document.getElementById("btn-run-code");
 
     // Modal elements
     this.approvalModal = document.getElementById("approval-gate-modal");
@@ -184,6 +185,11 @@ class TaraIDE {
         window.location.href = `/api/sessions/${this.sessionId}/download`;
       }
     });
+
+    // Run Code in Sandbox
+    if (this.btnRunCode) {
+      this.btnRunCode.addEventListener("click", () => this.runSandboxedCode());
+    }
 
     // Diff file selector change
     this.diffFileSelector.addEventListener("change", (e) => this.renderDiff(e.target.value));
@@ -349,6 +355,7 @@ class TaraIDE {
       this.setStepperStep("package");
       this.stageStatusText.textContent = "Pipeline Completed & Packaged";
       this.btnDownloadZip.disabled = false;
+      if (this.btnRunCode) this.btnRunCode.disabled = false;
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Run New Iteration</span>`;
       this.renderArtifacts(snapshot);
@@ -449,6 +456,49 @@ class TaraIDE {
       this.appendLog("SYSTEM", `Decision submission error: ${err.message}`);
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Launch Consultancy Pipeline</span>`;
+    }
+  }
+
+  async runSandboxedCode() {
+    if (!this.sessionId || !this.currentSession) return;
+
+    this.btnRunCode.disabled = true;
+    this.btnRunCode.innerHTML = `<span class="btn-icon">⏳</span><span>Executing...</span>`;
+
+    // Switch to Terminal tab
+    const terminalTab = document.getElementById("tab-terminal");
+    if (terminalTab) terminalTab.click();
+
+    const targetFile = this.activeFile || "main.py";
+    this.appendLog("TERMINAL", `🚀 [Sandbox Execution] Running python ${targetFile} in isolated sandbox...`);
+
+    try {
+      const res = await fetch(`/api/sessions/${this.sessionId}/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entrypoint: targetFile })
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      const statusBadge = data.exit_code === 0 ? "SUCCESS (Code 0)" : `EXIT CODE (${data.exit_code})`;
+      this.appendLog("TERMINAL", `[${data.sandbox_tier}] Process completed in ${data.duration_ms}ms with status: ${statusBadge}`);
+
+      if (data.stdout) {
+        this.appendLog("TERMINAL", `=== STDOUT ===\n${data.stdout.trim()}`);
+      }
+      if (data.stderr) {
+        this.appendLog("TERMINAL", `=== STDERR ===\n${data.stderr.trim()}`);
+      }
+      if (!data.stdout && !data.stderr) {
+        this.appendLog("TERMINAL", `(Process completed with no console output)`);
+      }
+    } catch (err) {
+      this.appendLog("TERMINAL", `❌ Sandbox execution error: ${err.message}`);
+    } finally {
+      this.btnRunCode.disabled = false;
+      this.btnRunCode.innerHTML = `<span class="btn-icon">▶️</span><span>Run in Sandbox</span>`;
     }
   }
 

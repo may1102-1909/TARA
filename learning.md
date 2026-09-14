@@ -153,6 +153,20 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ## 4. Ongoing Work & Changelog
 
+### Step 11: Real Sandboxed Execution & Dynamic SAST (Docker, E2B & Ephemeral Sandbox)
+- **What was done:**
+  - Built `backend/app/sandbox/runner.py` providing a 3-tier isolated execution environment (`E2BSandbox`, `DockerSandbox`, `LocalEphemeralSandbox`).
+  - Completely replaced mock string matching in `backend/app/agents/security.py` with real dynamic static analysis tools: `bandit` (runs `bandit -r . -f json` and parses JSON), `flake8`, and Python `ast` syntax validation.
+  - Added live code execution in the Web IDE via `POST /api/sessions/{session_id}/run`, a **"▶️ Run in Sandbox"** button in the editor toolbar, and an interactive **Sandbox Terminal** tab in the browser.
+- **Why we built it:** 
+  - To fulfill PRD requirements FR-18 through FR-20 (sandboxed execution).
+  - To catch real security vulnerabilities (like shell injection, insecure imports, hardcoded secrets) with industrial-strength SAST tools instead of artificial string matches.
+  - To let developers test and run their generated Python code immediately in the browser inside an isolated sandbox!
+
+---
+
+## 4. Ongoing Work & Changelog
+
 *(New updates will be logged here as we continue building)*
 
 | Date | Component / File | What Was Done | Why |
@@ -166,4 +180,5 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/api/sessions.py` | Added `POST /api/sessions/graph/run` endpoint | Allows running the sequential graph via HTTP API. |
 | 2026-09-14 | `backend/app/main.py` | Hosted locally via Uvicorn on `http://127.0.0.1:8000` | Makes Web IDE and API accessible locally in real time. |
 | 2026-09-14 | `backend/app/core/llm.py` & agents | Built automatic high-quota model failover chain | `gemini-3.6-flash` has a strict preview limit of 20 requests/day (`429 RESOURCE_EXHAUSTED`), while `gemini-2.5-flash` was deprecated for new users (`404 NOT_FOUND`). Added `call_gemini_with_fallback` defaulting to `gemini-3.5-flash` and `gemini-3.5-flash-lite` to guarantee abundant free tier quota and zero interruptions. |
+| 2026-09-14 | `backend/app/sandbox/` & `security.py` | Built 3-Tier Sandbox Runner, real Bandit/Flake8/AST SAST, and Web IDE 'Run in Sandbox' | Replaced mock strings with real Bandit JSON parsing mapped to OWASP Top 10, isolated execution sandbox, and live terminal execution in the browser. |
 | 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |

@@ -1,14 +1,20 @@
 """FastAPI API endpoints for session lifecycle, HITL decisions, and package download."""
 
 import uuid
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Response
 from pydantic import BaseModel, Field
 
 from app.core.session_manager import session_manager
 from app.sandbox.packaging import create_release_zip
+from app.sandbox.runner import get_sandbox
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+class ExecuteCodeRequest(BaseModel):
+    entrypoint: Optional[str] = Field(default="main.py", description="Target file to execute in sandbox")
+    custom_args: Optional[List[str]] = Field(default=[], description="Optional CLI arguments")
 
 
 class StartSessionRequest(BaseModel):
@@ -119,6 +125,38 @@ async def download_package_endpoint(session_id: str):
             "Content-Disposition": f"attachment; filename=tara-{session_id}.zip"
         }
     )
+
+
+@router.post("/{session_id}/run")
+async def run_sandboxed_code(session_id: str, req: ExecuteCodeRequest = ExecuteCodeRequest()):
+    """Executes generated and hardened codebase inside the isolated sandbox."""
+    snapshot = session_manager.get_state_snapshot(session_id)
+    if snapshot.get("status") == "not_found":
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    code_files = snapshot.get("security_patches") or snapshot.get("qa_refactored_files") or snapshot.get("dev_code_files", {})
+    if not code_files:
+        raise HTTPException(status_code=400, detail="No code files available to execute in sandbox.")
+
+    entrypoint = req.entrypoint or "main.py"
+    if entrypoint not in code_files:
+        candidates = [k for k in code_files.keys() if k.endswith("main.py") or k.endswith("app.py") or k.endswith(".py")]
+        entrypoint = candidates[0] if candidates else list(code_files.keys())[0]
+
+    with get_sandbox(f"{session_id}_run") as sb:
+        sb.write_files(code_files)
+        cmd = ["python", entrypoint] + (req.custom_args or [])
+        res = sb.run_command(cmd, timeout=15)
+
+        return {
+            "session_id": session_id,
+            "entrypoint": entrypoint,
+            "stdout": res.stdout,
+            "stderr": res.stderr,
+            "exit_code": res.exit_code,
+            "duration_ms": res.duration_ms,
+            "sandbox_tier": res.sandbox_tier,
+        }
 
 
 @router.websocket("/{session_id}/stream")
