@@ -47,7 +47,7 @@ def refactor_code(files: Dict[str, str]) -> Tuple[Dict[str, str], List[Dict[str,
 
 def qa_node(state: AgentState) -> Dict[str, Any]:
     """Executes QA Engineer refactoring."""
-    dev_files = state.get("dev_code_files", {})
+    dev_files = state.get("dev_code_files") or state.get("generated_code") or {}
     refactored_files, changelog = refactor_code(dev_files)
     
     timestamp = datetime.datetime.utcnow().isoformat()

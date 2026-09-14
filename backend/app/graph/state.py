@@ -40,6 +40,8 @@ class AgentState(TypedDict, total=False):
     
     # Developer Artifacts
     dev_code_files: Dict[str, str]  # filepath -> content
+    generated_code: Optional[Dict[str, str]]
+    code_summary: Optional[str]
     
     # QA Refactoring Artifacts
     qa_refactored_files: Dict[str, str]

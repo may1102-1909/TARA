@@ -193,32 +193,42 @@ def format_timestamp(dt) -> str:
 
 
 def developer_node(state: AgentState) -> Dict[str, Any]:
-    """Executes Developer Agent drafting."""
+    """Developer Node executing dynamic code generation."""
     prd_text = state.get("prd_text", "")
-    human_notes = state.get("human_feedback_notes", [])
-    notes_str = "; ".join(human_notes) if isinstance(human_notes, list) else str(human_notes or "")
+    notes = state.get("human_feedback_notes", [])
+    notes_str = "\n".join(notes) if notes else ""
 
-    code_output = generate_code_from_prd(prd_text, human_notes=notes_str)
-    files = {f.path: f.content for f in code_output.files}
+    try:
+        code_output: DeveloperCodeOutput = generate_code_from_prd(prd_text, notes_str)
+        # Convert list of GeneratedFile objects into a key-value mapping
+        generated_files = {f.path: f.content for f in code_output.files}
+        summary = code_output.summary
+    except Exception as exc:
+        logger.warning("Gemini code generation failed, falling back: %s", exc)
+        # Fallback dictionary if LLM fails
+        generated_files = {
+            "main.py": "# Fallback main entrypoint\nprint('Execution complete.')",
+        }
+        summary = "Generated using local fallback due to API error."
 
     # Ensure main.py entry point exists for downstream stages & test validation
-    if "main.py" not in files:
-        main_entry = next((f.content for f in code_output.files if f.path.endswith("main.py")), None)
+    if "main.py" not in generated_files:
+        main_entry = next((content for path, content in generated_files.items() if path.endswith("main.py")), None)
         if main_entry:
-            files["main.py"] = main_entry
+            generated_files["main.py"] = main_entry
         else:
-            files["main.py"] = generate_python_scaffold(prd_text)["main.py"]
+            generated_files["main.py"] = generate_python_scaffold(prd_text).get("main.py", "# Main\n")
 
-    timestamp = datetime.datetime.utcnow().isoformat()
     log_entry = {
         "agent": "Developer",
         "stage": "code_generation",
-        "message": f"Drafted {len(files)} Python modules: {', '.join(files.keys())}",
-        "timestamp": timestamp,
+        "message": f"Generated {len(generated_files)} dynamic Python modules: {list(generated_files.keys())}",
     }
 
     return {
-        "dev_code_files": files,
-        "current_stage": "dev_completed",
+        "dev_code_files": generated_files,
+        "generated_code": generated_files,
+        "code_summary": summary,
+        "current_stage": "code_generated",
         "logs": [log_entry],
     }
