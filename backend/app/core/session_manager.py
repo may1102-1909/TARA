@@ -45,6 +45,19 @@ class SessionManager:
             for ws in dead_sockets:
                 self.active_websockets[session_id].discard(ws)
 
+    def broadcast_sync(self, session_id: str, event_type: str, data: Any) -> None:
+        """Helper to broadcast WebSocket events synchronously from graph stream loops."""
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.broadcast_event(session_id, event_type, data))
+        except RuntimeError:
+            try:
+                loop = asyncio.new_event_loop()
+                loop.run_until_complete(self.broadcast_event(session_id, event_type, data))
+                loop.close()
+            except Exception:
+                pass
+
     def start_session(
         self,
         session_id: str,
@@ -59,11 +72,22 @@ class SessionManager:
             "status": "in_progress"
         }
         
-        # Run graph until interrupt at human_approval_gate
-        for _ in self.app.stream(initial_state, config=config):
-            pass
+        # Run graph until interrupt at human_approval_gate, broadcasting updates live
+        for chunk in self.app.stream(initial_state, config=config):
+            if isinstance(chunk, dict):
+                for node_name in chunk.keys():
+                    current_snap = self.get_state_snapshot(session_id)
+                    self.broadcast_sync(session_id, "node_update", {
+                        "node": node_name,
+                        "snapshot": current_snap,
+                    })
             
-        return self.get_state_snapshot(session_id)
+        final_snap = self.get_state_snapshot(session_id)
+        self.broadcast_sync(session_id, "node_update", {
+            "node": "approval_gate",
+            "snapshot": final_snap,
+        })
+        return final_snap
 
     def submit_decision(
         self,
@@ -76,12 +100,23 @@ class SessionManager:
         resume_payload = {"action": action, "notes": notes}
         cmd = Command(resume=resume_payload)
         
-        for _ in self.app.stream(cmd, config=config):
-            pass
+        # Stream resume execution with real-time intermediate broadcasts
+        for chunk in self.app.stream(cmd, config=config):
+            if isinstance(chunk, dict):
+                for node_name in chunk.keys():
+                    current_snap = self.get_state_snapshot(session_id)
+                    self.broadcast_sync(session_id, "node_update", {
+                        "node": node_name,
+                        "snapshot": current_snap,
+                    })
             
         snapshot = self.get_state_snapshot(session_id)
         if snapshot["status"] == "completed":
             self.session_meta.setdefault(session_id, {})["status"] = "completed"
+        self.broadcast_sync(session_id, "node_update", {
+            "node": "pipeline_complete",
+            "snapshot": snapshot,
+        })
         return snapshot
 
     def get_state_snapshot(self, session_id: str) -> Dict[str, Any]:

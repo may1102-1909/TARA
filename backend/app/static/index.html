@@ -172,32 +172,42 @@
           </div>
         </div>
 
-        <!-- View 2: 3-Way Diff Viewer -->
+        <!-- View 2: Monaco Native 3-Way Diff Viewer -->
         <div class="stage-content" id="diff-view">
           <div class="diff-header-bar">
-            <div class="diff-selector">
-              <label>Select File:</label>
-              <select id="diff-file-selector" class="preset-dropdown"></select>
+            <div class="diff-left-controls">
+              <div class="diff-selector">
+                <label>File:</label>
+                <select id="diff-file-selector" class="preset-dropdown"></select>
+              </div>
+              <div class="diff-stage-selector" id="diff-stage-buttons">
+                <button class="diff-stage-btn active" data-stage="dev-qa" title="Compare Developer Draft vs QA Refactored">
+                  <span class="stage-num">1</span> Dev ➔ QA
+                </button>
+                <button class="diff-stage-btn" data-stage="qa-sec" title="Compare QA Refactored vs Security Hardened">
+                  <span class="stage-num">2</span> QA ➔ Security
+                </button>
+                <button class="diff-stage-btn" data-stage="dev-sec" title="Compare Original Draft vs Final Hardened Code">
+                  <span class="stage-num">3</span> Dev ➔ Security (Full)
+                </button>
+                <button class="diff-stage-btn" data-stage="dual" title="Side-by-side Dual Monaco Diff Editors">
+                  <span class="stage-num">❖</span> 3-Way Dual View
+                </button>
+              </div>
             </div>
-            <div class="diff-legend">
-              <span class="legend-item original"><span class="legend-box"></span> Developer Code</span>
-              <span class="legend-item refactored"><span class="legend-box"></span> QA Refactored</span>
-              <span class="legend-item hardened"><span class="legend-box"></span> Security Hardened</span>
+            <div class="diff-right-controls">
+              <button id="btn-toggle-diff-inline" class="btn-diff-inline" title="Toggle Side-by-Side / Inline Diff">
+                <span>Toggle Inline Diff</span>
+              </button>
+              <div class="diff-legend">
+                <span class="legend-item original"><span class="legend-box"></span> Original / Removed</span>
+                <span class="legend-item hardened"><span class="legend-box"></span> Modified / Added</span>
+              </div>
             </div>
           </div>
-          <div class="diff-columns-grid">
-            <div class="diff-column">
-              <div class="diff-col-title dev-badge">1. Software Developer</div>
-              <pre class="diff-code-box" id="diff-dev-box"><code>Waiting for build phase...</code></pre>
-            </div>
-            <div class="diff-column">
-              <div class="diff-col-title qa-badge">2. QA Engineer (Refactored)</div>
-              <pre class="diff-code-box" id="diff-qa-box"><code>Waiting for QA refactoring...</code></pre>
-            </div>
-            <div class="diff-column">
-              <div class="diff-col-title sec-badge">3. Security Officer (Hardened)</div>
-              <pre class="diff-code-box" id="diff-sec-box"><code>Waiting for security analysis...</code></pre>
-            </div>
+          <div class="diff-editors-container" id="diff-editors-container">
+            <div id="monaco-diff-primary" class="monaco-diff-pane"></div>
+            <div id="monaco-diff-secondary" class="monaco-diff-pane" style="display: none;"></div>
           </div>
         </div>
 

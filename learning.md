@@ -187,6 +187,18 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 14: Interactive Monaco 3-Way Diff & Editor Live Editing
+- **What was done:**
+  - Replaced the three static text boxes in the diff viewer with Monaco's native `monaco.editor.createDiffEditor()`, providing red/green line-level visual diff highlighting and gutter markers.
+  - Added interactive diff stage selection tabs: `1. Dev ➔ QA`, `2. QA ➔ Security`, `3. Dev ➔ Security (Full)`, and `❖ 3-Way Dual View` (side-by-side dual Monaco diff editors), plus a toggle button for side-by-side vs inline diff layout.
+  - Added **Live File Updates**: Configured `backend/app/core/session_manager.py` to broadcast `node_update` WebSocket messages as each LangGraph agent completes, refreshing the Monaco file tree live without waiting for pipeline completion.
+  - Added **Live Code Editing**: Enabled live editing in the main Monaco editor, synchronizing manual user edits into the session files so that "▶️ Run in Sandbox" immediately executes user-modified code.
+  - Created `want.md` in the project root documenting user inputs, credentials, and customization preferences for future milestones.
+- **Why we built it:**
+  - To turn TARA into a full-fledged, real-time Web IDE where users can watch files appear live as AI engineers build them, inspect exact line-by-line diffs across pipeline stages, and make manual edits directly in the browser.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -205,4 +217,6 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/sandbox/` & `security.py` | Built 3-Tier Sandbox Runner, real Bandit/Flake8/AST SAST, and Web IDE 'Run in Sandbox' | Replaced mock strings with real Bandit JSON parsing mapped to OWASP Top 10, isolated execution sandbox, and live terminal execution in the browser. |
 | 2026-09-14 | `backend/app/sandbox/runner.py` & `.env` | Enabled Tier 1 E2B Cloud MicroVM Sandbox with user API key | Cloud hardware-level isolation for running untrusted code and SAST scans. |
 | 2026-09-14 | `backend/app/api/sessions.py` & `app.js` | Built PDF parsing support & `POST /api/sessions/upload` endpoint | Fulfills FR-6 by allowing drag-and-drop ingestion of `.pdf`, `.md`, and `.txt` specifications. |
+| 2026-09-14 | `frontend` & `session_manager.py` | Added Monaco Native 3-Way Diff, Live WS File Updates, and Live Editing | Native diff highlighting (Dev ➔ QA ➔ Sec), live file tree updates during streaming, and live editing. |
+| 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
 | 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |

@@ -87,11 +87,16 @@ class TaraIDE {
     this.btnGateRequestChanges = document.getElementById("btn-gate-request-changes");
     this.btnGateReject = document.getElementById("btn-gate-reject");
 
-    // Diff elements
+    // Monaco Diff elements
     this.diffFileSelector = document.getElementById("diff-file-selector");
-    this.diffDevBox = document.getElementById("diff-dev-box");
-    this.diffQaBox = document.getElementById("diff-qa-box");
-    this.diffSecBox = document.getElementById("diff-sec-box");
+    this.diffStageButtons = document.querySelectorAll(".diff-stage-btn");
+    this.btnToggleDiffInline = document.getElementById("btn-toggle-diff-inline");
+    this.diffContainerPrimary = document.getElementById("monaco-diff-primary");
+    this.diffContainerSecondary = document.getElementById("monaco-diff-secondary");
+    this.activeDiffStage = "dev-qa";
+    this.diffRenderSideBySide = true;
+    this.diffEditorPrimary = null;
+    this.diffEditorSecondary = null;
 
     // Audit view
     this.auditContentContainer = document.getElementById("audit-content-container");
@@ -100,10 +105,13 @@ class TaraIDE {
   initMonaco() {
     const container = document.getElementById("monaco-editor-container");
     const fallback = document.getElementById("fallback-editor-container");
+    const diffContainerPrimary = document.getElementById("monaco-diff-primary");
+    const diffContainerSecondary = document.getElementById("monaco-diff-secondary");
 
     if (window.require) {
       window.require.config({ paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs" } });
       window.require(["vs/editor/editor.main"], () => {
+        // Main Code Editor
         this.editor = monaco.editor.create(container, {
           value: "# TARA Autonomous Code Engine\n# Awaiting PRD input to generate Python artifacts...",
           language: "python",
@@ -114,7 +122,48 @@ class TaraIDE {
           automaticLayout: true,
           scrollBeyondLastLine: false,
           padding: { top: 12, bottom: 12 },
+          readOnly: false,
         });
+
+        // Live Code Editing: sync user edits directly into active session state
+        this.editor.onDidChangeModelContent(() => {
+          if (this.activeFile && this.currentSession) {
+            const updated = this.editor.getValue();
+            if (!this.currentSession.security_patches) this.currentSession.security_patches = {};
+            this.currentSession.security_patches[this.activeFile] = updated;
+            if (this.currentSession.qa_refactored_files) this.currentSession.qa_refactored_files[this.activeFile] = updated;
+            if (this.currentSession.dev_code_files) this.currentSession.dev_code_files[this.activeFile] = updated;
+          }
+        });
+
+        // Native Monaco Diff Editors
+        if (diffContainerPrimary && monaco.editor.createDiffEditor) {
+          this.diffEditorPrimary = monaco.editor.createDiffEditor(diffContainerPrimary, {
+            enableSplitViewResizing: true,
+            renderSideBySide: this.diffRenderSideBySide,
+            readOnly: true,
+            theme: "vs-dark",
+            automaticLayout: true,
+            fontSize: 12,
+            fontFamily: "'JetBrains Mono', monospace",
+            scrollBeyondLastLine: false,
+            originalEditable: false,
+          });
+        }
+
+        if (diffContainerSecondary && monaco.editor.createDiffEditor) {
+          this.diffEditorSecondary = monaco.editor.createDiffEditor(diffContainerSecondary, {
+            enableSplitViewResizing: true,
+            renderSideBySide: this.diffRenderSideBySide,
+            readOnly: true,
+            theme: "vs-dark",
+            automaticLayout: true,
+            fontSize: 12,
+            fontFamily: "'JetBrains Mono', monospace",
+            scrollBeyondLastLine: false,
+            originalEditable: false,
+          });
+        }
       });
     } else {
       container.style.display = "none";
@@ -159,6 +208,8 @@ class TaraIDE {
         document.getElementById(tab.dataset.view).classList.add("active");
         if (tab.dataset.view === "editor-view" && this.editor) {
           this.editor.layout();
+        } else if (tab.dataset.view === "diff-view") {
+          setTimeout(() => this.layoutDiffEditors(), 50);
         }
       });
     });
@@ -191,8 +242,37 @@ class TaraIDE {
       this.btnRunCode.addEventListener("click", () => this.runSandboxedCode());
     }
 
+    // Diff stage selection (Dev ➔ QA, QA ➔ Sec, Dev ➔ Sec, Dual)
+    this.diffStageButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.diffStageButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        this.activeDiffStage = btn.dataset.stage;
+        if (this.diffFileSelector && this.diffFileSelector.value) {
+          this.renderDiff(this.diffFileSelector.value);
+        }
+      });
+    });
+
+    // Toggle Side-by-Side / Inline Diff
+    if (this.btnToggleDiffInline) {
+      this.btnToggleDiffInline.addEventListener("click", () => {
+        this.diffRenderSideBySide = !this.diffRenderSideBySide;
+        this.btnToggleDiffInline.classList.toggle("active", !this.diffRenderSideBySide);
+        this.btnToggleDiffInline.querySelector("span").textContent = this.diffRenderSideBySide ? "Toggle Inline Diff" : "Toggle Split Diff";
+        if (this.diffEditorPrimary) {
+          this.diffEditorPrimary.updateOptions({ renderSideBySide: this.diffRenderSideBySide });
+        }
+        if (this.diffEditorSecondary) {
+          this.diffEditorSecondary.updateOptions({ renderSideBySide: this.diffRenderSideBySide });
+        }
+      });
+    }
+
     // Diff file selector change
-    this.diffFileSelector.addEventListener("change", (e) => this.renderDiff(e.target.value));
+    if (this.diffFileSelector) {
+      this.diffFileSelector.addEventListener("change", (e) => this.renderDiff(e.target.value));
+    }
 
     // Approval gate actions
     this.btnGateApprove.addEventListener("click", () => {
@@ -369,11 +449,68 @@ class TaraIDE {
     this.socket.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.data && payload.data.logs) {
+        if (payload.type === "node_update" && payload.data && payload.data.snapshot) {
+          this.handleLiveNodeUpdate(payload.data.node, payload.data.snapshot);
+        } else if (payload.data && payload.data.logs) {
           payload.data.logs.forEach((l) => this.appendLog(l.agent, l.message, l.timestamp));
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error("WS error:", e);
+      }
     };
+  }
+
+  handleLiveNodeUpdate(node, snapshot) {
+    this.currentSession = snapshot;
+
+    // Stream logs live
+    if (snapshot.logs && Array.isArray(snapshot.logs)) {
+      const currentCount = this.allLogs.length;
+      if (snapshot.logs.length > currentCount) {
+        const newLogs = snapshot.logs.slice(currentCount);
+        newLogs.forEach((l) => this.appendLog(l.agent, l.message, l.timestamp));
+      }
+    }
+
+    // Dynamic stage status update
+    if (node === "ceo_evaluation") {
+      this.setStepperStep("ceo");
+      this.stageStatusText.textContent = "AI CEO Reviewing Product Feasibility";
+    } else if (node === "software_developer") {
+      this.setStepperStep("build");
+      this.stageStatusText.textContent = "Developer Agent Generating Python Architecture";
+    } else if (node === "qa_engineer") {
+      this.setStepperStep("build");
+      this.stageStatusText.textContent = "QA Engineer Validating & Refactoring Code";
+    } else if (node === "security_officer") {
+      this.setStepperStep("security");
+      this.stageStatusText.textContent = "Security Officer Running Dynamic SAST in Sandbox";
+    }
+
+    // LIVE FILE TREE UPDATE: Immediately render any files generated as events stream in!
+    const hasFiles = (snapshot.security_patches && Object.keys(snapshot.security_patches).length > 0) ||
+                     (snapshot.qa_refactored_files && Object.keys(snapshot.qa_refactored_files).length > 0) ||
+                     (snapshot.dev_code_files && Object.keys(snapshot.dev_code_files).length > 0);
+
+    if (hasFiles) {
+      this.renderArtifacts(snapshot, false);
+    }
+
+    // Check if HITL gate or completion reached
+    if (snapshot.status === "awaiting_approval" && snapshot.ceo_critique) {
+      this.setStepperStep("gate");
+      this.stageStatusText.textContent = "Awaiting Human-in-the-Loop Sign-off";
+      this.openApprovalModal(snapshot.ceo_critique, snapshot.revision_count);
+    } else if (snapshot.status === "completed") {
+      this.closeApprovalModal();
+      this.setStepperStep("package");
+      this.stageStatusText.textContent = "Pipeline Completed & Packaged";
+      this.btnDownloadZip.disabled = false;
+      if (this.btnRunCode) this.btnRunCode.disabled = false;
+      this.btnStartPipeline.disabled = false;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Run New Iteration</span>`;
+      this.renderArtifacts(snapshot, true);
+    }
   }
 
   handleSessionUpdate(snapshot) {
@@ -542,13 +679,24 @@ class TaraIDE {
     }
   }
 
-  renderArtifacts(snapshot) {
+  layoutDiffEditors() {
+    if (this.diffEditorPrimary) this.diffEditorPrimary.layout();
+    if (this.diffEditorSecondary && this.activeDiffStage === "dual") {
+      this.diffEditorSecondary.layout();
+    }
+  }
+
+  renderArtifacts(snapshot, forceFirst = false) {
     const finalFiles = snapshot.security_patches || snapshot.qa_refactored_files || snapshot.dev_code_files || {};
     const fileNames = Object.keys(finalFiles);
 
-    // Switch to file explorer tab
-    const filesTab = document.querySelector('.sidebar-tab[data-panel="files-panel"]');
-    if (filesTab) filesTab.click();
+    // Switch to file explorer tab if files are available
+    if (fileNames.length > 0) {
+      const filesTab = document.querySelector('.sidebar-tab[data-panel="files-panel"]');
+      if (filesTab && !filesTab.classList.contains("active")) {
+        filesTab.click();
+      }
+    }
 
     // Populate file explorer
     this.fileTreeContainer.innerHTML = "";
@@ -564,21 +712,37 @@ class TaraIDE {
       item.addEventListener("click", () => this.selectFile(fname, finalFiles[fname]));
       this.fileTreeContainer.appendChild(item);
 
-      if (idx === 0) this.selectFile(fname, finalFiles[fname]);
+      if ((forceFirst && idx === 0) || (!this.activeFile && idx === 0)) {
+        this.selectFile(fname, finalFiles[fname]);
+      } else if (fname === this.activeFile) {
+        this.selectFile(fname, finalFiles[fname]);
+      }
     });
 
     // Populate Diff Selector
-    this.diffFileSelector.innerHTML = "";
-    fileNames.forEach((fname) => {
-      const opt = document.createElement("option");
-      opt.value = fname;
-      opt.textContent = fname;
-      this.diffFileSelector.appendChild(opt);
-    });
-    if (fileNames.length) this.renderDiff(fileNames[0]);
+    if (this.diffFileSelector) {
+      const prevVal = this.diffFileSelector.value;
+      this.diffFileSelector.innerHTML = "";
+      fileNames.forEach((fname) => {
+        const opt = document.createElement("option");
+        opt.value = fname;
+        opt.textContent = fname;
+        this.diffFileSelector.appendChild(opt);
+      });
 
-    // Populate Audit Summary
-    this.renderAuditReport(snapshot.audit_summary, snapshot.security_findings);
+      if (fileNames.includes(prevVal)) {
+        this.diffFileSelector.value = prevVal;
+        this.renderDiff(prevVal);
+      } else if (fileNames.length) {
+        this.diffFileSelector.value = fileNames[0];
+        this.renderDiff(fileNames[0]);
+      }
+    }
+
+    // Populate Audit Summary if present
+    if (snapshot.audit_summary) {
+      this.renderAuditReport(snapshot.audit_summary, snapshot.security_findings);
+    }
   }
 
   selectFile(filename, content) {
@@ -598,14 +762,68 @@ class TaraIDE {
   }
 
   renderDiff(filename) {
-    if (!this.currentSession) return;
-    const devCode = (this.currentSession.dev_code_files && this.currentSession.dev_code_files[filename]) || "// No original dev draft";
-    const qaCode = (this.currentSession.qa_refactored_files && this.currentSession.qa_refactored_files[filename]) || "// No QA refactor";
-    const secCode = (this.currentSession.security_patches && this.currentSession.security_patches[filename]) || "// No security patch";
+    if (!this.currentSession || !filename) return;
 
-    this.diffDevBox.querySelector("code").textContent = devCode;
-    this.diffQaBox.querySelector("code").textContent = qaCode;
-    this.diffSecBox.querySelector("code").textContent = secCode;
+    const devCode = (this.currentSession.dev_code_files && this.currentSession.dev_code_files[filename]) || "// No developer draft available";
+    const qaCode = (this.currentSession.qa_refactored_files && this.currentSession.qa_refactored_files[filename]) || devCode;
+    const secCode = (this.currentSession.security_patches && this.currentSession.security_patches[filename]) || qaCode;
+
+    if (!window.monaco || !this.diffEditorPrimary) {
+      return;
+    }
+
+    const stage = this.activeDiffStage || "dev-qa";
+    const secContainer = document.getElementById("monaco-diff-secondary");
+    const primContainer = document.getElementById("monaco-diff-primary");
+
+    if (stage === "dual") {
+      // Dual Side-by-Side 3-Way Mode: Dev ➔ QA on left, QA ➔ Security on right
+      if (secContainer) {
+        secContainer.style.display = "block";
+        secContainer.style.width = "50%";
+      }
+      if (primContainer) {
+        primContainer.style.width = "50%";
+      }
+
+      this.diffEditorPrimary.setModel({
+        original: monaco.editor.createModel(devCode, "python"),
+        modified: monaco.editor.createModel(qaCode, "python"),
+      });
+
+      if (this.diffEditorSecondary) {
+        this.diffEditorSecondary.setModel({
+          original: monaco.editor.createModel(qaCode, "python"),
+          modified: monaco.editor.createModel(secCode, "python"),
+        });
+      }
+    } else {
+      // Single Stage Diff Mode (100% width)
+      if (secContainer) {
+        secContainer.style.display = "none";
+      }
+      if (primContainer) {
+        primContainer.style.width = "100%";
+      }
+
+      let originalCode = devCode;
+      let modifiedCode = qaCode;
+
+      if (stage === "qa-sec") {
+        originalCode = qaCode;
+        modifiedCode = secCode;
+      } else if (stage === "dev-sec") {
+        originalCode = devCode;
+        modifiedCode = secCode;
+      }
+
+      this.diffEditorPrimary.setModel({
+        original: monaco.editor.createModel(originalCode, "python"),
+        modified: monaco.editor.createModel(modifiedCode, "python"),
+      });
+    }
+
+    setTimeout(() => this.layoutDiffEditors(), 40);
   }
 
   renderAuditReport(audit, findings = []) {

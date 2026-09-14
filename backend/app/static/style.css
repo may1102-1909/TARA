@@ -587,34 +587,119 @@ body.dark-theme {
 }
 
 /* ==========================================================================
-   3-Way Diff Viewer
+/* ==========================================================================
+   Monaco Native 3-Way Diff Viewer
    ========================================================================== */
 
 #diff-view {
   flex-direction: column;
   background: #090e1a;
   overflow: hidden;
+  height: 100%;
 }
 
 .diff-header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface);
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 5;
+}
+
+.diff-left-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .diff-selector {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.diff-stage-selector {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.diff-stage-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--trans-fast);
+}
+
+.diff-stage-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.diff-stage-btn.active {
+  background: var(--accent-purple);
+  color: white;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.35);
+}
+
+.diff-stage-btn .stage-num {
+  font-size: 0.65rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.diff-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.btn-diff-inline {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.btn-diff-inline:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-purple);
+}
+
+.btn-diff-inline.active {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .diff-legend {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   font-size: 0.72rem;
   color: var(--text-secondary);
 }
@@ -631,50 +716,29 @@ body.dark-theme {
   border-radius: 2px;
 }
 
-.legend-item.original .legend-box { background: #3b82f6; }
-.legend-item.refactored .legend-box { background: #10b981; }
-.legend-item.hardened .legend-box { background: #8b5cf6; }
+.legend-item.original .legend-box { background: rgba(239, 68, 68, 0.7); }
+.legend-item.hardened .legend-box { background: rgba(34, 197, 94, 0.7); }
 
-.diff-columns-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  flex: 1;
-  overflow: hidden;
-  divide-x: 1px solid var(--border-subtle);
-}
-
-.diff-column {
+.diff-editors-container {
   display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border-subtle);
-  overflow: hidden;
-}
-
-.diff-column:last-child {
-  border-right: none;
-}
-
-.diff-col-title {
-  padding: 6px 12px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-card);
-}
-
-.diff-col-title.dev-badge { color: #60a5fa; }
-.diff-col-title.qa-badge { color: #34d399; }
-.diff-col-title.sec-badge { color: #c084fc; }
-
-.diff-code-box {
   flex: 1;
-  padding: 12px;
-  overflow: auto;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  line-height: 1.5;
-  background: #090e1a;
-  color: var(--text-secondary);
+  width: 100%;
+  height: calc(100% - 46px);
+  position: relative;
+  overflow: hidden;
+  background: #1e1e1e;
+}
+
+.monaco-diff-pane {
+  flex: 1;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.monaco-diff-pane:last-child {
+  border-right: none;
 }
 
 /* ==========================================================================
