@@ -221,14 +221,54 @@ class TaraIDE {
     }
   }
 
-  handleFileSelect(file) {
+  async handleFileSelect(file) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.prdTextarea.value = e.target.result;
-      this.appendLog("SYSTEM", `Loaded document: ${file.name} (${file.size} bytes)`);
-    };
-    reader.readAsText(file);
+
+    const isPdf = file.name.toLowerCase().endsWith(".pdf");
+    const dropZoneHint = this.dropZone.querySelector(".upload-hint");
+    const originalHint = dropZoneHint ? dropZoneHint.innerHTML : "";
+
+    if (dropZoneHint) {
+      dropZoneHint.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Parsing ${file.name}...</span>`;
+    }
+
+    try {
+      if (isPdf) {
+        // Upload to /api/sessions/upload for backend binary PDF text extraction
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/sessions/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(errData.detail || "Failed to parse PDF document.");
+        }
+
+        const data = await res.json();
+        this.prdTextarea.value = data.extracted_text;
+        this.appendLog("SYSTEM", `📄 Extracted ${data.page_count} page(s) from PDF "${data.filename}" (${data.char_count.toLocaleString()} characters)`);
+      } else {
+        // Direct client-side read for Markdown / plain text
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.prdTextarea.value = e.target.result;
+          this.appendLog("SYSTEM", `📄 Loaded document: ${file.name} (${file.size.toLocaleString()} bytes)`);
+        };
+        reader.readAsText(file);
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert(`Error loading file: ${err.message}`);
+      this.appendLog("SYSTEM", `❌ Failed to parse ${file.name}: ${err.message}`);
+    } finally {
+      if (dropZoneHint) {
+        dropZoneHint.innerHTML = originalHint;
+      }
+    }
   }
 
   updateSessionBadge() {

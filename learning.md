@@ -176,6 +176,17 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 13: PDF Parsing Support & Document Ingestion (FR-6)
+- **What was done:**
+  - Installed `pypdf>=4.0.0` to provide pure-Python, fast binary PDF text extraction without heavy native C dependencies.
+  - Added endpoint `POST /api/sessions/upload` in `backend/app/api/sessions.py` to ingest `.pdf`, `.md`, and `.txt` files, extract structured page-by-page text, and return metadata (`filename`, `file_type`, `page_count`, `char_count`, `extracted_text`).
+  - Integrated drag-and-drop and file selection in the Web IDE (`backend/app/static/app.js`), allowing users to drop PDF specifications into the browser and immediately populate the PRD editor.
+- **Why we built it:**
+  - Fulfills PRD requirement FR-6.
+  - Allows engineers and product managers to drop existing architectural PDFs directly into TARA without needing to manually copy/paste or convert them to markdown first.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -193,4 +204,5 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/core/llm.py` & agents | Built automatic high-quota model failover chain | `gemini-3.6-flash` has a strict preview limit of 20 requests/day (`429 RESOURCE_EXHAUSTED`), while `gemini-2.5-flash` was deprecated for new users (`404 NOT_FOUND`). Added `call_gemini_with_fallback` defaulting to `gemini-3.5-flash` and `gemini-3.5-flash-lite` to guarantee abundant free tier quota and zero interruptions. |
 | 2026-09-14 | `backend/app/sandbox/` & `security.py` | Built 3-Tier Sandbox Runner, real Bandit/Flake8/AST SAST, and Web IDE 'Run in Sandbox' | Replaced mock strings with real Bandit JSON parsing mapped to OWASP Top 10, isolated execution sandbox, and live terminal execution in the browser. |
 | 2026-09-14 | `backend/app/sandbox/runner.py` & `.env` | Enabled Tier 1 E2B Cloud MicroVM Sandbox with user API key | Cloud hardware-level isolation for running untrusted code and SAST scans. |
+| 2026-09-14 | `backend/app/api/sessions.py` & `app.js` | Built PDF parsing support & `POST /api/sessions/upload` endpoint | Fulfills FR-6 by allowing drag-and-drop ingestion of `.pdf`, `.md`, and `.txt` specifications. |
 | 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |

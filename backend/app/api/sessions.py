@@ -1,15 +1,60 @@
 """FastAPI API endpoints for session lifecycle, HITL decisions, and package download."""
 
+import io
 import uuid
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Response
+# pyrefly: ignore [missing-import]
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Response, UploadFile, File, Query
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field
+from pypdf import PdfReader
 
 from app.core.session_manager import session_manager
 from app.sandbox.packaging import create_release_zip
 from app.sandbox.runner import get_sandbox
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+def extract_text_from_upload(filename: str, content_bytes: bytes) -> tuple[str, str, int]:
+    """Extracts raw text from an uploaded document (PDF, Markdown, or plain text).
+    
+    Returns:
+        tuple: (extracted_text, file_type, page_count)
+    """
+    lower_name = filename.lower()
+    if lower_name.endswith(".pdf"):
+        file_type = "pdf"
+        try:
+            reader = PdfReader(io.BytesIO(content_bytes))
+            page_count = len(reader.pages)
+            pages_text = []
+            for page in reader.pages:
+                page_str = page.extract_text() or ""
+                if page_str.strip():
+                    pages_text.append(page_str.strip())
+            extracted_text = "\n\n".join(pages_text)
+            if not extracted_text.strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="PDF contains no extractable text (it may be scanned/image-only or encrypted)."
+                )
+            return extracted_text, file_type, page_count
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to parse PDF document: {exc}")
+
+    file_type = "markdown" if lower_name.endswith(".md") else "text"
+    try:
+        extracted_text = content_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            extracted_text = content_bytes.decode("latin-1")
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Failed to decode document text: {exc}")
+
+    return extracted_text, file_type, 1
 
 
 class ExecuteCodeRequest(BaseModel):
@@ -30,6 +75,48 @@ class DecisionRequest(BaseModel):
 
 class DirectGraphRunRequest(BaseModel):
     prd_text: str = Field(..., min_length=10, description="Raw PRD content")
+
+
+@router.post("/upload")
+async def upload_document_endpoint(
+    file: UploadFile = File(...),
+    start_session: bool = Query(default=False, description="Automatically launch TARA session with extracted text")
+):
+    """Parses .pdf, .md, or .txt specification documents into raw text for PRD generation."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    extracted_text, file_type, page_count = extract_text_from_upload(file.filename, content)
+
+    if len(extracted_text.strip()) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Extracted document content is too short (minimum 10 characters required)."
+        )
+
+    response_data = {
+        "filename": file.filename,
+        "file_type": file_type,
+        "page_count": page_count,
+        "char_count": len(extracted_text),
+        "extracted_text": extracted_text,
+    }
+
+    if start_session:
+        session_id = f"tara-{uuid.uuid4().hex[:8]}"
+        snapshot = session_manager.start_session(
+            session_id=session_id,
+            prd_text=extracted_text,
+            prd_filename=file.filename
+        )
+        response_data["session"] = snapshot
+        response_data["session_id"] = session_id
+
+    return response_data
 
 
 @router.post("/graph/run")
