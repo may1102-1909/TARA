@@ -165,4 +165,5 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/graph/builder.py` | Created sequential LangGraph pipeline (`ceo` -> `developer` -> `qa` -> `security`) | Direct multi-agent execution pipeline without HITL pause. |
 | 2026-09-14 | `backend/app/api/sessions.py` | Added `POST /api/sessions/graph/run` endpoint | Allows running the sequential graph via HTTP API. |
 | 2026-09-14 | `backend/app/main.py` | Hosted locally via Uvicorn on `http://127.0.0.1:8000` | Makes Web IDE and API accessible locally in real time. |
+| 2026-09-14 | `backend/app/agents/developer.py` | Enhanced error handling in `generate_code_from_prd` | Added terminal print logging to display exact Gemini API errors when code generation fails. |
 | 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |

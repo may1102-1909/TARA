@@ -2,11 +2,38 @@
 
 from pathlib import Path
 import os
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STORAGE_DIR = BASE_DIR / "storage"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _load_env() -> None:
+    candidates = [
+        BASE_DIR / ".env",
+        BASE_DIR / "backend" / ".env",
+        Path.cwd() / ".env"
+    ]
+    for env_path in candidates:
+        if env_path.exists():
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#") or "=" not in line:
+                            continue
+                        key, val = line.split("=", 1)
+                        key = key.strip()
+                        val = val.strip().strip('"').strip("'")
+                        if key not in os.environ:
+                            os.environ[key] = val
+            except Exception:
+                pass
+
+
+_load_env()
 
 class Settings(BaseModel):
     project_name: str = "TARA — Tech-Architecture & Automated Review Assistant"

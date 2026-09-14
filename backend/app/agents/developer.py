@@ -94,7 +94,10 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
             if response.text:
                 return DeveloperCodeOutput.model_validate_json(response.text)
         except Exception as exc:
-            logger.warning("Gemini developer code generation error, falling back to local scaffold: %s", exc)
+            print("\n" + "="*50)
+            print(f"❌ GEMINI API ERROR IN DEVELOPER AGENT: {exc}")
+            print("="*50 + "\n")
+            logger.warning("Gemini developer code generation error: %s", exc)
 
     return generate_code_fallback(prd_content)
 
