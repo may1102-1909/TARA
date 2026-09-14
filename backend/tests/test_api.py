@@ -98,3 +98,15 @@ def test_api_revision_loop():
     })
     assert res_appr.status_code == 200
     assert res_appr.json()["status"] == "completed"
+
+
+def test_api_direct_graph_run():
+    """Verify POST /api/sessions/graph/run runs sequential multi-agent graph to completion."""
+    res = client.post("/api/sessions/graph/run", json={"prd_text": SAMPLE_PRD_TEXT})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "completed"
+    assert "result" in data
+    assert "ceo_critique" in data["result"]
+    assert "security_patches" in data["result"]
+

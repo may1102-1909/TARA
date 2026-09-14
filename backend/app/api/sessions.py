@@ -22,6 +22,24 @@ class DecisionRequest(BaseModel):
     notes: Optional[str] = Field(default="", description="Optional feedback notes for revision loop")
 
 
+class DirectGraphRunRequest(BaseModel):
+    prd_text: str = Field(..., min_length=10, description="Raw PRD content")
+
+
+@router.post("/graph/run")
+async def run_direct_graph(req: DirectGraphRunRequest):
+    """Executes the full sequential multi-agent graph (CEO -> Dev -> QA -> Security) directly."""
+    from app.graph.builder import graph
+    from app.graph.state import create_initial_state
+    session_id = f"graph-{uuid.uuid4().hex[:8]}"
+    try:
+        initial_state = create_initial_state(session_id=session_id, prd_text=req.prd_text)
+        result = graph.invoke(initial_state)
+        return {"session_id": session_id, "status": "completed", "result": result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.post("/start")
 async def start_session_endpoint(req: StartSessionRequest):
     """Initializes a new TARA run and executes until the Human Approval Gate."""
