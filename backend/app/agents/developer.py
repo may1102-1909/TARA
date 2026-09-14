@@ -52,10 +52,15 @@ class DeveloperCodeOutput(BaseModel):
 def generate_code_from_prd(prd_content: str, human_notes: str = "") -> DeveloperCodeOutput:
     """Parses a PRD and generates real, dynamic Python modules matching the specification."""
     global client
-    if client is None and os.getenv("GEMINI_API_KEY"):
+    
+    # Check settings or environment variable dynamically
+    api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
+
+    if client is None and api_key:
         try:
-            client = genai.Client()
-        except Exception:
+            client = genai.Client(api_key=api_key)
+        except Exception as init_exc:
+            print(f"❌ Failed to initialize GenAI client: {init_exc}")
             client = None
 
     if client is not None:
@@ -64,14 +69,12 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
                 "You are an expert Senior Software Engineer. Your task is to analyze a Product Requirement Document (PRD) "
                 "and generate clean, modular, production-ready Python code.\n\n"
                 "Guidelines:\n"
-                "1. Dynamically structure the project files appropriate to the feature requirements (e.g., app/main.py, app/schemas.py, app/database.py).\n"
-                "2. Do NOT use dummy placeholder code or generic hardcoded templates. Write full, functional Python implementations.\n"
-                "3. Include proper type hints, docstrings, imports, and error handling in every generated module."
+                "1. Dynamically structure project files appropriate to requirements (e.g., app/main.py, app/schemas.py, app/database.py).\n"
+                "2. Do NOT use placeholder code or standard template scaffolds. Write full, functional Python code.\n"
+                "3. Include type hints, docstrings, imports, and error handling in every generated module."
             )
 
-            prompt = (
-                f"Generate a full Python implementation based on this PRD:\n\n{prd_content}\n"
-            )
+            prompt = f"Generate a full Python implementation based on this PRD:\n\n{prd_content}\n"
             if human_notes:
                 prompt += f"\nAdditional Requirements/Notes: {human_notes}"
 
@@ -82,9 +85,9 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
                 temperature=0.2,
             )
 
-            # Use gemini-2.5-pro for complex coding, multi-file architecture, and reasoning
+            # Use gemini-2.5-flash for quota-friendly, fast structured output
             response = client.models.generate_content(
-                model="gemini-2.5-pro",
+                model="gemini-2.5-flash",
                 contents=prompt,
                 config=config,
             )
@@ -94,11 +97,10 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
             if response.text:
                 return DeveloperCodeOutput.model_validate_json(response.text)
         except Exception as exc:
-            print("\n" + "="*50)
-            print(f"❌ GEMINI API ERROR IN DEVELOPER AGENT: {exc}")
-            print("="*50 + "\n")
+            print(f"\n❌ GEMINI API ERROR IN DEVELOPER AGENT: {exc}\n")
             logger.warning("Gemini developer code generation error: %s", exc)
 
+    print("\n⚠️ WARNING: Gemini client is None or API call failed! Falling back to scaffold...\n")
     return generate_code_fallback(prd_content)
 
 
