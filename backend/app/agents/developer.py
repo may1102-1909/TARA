@@ -85,9 +85,9 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
                 temperature=0.2,
             )
 
-            # Use gemini-2.5-flash for quota-friendly, fast structured output
+            # Use gemini-3.6-flash for quota-friendly, fast structured output
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=settings.default_model or "gemini-3.6-flash",
                 contents=prompt,
                 config=config,
             )

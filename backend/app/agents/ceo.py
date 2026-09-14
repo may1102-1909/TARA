@@ -110,10 +110,12 @@ def evaluate_prd(
 ) -> CEOCritique:
     """Evaluates a PRD from a CEO perspective and returns a structured CEOCritique."""
     global client
-    if client is None and os.getenv("GEMINI_API_KEY"):
+    api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
+    if client is None and api_key:
         try:
-            client = genai.Client()
-        except Exception:
+            client = genai.Client(api_key=api_key)
+        except Exception as init_exc:
+            logger.warning("Failed to initialize GenAI client in CEO agent: %s", init_exc)
             client = None
 
     if client is not None:
@@ -141,7 +143,7 @@ def evaluate_prd(
             )
 
             response = client.models.generate_content(
-                model="gemini-2.5-flash",  # Use "gemini-2.5-pro" for deep reasoning on complex PRDs
+                model=settings.default_model or "gemini-3.6-flash",
                 contents=prompt,
                 config=config,
             )

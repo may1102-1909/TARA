@@ -165,5 +165,5 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/graph/builder.py` | Created sequential LangGraph pipeline (`ceo` -> `developer` -> `qa` -> `security`) | Direct multi-agent execution pipeline without HITL pause. |
 | 2026-09-14 | `backend/app/api/sessions.py` | Added `POST /api/sessions/graph/run` endpoint | Allows running the sequential graph via HTTP API. |
 | 2026-09-14 | `backend/app/main.py` | Hosted locally via Uvicorn on `http://127.0.0.1:8000` | Makes Web IDE and API accessible locally in real time. |
-| 2026-09-14 | `backend/app/agents/developer.py` | Updated `generate_code_from_prd` client initialization & switched to `gemini-2.5-flash` | Forces GenAI client initialization with dynamic API key fallback, switches to quota-friendly flash model, and prints detailed fallback warnings. |
+| 2026-09-14 | `backend/app/agents/*` & `config.py` | Migrated all agents to `gemini-3.6-flash` and dynamic client init | Google deprecated `gemini-2.5-*` models for new API keys (giving 404 NOT_FOUND), causing silent fallback to mock scaffolds. Migrating to `gemini-3.6-flash` restored full live generation across all 4 agents. |
 | 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |

@@ -75,10 +75,12 @@ def analyze_code_security_fallback(code_files: Dict[str, str]) -> SecurityReport
 def analyze_code_security(code_files: Dict[str, str]) -> SecurityReport:
     """Invokes Gemini to inspect codebase for security vulnerabilities and SAST violations."""
     global client
-    if client is None and os.getenv("GEMINI_API_KEY"):
+    api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
+    if client is None and api_key:
         try:
-            client = genai.Client()
-        except Exception:
+            client = genai.Client(api_key=api_key)
+        except Exception as init_exc:
+            logger.warning("Failed to initialize GenAI client in Security agent: %s", init_exc)
             client = None
 
     if client is not None and code_files:
@@ -101,7 +103,7 @@ def analyze_code_security(code_files: Dict[str, str]) -> SecurityReport:
             )
 
             response = client.models.generate_content(
-                model="gemini-2.5-pro",
+                model=settings.default_model or "gemini-3.6-flash",
                 contents=f"Perform a security review on this codebase:\n\n{formatted_code}",
                 config=config,
             )

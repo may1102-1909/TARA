@@ -27,8 +27,7 @@ def _load_env() -> None:
                         key, val = line.split("=", 1)
                         key = key.strip()
                         val = val.strip().strip('"').strip("'")
-                        if key not in os.environ:
-                            os.environ[key] = val
+                        os.environ[key] = val
             except Exception:
                 pass
 
@@ -43,7 +42,7 @@ class Settings(BaseModel):
         "http://127.0.0.1:3000",
     ]
     storage_dir: Path = STORAGE_DIR
-    default_model: str = os.getenv("TARA_LLM_MODEL", "gemini-2.5-flash")
+    default_model: str = os.getenv("TARA_LLM_MODEL", "gemini-3.6-flash")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
 
