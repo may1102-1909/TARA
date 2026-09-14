@@ -46,6 +46,8 @@ class AgentState(TypedDict, total=False):
     # QA Refactoring Artifacts
     qa_refactored_files: Dict[str, str]
     qa_changelog: List[Dict[str, str]]
+    qa_report: Optional[Dict[str, Any]]
+    qa_passed: Optional[bool]
     
     # Security Hardening & Audit
     security_patches: Dict[str, str]
