@@ -42,7 +42,7 @@ class Settings(BaseModel):
         "http://127.0.0.1:3000",
     ]
     storage_dir: Path = STORAGE_DIR
-    default_model: str = os.getenv("TARA_LLM_MODEL", "gemini-3.6-flash")
+    default_model: str = os.getenv("TARA_LLM_MODEL", "gemini-3.5-flash")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
 

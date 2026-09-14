@@ -21,6 +21,7 @@ if _backend_dir not in sys.path:
 
 from app.graph.state import AgentState
 from app.core.config import settings
+from app.core.llm import call_gemini_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +99,11 @@ def analyze_code_qa(code_files: Dict[str, str]) -> QAReport:
                 temperature=0.1,
             )
 
-            response = client.models.generate_content(
-                model=settings.default_model or "gemini-3.6-flash",
+            response = call_gemini_with_fallback(
+                client=client,
                 contents=f"Review the following codebase:\n\n{formatted_code}",
                 config=config,
+                preferred_model=settings.default_model or "gemini-3.5-flash",
             )
 
             if response.parsed and isinstance(response.parsed, QAReport):

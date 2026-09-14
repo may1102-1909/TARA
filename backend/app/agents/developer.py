@@ -21,6 +21,7 @@ if _backend_dir not in sys.path:
 
 from app.graph.state import AgentState
 from app.core.config import settings
+from app.core.llm import call_gemini_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -89,11 +90,12 @@ def generate_code_from_prd(prd_content: str, human_notes: str = "") -> Developer
                 temperature=0.2,
             )
 
-            # Use gemini-3.6-flash for quota-friendly, fast structured output
-            response = client.models.generate_content(
-                model=settings.default_model or "gemini-3.6-flash",
+            # High-quota flash generation with automatic failover
+            response = call_gemini_with_fallback(
+                client=client,
                 contents=prompt,
                 config=config,
+                preferred_model=settings.default_model or "gemini-3.5-flash",
             )
 
             if response.parsed and isinstance(response.parsed, DeveloperCodeOutput):
