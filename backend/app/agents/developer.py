@@ -232,3 +232,19 @@ def developer_node(state: AgentState) -> Dict[str, Any]:
         "current_stage": "code_generated",
         "logs": [log_entry],
     }
+
+
+if __name__ == "__main__":
+    sample_prd = """
+    # PRD: User Auth & Database Service
+    - Fastapi endpoints for /register and /login
+    - SQLite database connection using SQLAlchemy
+    - Password hashing using passlib
+    """
+
+    result = generate_code_from_prd(sample_prd)
+    print(f"Summary: {result.summary}\n")
+    for file in result.files:
+        print(f"--- File: {file.path} ---")
+        print(file.content[:150])  # Print first 150 chars of each module
+        print("\n")
