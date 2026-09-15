@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import asynccontextmanager
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
@@ -8,16 +9,27 @@ from fastapi.staticfiles import StaticFiles
 # pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse
 from app.core.config import settings
+from app.core.cleanup import start_cleanup_scheduler, stop_cleanup_scheduler
 from app.api.sessions import router as sessions_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ASSETS_DIR = BASE_DIR / "assets"
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan management: initializes 24h TTL background scheduler on startup."""
+    start_cleanup_scheduler()
+    yield
+    stop_cleanup_scheduler()
+
+
 app = FastAPI(
     title="TARA Backend & Web IDE",
     description="Multi-Agent Software Consultancy & Automated Review Assistant",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS configuration for Web IDE frontend

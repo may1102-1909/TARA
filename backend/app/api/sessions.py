@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Re
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
+from app.core.config import settings
+from app.core.cleanup import cleanup_expired_resources
 from app.core.session_manager import session_manager
 from app.sandbox.packaging import create_release_zip
 from app.sandbox.runner import get_sandbox
@@ -75,6 +77,24 @@ class DecisionRequest(BaseModel):
 
 class DirectGraphRunRequest(BaseModel):
     prd_text: str = Field(..., min_length=10, description="Raw PRD content")
+
+
+class CleanupRequest(BaseModel):
+    ttl_seconds: Optional[int] = Field(default=86400, description="Time-to-live threshold in seconds (default 24h)")
+
+
+@router.get("")
+async def list_sessions_endpoint():
+    """Lists all active and persisted sessions from the SQLite database."""
+    return {"sessions": session_manager.list_sessions()}
+
+
+@router.post("/cleanup")
+async def trigger_cleanup_endpoint(req: Optional[CleanupRequest] = None):
+    """Manually triggers TTL cleanup job for expired sessions, zip packages, and sandbox folders."""
+    ttl = req.ttl_seconds if req and req.ttl_seconds is not None else 86400
+    stats = cleanup_expired_resources(ttl_seconds=ttl)
+    return {"status": "success", "cleanup_stats": stats}
 
 
 @router.post("/upload")
@@ -205,6 +225,15 @@ async def download_package_endpoint(session_id: str):
         session_id=session_id
     )
 
+    # Persist release artifact on disk in packages directory for 24h TTL tracking
+    try:
+        packages_dir = settings.storage_dir / "packages"
+        packages_dir.mkdir(parents=True, exist_ok=True)
+        pkg_file = packages_dir / f"tara-{session_id}.zip"
+        pkg_file.write_bytes(zip_bytes)
+    except Exception:
+        pass
+
     return Response(
         content=zip_bytes,
         media_type="application/zip",
@@ -212,6 +241,23 @@ async def download_package_endpoint(session_id: str):
             "Content-Disposition": f"attachment; filename=tara-{session_id}.zip"
         }
     )
+
+
+@router.delete("/{session_id}")
+async def delete_session_endpoint(session_id: str):
+    """Deletes a session and its persistent checkpointer data from SQLite."""
+    deleted = session_manager.delete_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session could not be deleted or not found.")
+
+    pkg_file = settings.storage_dir / "packages" / f"tara-{session_id}.zip"
+    if pkg_file.exists():
+        try:
+            pkg_file.unlink()
+        except Exception:
+            pass
+
+    return {"status": "deleted", "session_id": session_id}
 
 
 @router.post("/{session_id}/run")

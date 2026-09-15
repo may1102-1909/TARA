@@ -8,7 +8,7 @@ To continue transforming **TARA** into an enterprise-grade AI Software Engineeri
 
 | Requirement | Purpose | How to Provide |
 |---|---|---|
-| **GitHub Personal Access Token (PAT)** | To implement **Step 5: Automated GitHub PR & Repository Creation** (FR-21 to FR-23) so TARA can directly push hardened code and open PRs. | Add `GITHUB_TOKEN=ghp_...` to your `.env` (with `repo` scope). |
+| **GitHub Personal Access Token (PAT)** | To implement **Step 6: Automated GitHub PR & Repository Creation** (FR-21 to FR-23) so TARA can directly push hardened code and open PRs. | Add `GITHUB_TOKEN=ghp_...` to your `.env` (with `repo` scope). |
 | **Target GitHub Username / Org** | Default organization or account where generated repositories will be initialized. | Mention in conversation or set `GITHUB_USER=...` in `.env`. |
 
 ---

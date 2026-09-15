@@ -199,6 +199,21 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 15: Persistent State (SqliteSaver) & Automated 24h TTL Cleanup (APScheduler)
+- **What was done:**
+  - Swapped out the in-memory `MemorySaver()` in `backend/app/core/session_manager.py` for persistent SQLite storage using `SqliteSaver` (from `langgraph-checkpoint-sqlite`) stored at `backend/storage/tara_sessions.db`.
+  - Created a `session_metadata` SQLite table to track each session's status, PRD filename, creation timestamp, and last updated timestamp across server restarts.
+  - Built an automated cleanup engine in `backend/app/core/cleanup.py` with `cleanup_expired_resources()` to purge expired checkpoints, delete old `.zip` release packages from `storage/packages/`, and remove orphaned temp sandbox directories older than 24 hours (86,400s).
+  - Integrated `APScheduler` (`BackgroundScheduler`) to automatically run the TTL cleanup job every hour without blocking FastAPI's async event loop.
+  - Registered FastAPI `lifespan(app)` in `backend/app/main.py` for clean scheduler startup and shutdown.
+  - Added new REST endpoints in `backend/app/api/sessions.py`: `GET /api/sessions` (list active sessions), `POST /api/sessions/cleanup` (manual TTL cleanup trigger), and `DELETE /api/sessions/{session_id}`.
+  - Added a full test suite `backend/tests/test_persistence_cleanup.py` proving state persistence across process restarts and automated TTL cleanup.
+- **Why we built it:**
+  - Fulfills PRD Section 6.1 requirements.
+  - Guarantees zero data loss on server restarts, prevents disk bloat by purging old artifacts after 24 hours, and keeps the server lean and production-ready.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -218,5 +233,8 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/sandbox/runner.py` & `.env` | Enabled Tier 1 E2B Cloud MicroVM Sandbox with user API key | Cloud hardware-level isolation for running untrusted code and SAST scans. |
 | 2026-09-14 | `backend/app/api/sessions.py` & `app.js` | Built PDF parsing support & `POST /api/sessions/upload` endpoint | Fulfills FR-6 by allowing drag-and-drop ingestion of `.pdf`, `.md`, and `.txt` specifications. |
 | 2026-09-14 | `frontend` & `session_manager.py` | Added Monaco Native 3-Way Diff, Live WS File Updates, and Live Editing | Native diff highlighting (Dev ➔ QA ➔ Sec), live file tree updates during streaming, and live editing. |
+| 2026-09-14 | `backend/app/core/session_manager.py` | Integrated `SqliteSaver` persistent checkpointer & session metadata | Persists multi-agent workflow checkpoints in SQLite across server restarts. |
+| 2026-09-14 | `backend/app/core/cleanup.py` & `main.py` | Added APScheduler 24h automated TTL cleanup job & FastAPI lifespan hook | Automatically purges expired session checkpoints, packages, and temp folders every 24h. |
+| 2026-09-14 | `backend/tests/test_persistence_cleanup.py` | Added automated persistence, TTL cleanup, and API test suite | 100% test pass rate verifying SQLite restart durability and cleanup pruning. |
 | 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
-| 2026-09-14 | `learning.md` | Created this comprehensive learning document | To explain everything built in simple English and log all future progress. |
+| 2026-09-14 | `learning.md` | Maintained this comprehensive learning document | To explain everything built in simple English and log all future progress. |

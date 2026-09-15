@@ -1,23 +1,87 @@
 """Session manager for orchestrating LangGraph runs and WebSocket broadcasts."""
 
 import asyncio
+import logging
+import sqlite3
+import time
 from typing import Any, Dict, List, Optional, Set
+# pyrefly: ignore [missing-import]
 from fastapi import WebSocket
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
+from app.core.config import settings
 from app.graph.state import create_initial_state
 from app.graph.workflow import create_tara_workflow
 
+logger = logging.getLogger(__name__)
+
 
 class SessionManager:
-    """Manages LangGraph checkpointers, execution threads, and WebSocket event subscribers."""
+    """Manages persistent LangGraph SQLite checkpointers, execution threads, and WebSocket event subscribers."""
 
     def __init__(self):
-        self.checkpointer = MemorySaver()
+        db_path = settings.storage_dir / "tara_sessions.db"
+        self.db_conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        self._init_metadata_table()
+        self.checkpointer = SqliteSaver(self.db_conn)
+        self.checkpointer.setup()
         self.app = create_tara_workflow(checkpointer=self.checkpointer)
         self.active_websockets: Dict[str, Set[WebSocket]] = {}
-        self.session_meta: Dict[str, Dict[str, Any]] = {}
+        self.session_meta: Dict[str, Dict[str, Any]] = self._load_persisted_meta()
+
+    def _init_metadata_table(self):
+        with self.db_conn:
+            self.db_conn.execute("""
+                CREATE TABLE IF NOT EXISTS session_metadata (
+                    session_id TEXT PRIMARY KEY,
+                    prd_filename TEXT,
+                    status TEXT,
+                    created_at REAL,
+                    updated_at REAL
+                )
+            """)
+
+    def _load_persisted_meta(self) -> Dict[str, Dict[str, Any]]:
+        meta = {}
+        try:
+            cursor = self.db_conn.cursor()
+            rows = cursor.execute("SELECT session_id, prd_filename, status, created_at, updated_at FROM session_metadata").fetchall()
+            for row in rows:
+                meta[row[0]] = {
+                    "prd_filename": row[1],
+                    "status": row[2],
+                    "created_at": row[3],
+                    "updated_at": row[4],
+                }
+        except Exception as e:
+            logger.warning("Error loading session metadata: %s", e)
+        return meta
+
+    def delete_session(self, session_id: str) -> bool:
+        """Removes a session's checkpoints, writes, and metadata."""
+        try:
+            with self.db_conn:
+                self.db_conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (session_id,))
+                self.db_conn.execute("DELETE FROM writes WHERE thread_id = ?", (session_id,))
+                self.db_conn.execute("DELETE FROM session_metadata WHERE session_id = ?", (session_id,))
+            self.session_meta.pop(session_id, None)
+            if session_id in self.active_websockets:
+                self.active_websockets.pop(session_id, None)
+            return True
+        except Exception as exc:
+            logger.error("Failed to delete session %s: %s", session_id, exc)
+            return False
+
+    def prune_expired_sessions(self, ttl_seconds: int = 86400) -> int:
+        """Deletes sessions older than the TTL limit (default 24h)."""
+        cutoff = time.time() - ttl_seconds
+        cursor = self.db_conn.cursor()
+        rows = cursor.execute("SELECT session_id FROM session_metadata WHERE updated_at < ?", (cutoff,)).fetchall()
+        expired_ids = [r[0] for r in rows]
+        for sid in expired_ids:
+            self.delete_session(sid)
+        return len(expired_ids)
 
     def get_config(self, session_id: str) -> Dict[str, Any]:
         return {"configurable": {"thread_id": session_id}}
@@ -67,10 +131,18 @@ class SessionManager:
         """Initializes state and runs workflow up to the human approval gate."""
         config = self.get_config(session_id)
         initial_state = create_initial_state(session_id, prd_text, prd_filename)
+        now = time.time()
         self.session_meta[session_id] = {
             "prd_filename": prd_filename,
-            "status": "in_progress"
+            "status": "in_progress",
+            "created_at": now,
+            "updated_at": now,
         }
+        with self.db_conn:
+            self.db_conn.execute("""
+                INSERT OR REPLACE INTO session_metadata (session_id, prd_filename, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (session_id, prd_filename, "in_progress", now, now))
         
         # Run graph until interrupt at human_approval_gate, broadcasting updates live
         for chunk in self.app.stream(initial_state, config=config):
@@ -111,13 +183,53 @@ class SessionManager:
                     })
             
         snapshot = self.get_state_snapshot(session_id)
-        if snapshot["status"] == "completed":
-            self.session_meta.setdefault(session_id, {})["status"] = "completed"
+        now = time.time()
+        new_status = snapshot.get("status", "running")
+        if session_id in self.session_meta:
+            self.session_meta[session_id]["status"] = new_status
+            self.session_meta[session_id]["updated_at"] = now
+        else:
+            self.session_meta[session_id] = {
+                "prd_filename": "unknown",
+                "status": new_status,
+                "created_at": now,
+                "updated_at": now,
+            }
+        try:
+            with self.db_conn:
+                self.db_conn.execute(
+                    "UPDATE session_metadata SET status = ?, updated_at = ? WHERE session_id = ?",
+                    (new_status, now, session_id)
+                )
+        except Exception as exc:
+            logger.warning("Failed to update session_metadata for %s: %s", session_id, exc)
+
         self.broadcast_sync(session_id, "node_update", {
             "node": "pipeline_complete",
             "snapshot": snapshot,
         })
         return snapshot
+
+    def list_sessions(self) -> List[Dict[str, Any]]:
+        """Returns a list of all active/persisted sessions in SQLite."""
+        try:
+            cursor = self.db_conn.cursor()
+            rows = cursor.execute(
+                "SELECT session_id, prd_filename, status, created_at, updated_at FROM session_metadata ORDER BY updated_at DESC"
+            ).fetchall()
+            return [
+                {
+                    "session_id": r[0],
+                    "prd_filename": r[1],
+                    "status": r[2],
+                    "created_at": r[3],
+                    "updated_at": r[4],
+                }
+                for r in rows
+            ]
+        except Exception as exc:
+            logger.warning("Failed to list sessions: %s", exc)
+            return []
 
     def get_state_snapshot(self, session_id: str) -> Dict[str, Any]:
         """Extracts serializable snapshot of the current state and interrupt info."""

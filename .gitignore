@@ -43,6 +43,12 @@ yarn-error.log*
 .env.local
 .env.*.local
 .DS_Store
-Thumbs.db
 .vscode/
 .idea/
+
+# Databases & Artifact Storage
+*.db
+*.sqlite
+*.sqlite3
+backend/storage/
+storage/
