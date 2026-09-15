@@ -1,5 +1,6 @@
 /**
  * TARA Web IDE Client Application
+ * AI Developer Environment & Autonomous Architecture Assistant
  */
 
 const PRESETS = {
@@ -49,8 +50,10 @@ class TaraIDE {
     this.editor = null;
     this.activeFile = "main.py";
     this.activeAgentFilter = "all";
+    this.activePersona = "antigravity";
     this.allLogs = [];
     this.socket = null;
+    this.activeBotMsgBody = null;
 
     this.initElements();
     this.initMonaco();
@@ -61,32 +64,42 @@ class TaraIDE {
   }
 
   initElements() {
+    // Top & Header
+    this.sessionBadgeText = document.getElementById("session-id-text");
+    this.btnDownloadZip = document.getElementById("btn-download-zip");
+
+    // Dock & Panels
+    this.primarySidebar = document.getElementById("primary-sidebar");
+    this.copilotPanel = document.getElementById("copilot-panel");
+    this.consoleDrawer = document.getElementById("console-drawer");
+
+    // Dock Buttons
+    this.dockBtnSpec = document.getElementById("dock-btn-spec");
+    this.dockBtnFiles = document.getElementById("dock-btn-files");
+    this.dockBtnEditor = document.getElementById("dock-btn-editor");
+    this.dockBtnDiff = document.getElementById("dock-btn-diff");
+    this.dockBtnAudit = document.getElementById("dock-btn-audit");
+    this.dockBtnTerminal = document.getElementById("dock-btn-terminal");
+    this.dockBtnCopilotToggle = document.getElementById("dock-btn-copilot-toggle");
+    this.dockFilesCount = document.getElementById("dock-files-count");
+
+    // Sidebar Spec & Files
     this.prdTextarea = document.getElementById("prd-input-textarea");
+    this.prdCharCounter = document.getElementById("prd-char-counter");
     this.presetSelect = document.getElementById("preset-select");
     this.btnStartPipeline = document.getElementById("btn-start-pipeline");
-    this.btnDownloadZip = document.getElementById("btn-download-zip");
-    this.fileTreeContainer = document.getElementById("file-tree-container");
-    this.filesCountBadge = document.getElementById("files-count-badge");
-    this.sessionBadgeText = document.getElementById("session-id-text");
-    this.stageStatusText = document.getElementById("stage-status-text");
-    this.activeFilenamePill = document.getElementById("active-filename-pill");
-    this.consoleLogStream = document.getElementById("console-log-stream");
     this.dropZone = document.getElementById("drop-zone");
     this.fileUploadInput = document.getElementById("file-upload-input");
-    this.btnRunCode = document.getElementById("btn-run-code");
+    this.fileTreeContainer = document.getElementById("file-tree-container");
+    this.filesCountBadge = document.getElementById("files-count-badge");
+    this.filesTagTotal = document.getElementById("files-tag-total");
 
-    // Modal elements
-    this.approvalModal = document.getElementById("approval-gate-modal");
-    this.modalVerdictText = document.getElementById("modal-verdict-text");
-    this.modalMarketText = document.getElementById("modal-market-text");
-    this.modalGapsList = document.getElementById("modal-gaps-list");
-    this.modalFlawsList = document.getElementById("modal-flaws-list");
-    this.modalRecommendationText = document.getElementById("modal-recommendation-text");
-    this.modalRevisionPill = document.getElementById("modal-revision-pill");
-    this.feedbackNotesInput = document.getElementById("feedback-notes-input");
-    this.btnGateApprove = document.getElementById("btn-gate-approve");
-    this.btnGateRequestChanges = document.getElementById("btn-gate-request-changes");
-    this.btnGateReject = document.getElementById("btn-gate-reject");
+    // Canvas Stage
+    this.activeFilenamePill = document.getElementById("active-filename-pill");
+    this.stageStatusText = document.getElementById("stage-status-text");
+    this.btnRunCode = document.getElementById("btn-run-code");
+    this.consoleLogStream = document.getElementById("console-log-stream");
+    this.btnToggleConsole = document.getElementById("btn-toggle-console");
 
     // Monaco Diff elements
     this.diffFileSelector = document.getElementById("diff-file-selector");
@@ -101,6 +114,29 @@ class TaraIDE {
 
     // Audit view
     this.auditContentContainer = document.getElementById("audit-content-container");
+
+    // Right AI Copilot
+    this.copilotChatStream = document.getElementById("copilot-chat-stream");
+    this.copilotPromptInput = document.getElementById("copilot-prompt-input");
+    this.copilotTargetDisplay = document.getElementById("copilot-target-display");
+    this.btnSendCopilot = document.getElementById("btn-send-copilot");
+    this.btnClearCopilot = document.getElementById("btn-clear-copilot");
+    this.btnCloseCopilot = document.getElementById("btn-close-copilot");
+    this.copilotChips = document.querySelectorAll(".copilot-chip");
+    this.personaChips = document.querySelectorAll(".persona-chip");
+
+    // Modal elements (Approval Gate)
+    this.approvalModal = document.getElementById("approval-gate-modal");
+    this.modalVerdictText = document.getElementById("modal-verdict-text");
+    this.modalMarketText = document.getElementById("modal-market-text");
+    this.modalGapsList = document.getElementById("modal-gaps-list");
+    this.modalFlawsList = document.getElementById("modal-flaws-list");
+    this.modalRecommendationText = document.getElementById("modal-recommendation-text");
+    this.modalRevisionPill = document.getElementById("modal-revision-pill");
+    this.feedbackNotesInput = document.getElementById("feedback-notes-input");
+    this.btnGateApprove = document.getElementById("btn-gate-approve");
+    this.btnGateRequestChanges = document.getElementById("btn-gate-request-changes");
+    this.btnGateReject = document.getElementById("btn-gate-reject");
   }
 
   initMonaco() {
@@ -114,7 +150,7 @@ class TaraIDE {
       window.require(["vs/editor/editor.main"], () => {
         // Main Code Editor
         this.editor = monaco.editor.create(container, {
-          value: "# TARA Autonomous Code Engine\n# Awaiting PRD input to generate Python artifacts...",
+          value: "# TARA Autonomous AI Developer Environment\n# Awaiting PRD input or Antigravity prompt to inspect & generate code...",
           language: "python",
           theme: "vs-dark",
           fontSize: 13,
@@ -126,7 +162,7 @@ class TaraIDE {
           readOnly: false,
         });
 
-        // Live Code Editing: sync user edits directly into active session state
+        // Live Code Editing sync
         this.editor.onDidChangeModelContent(() => {
           if (this.activeFile && this.currentSession) {
             const updated = this.editor.getValue();
@@ -198,7 +234,6 @@ class TaraIDE {
       };
 
       this.socket.onclose = () => {
-        // Auto-reconnect after delay
         setTimeout(() => {
           if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
             this.initTaraWebSocket();
@@ -217,24 +252,64 @@ class TaraIDE {
       case "init":
         this.appendLog("ANTIGRAVITY", `Runtime connected. Workspace: ${data.workspace || "active root"}`);
         break;
+
+      case "status":
+        if (data.status === "processing_prompt") {
+          this.stageStatusText.textContent = "Agent Executing...";
+        } else if (data.status === "agent_ready") {
+          this.stageStatusText.textContent = "Agent Ready";
+        }
+        break;
+
       case "thought":
         this.appendLog("ANTIGRAVITY", `💭 Thinking: ${data.content}`);
+        if (this.activeBotMsgBody) {
+          let thoughtBox = this.activeBotMsgBody.querySelector(".thought-box");
+          if (!thoughtBox) {
+            thoughtBox = document.createElement("div");
+            thoughtBox.className = "thought-box";
+            thoughtBox.innerHTML = `<span class="thought-title">💭 Thinking Process</span><div class="thought-content"></div>`;
+            this.activeBotMsgBody.insertBefore(thoughtBox, this.activeBotMsgBody.firstChild);
+          }
+          const content = thoughtBox.querySelector(".thought-content");
+          if (content) content.textContent = data.content;
+        }
         break;
+
       case "tool_call":
         const name = data.data?.name || "tool";
         const args = JSON.stringify(data.data?.args || {});
         this.appendLog("ANTIGRAVITY", `🔧 Tool Invocation: ${name}(${args})`);
-        break;
-      case "diff_stream_start":
-        this.appendLog("ANTIGRAVITY", `📝 Streaming live diff for ${data.filename} (+${data.additions}, -${data.deletions})`);
-        const diffTab = document.getElementById("tab-diff-view");
-        if (diffTab && !diffTab.classList.contains("active")) {
-          diffTab.click();
+        if (this.activeBotMsgBody) {
+          const toolBadge = document.createElement("div");
+          toolBadge.className = "tool-badge-pill";
+          toolBadge.innerHTML = `<span>🔧</span><code>${name}</code>`;
+          this.activeBotMsgBody.appendChild(toolBadge);
+          this.scrollCopilotToBottom();
         }
         break;
+
+      case "token":
+        if (this.activeBotMsgBody) {
+          let tokenSpan = this.activeBotMsgBody.querySelector(".bot-token-text");
+          if (!tokenSpan) {
+            tokenSpan = document.createElement("p");
+            tokenSpan.className = "bot-token-text";
+            this.activeBotMsgBody.appendChild(tokenSpan);
+          }
+          tokenSpan.textContent += data.content;
+          this.scrollCopilotToBottom();
+        }
+        break;
+
+      case "diff_stream_start":
+        this.appendLog("ANTIGRAVITY", `📝 Streaming live diff for ${data.filename} (+${data.additions}, -${data.deletions})`);
+        break;
+
       case "diff_line":
         this.appendLog("ANTIGRAVITY", `  ${data.line}`);
         break;
+
       case "file_diff":
         if (data.diff && this.diffEditorPrimary && window.monaco) {
           const diff = data.diff;
@@ -245,27 +320,65 @@ class TaraIDE {
           });
           this.appendLog("ANTIGRAVITY", `✅ Loaded live diff into Monaco Editor for ${diff.filename}`);
           this.layoutDiffEditors();
+
+          // Offer quick diff button inside copilot stream
+          if (this.activeBotMsgBody) {
+            const diffNotice = document.createElement("div");
+            diffNotice.className = "copilot-diff-notice";
+            diffNotice.innerHTML = `
+              <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); padding:8px 10px; border-radius:6px; margin-top:6px;">
+                <span style="color:#34d399; font-size:0.75rem;">✨ Diffs produced for <strong>${diff.filename}</strong> (+${diff.additions}, -${diff.deletions})</span>
+                <button class="btn btn-sm btn-sandbox" style="padding:2px 8px; font-size:0.7rem;" onclick="document.getElementById('tab-diff-view').click();">View Diff ➔</button>
+              </div>
+            `;
+            this.activeBotMsgBody.appendChild(diffNotice);
+            this.scrollCopilotToBottom();
+          }
         }
         break;
+
       case "diff_stream_end":
         this.appendLog("ANTIGRAVITY", `✨ Completed diff stream for ${data.filename}`);
         break;
+
       case "complete":
         this.appendLog("ANTIGRAVITY", `🎉 Agent task finished successfully.`);
+        this.stageStatusText.textContent = "Agent Finished";
+        if (this.activeBotMsgBody) {
+          this.activeBotMsgBody = null;
+        }
         break;
+
       case "error":
         this.appendLog("ANTIGRAVITY", `❌ Agent execution error: ${data.error}`);
+        this.stageStatusText.textContent = "Agent Error";
+        if (this.activeBotMsgBody) {
+          const errP = document.createElement("p");
+          errP.style.color = "var(--accent-rose)";
+          errP.textContent = `❌ ${data.error}`;
+          this.activeBotMsgBody.appendChild(errP);
+          this.activeBotMsgBody = null;
+        }
         break;
     }
   }
 
   sendTaraPrompt(prompt, targetFile = null, workspace = null) {
+    if (!prompt) return;
+
+    // Append user message to Copilot stream
+    this.appendCopilotUserMessage(prompt);
+
+    // Create bot response container
+    this.activeBotMsgBody = this.createCopilotBotMessage();
+
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       this.appendLog("ANTIGRAVITY", "⚠️ WebSocket reconnecting...");
       this.initTaraWebSocket();
       setTimeout(() => this.sendTaraPrompt(prompt, targetFile, workspace), 1000);
       return;
     }
+
     this.socket.send(JSON.stringify({
       prompt,
       target_file: targetFile || this.activeFile,
@@ -274,7 +387,159 @@ class TaraIDE {
     this.appendLog("ANTIGRAVITY", `🚀 Prompt dispatched: "${prompt}"`);
   }
 
+  appendCopilotUserMessage(text) {
+    const msg = document.createElement("div");
+    msg.className = "copilot-msg user";
+    msg.innerHTML = `
+      <div class="msg-avatar">👤</div>
+      <div class="msg-body">${this.escapeHtml(text)}</div>
+    `;
+    this.copilotChatStream.appendChild(msg);
+    this.scrollCopilotToBottom();
+  }
+
+  createCopilotBotMessage() {
+    const msg = document.createElement("div");
+    msg.className = "copilot-msg bot";
+    const body = document.createElement("div");
+    body.className = "msg-body";
+    body.innerHTML = `<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">Processing request...</span>`;
+
+    msg.innerHTML = `<div class="msg-avatar">⚡</div>`;
+    msg.appendChild(body);
+    this.copilotChatStream.appendChild(msg);
+    this.scrollCopilotToBottom();
+    return body;
+  }
+
+  scrollCopilotToBottom() {
+    if (this.copilotChatStream) {
+      this.copilotChatStream.scrollTop = this.copilotChatStream.scrollHeight;
+    }
+  }
+
+  escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   bindEvents() {
+    // 1. Activity Dock item switching
+    this.dockBtnSpec.addEventListener("click", () => {
+      this.setDockActive(this.dockBtnSpec);
+      this.ensureSidebarOpen();
+      document.getElementById("tab-btn-spec").click();
+    });
+
+    this.dockBtnFiles.addEventListener("click", () => {
+      this.setDockActive(this.dockBtnFiles);
+      this.ensureSidebarOpen();
+      document.getElementById("tab-btn-files").click();
+    });
+
+    this.dockBtnEditor.addEventListener("click", () => {
+      this.setDockActive(this.dockBtnEditor);
+      document.getElementById("tab-editor-view").click();
+    });
+
+    this.dockBtnDiff.addEventListener("click", () => {
+      this.setDockActive(this.dockBtnDiff);
+      document.getElementById("tab-diff-view").click();
+    });
+
+    this.dockBtnAudit.addEventListener("click", () => {
+      this.setDockActive(this.dockBtnAudit);
+      document.getElementById("tab-audit-view").click();
+    });
+
+    this.dockBtnTerminal.addEventListener("click", () => {
+      this.setDockActive(this.dockBtnTerminal);
+      this.consoleDrawer.classList.remove("collapsed");
+      const termTab = document.getElementById("tab-terminal");
+      if (termTab) termTab.click();
+    });
+
+    // Copilot Toggle
+    this.dockBtnCopilotToggle.addEventListener("click", () => {
+      this.copilotPanel.classList.toggle("collapsed");
+      if (!this.copilotPanel.classList.contains("collapsed")) {
+        this.dockBtnCopilotToggle.classList.add("active-accent");
+        if (this.editor) this.editor.layout();
+      } else {
+        this.dockBtnCopilotToggle.classList.remove("active-accent");
+        if (this.editor) this.editor.layout();
+      }
+    });
+
+    if (this.btnCloseCopilot) {
+      this.btnCloseCopilot.addEventListener("click", () => {
+        this.copilotPanel.classList.add("collapsed");
+        this.dockBtnCopilotToggle.classList.remove("active-accent");
+        if (this.editor) this.editor.layout();
+      });
+    }
+
+    if (this.btnClearCopilot) {
+      this.btnClearCopilot.addEventListener("click", () => {
+        this.copilotChatStream.innerHTML = `
+          <div class="copilot-msg bot">
+            <div class="msg-avatar">⚡</div>
+            <div class="msg-body">
+              <p>Chat cleared. Ready for your next instruction!</p>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // Toggle Console Drawer
+    if (this.btnToggleConsole) {
+      this.btnToggleConsole.addEventListener("click", () => {
+        this.consoleDrawer.classList.toggle("collapsed");
+        this.btnToggleConsole.textContent = this.consoleDrawer.classList.contains("collapsed") ? "□" : "⎯";
+        if (this.editor) this.editor.layout();
+      });
+    }
+
+    // Quick Prompt Chips
+    this.copilotChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const prompt = chip.dataset.prompt;
+        if (prompt) {
+          this.copilotPromptInput.value = prompt;
+          this.sendCurrentCopilotPrompt();
+        }
+      });
+    });
+
+    // Persona Chips
+    this.personaChips.forEach((pChip) => {
+      pChip.addEventListener("click", () => {
+        this.personaChips.forEach((c) => c.classList.remove("active"));
+        pChip.classList.add("active");
+        this.activePersona = pChip.dataset.persona;
+        this.appendLog("SYSTEM", `Active Copilot Persona set to: ${pChip.textContent.trim()}`);
+      });
+    });
+
+    // Copilot Send Button & Enter key
+    this.btnSendCopilot.addEventListener("click", () => this.sendCurrentCopilotPrompt());
+    this.copilotPromptInput.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault();
+        this.sendCurrentCopilotPrompt();
+      }
+    });
+
+    // Character Counter on PRD Textarea
+    this.prdTextarea.addEventListener("input", () => {
+      const len = this.prdTextarea.value.length;
+      if (this.prdCharCounter) {
+        this.prdCharCounter.textContent = `${len.toLocaleString()} chars`;
+      }
+    });
+
     // Preset dropdown
     this.presetSelect.addEventListener("change", (e) => this.applyPreset(e.target.value));
 
@@ -345,7 +610,7 @@ class TaraIDE {
       this.btnRunCode.addEventListener("click", () => this.runSandboxedCode());
     }
 
-    // Diff stage selection (Dev ➔ QA, QA ➔ Sec, Dev ➔ Sec, Dual)
+    // Diff stage selection
     this.diffStageButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         this.diffStageButtons.forEach((b) => b.classList.remove("active"));
@@ -398,9 +663,35 @@ class TaraIDE {
     });
   }
 
+  sendCurrentCopilotPrompt() {
+    const prompt = this.copilotPromptInput.value.trim();
+    if (!prompt) return;
+    this.copilotPromptInput.value = "";
+    this.sendTaraPrompt(prompt, this.activeFile);
+  }
+
+  setDockActive(dockBtn) {
+    document.querySelectorAll(".dock-item").forEach((btn) => {
+      if (btn.id !== "dock-btn-copilot-toggle") {
+        btn.classList.remove("active");
+      }
+    });
+    dockBtn.classList.add("active");
+  }
+
+  ensureSidebarOpen() {
+    if (this.primarySidebar.classList.contains("collapsed")) {
+      this.primarySidebar.classList.remove("collapsed");
+      if (this.editor) this.editor.layout();
+    }
+  }
+
   applyPreset(presetKey) {
     if (PRESETS[presetKey]) {
       this.prdTextarea.value = PRESETS[presetKey];
+      if (this.prdCharCounter) {
+        this.prdCharCounter.textContent = `${this.prdTextarea.value.length.toLocaleString()} chars`;
+      }
     }
   }
 
@@ -417,7 +708,6 @@ class TaraIDE {
 
     try {
       if (isPdf) {
-        // Upload to /api/sessions/upload for backend binary PDF text extraction
         const formData = new FormData();
         formData.append("file", file);
 
@@ -433,12 +723,13 @@ class TaraIDE {
 
         const data = await res.json();
         this.prdTextarea.value = data.extracted_text;
+        if (this.prdCharCounter) this.prdCharCounter.textContent = `${data.extracted_text.length.toLocaleString()} chars`;
         this.appendLog("SYSTEM", `📄 Extracted ${data.page_count} page(s) from PDF "${data.filename}" (${data.char_count.toLocaleString()} characters)`);
       } else {
-        // Direct client-side read for Markdown / plain text
         const reader = new FileReader();
         reader.onload = (e) => {
           this.prdTextarea.value = e.target.result;
+          if (this.prdCharCounter) this.prdCharCounter.textContent = `${e.target.result.length.toLocaleString()} chars`;
           this.appendLog("SYSTEM", `📄 Loaded document: ${file.name} (${file.size.toLocaleString()} bytes)`);
         };
         reader.readAsText(file);
@@ -458,21 +749,9 @@ class TaraIDE {
     this.sessionBadgeText.textContent = `Session: ${this.sessionId}`;
   }
 
-  setStepperStep(stepKey) {
-    const steps = ["spec", "ceo", "gate", "build", "security", "package"];
-    const targetIdx = steps.indexOf(stepKey);
-    steps.forEach((key, idx) => {
-      const el = document.querySelector(`.step-item[data-step="${key}"]`);
-      if (!el) return;
-      el.classList.remove("active", "completed");
-      if (idx < targetIdx) el.classList.add("completed");
-      else if (idx === targetIdx) el.classList.add("active");
-    });
-  }
-
   appendLog(agent, message, timestamp = null) {
-    const time = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
-    this.allLogs.push({ agent, message, timestamp: time });
+    const ts = timestamp || new Date().toLocaleTimeString();
+    this.allLogs.push({ agent, message, timestamp: ts });
     this.renderLogs();
   }
 
@@ -480,139 +759,81 @@ class TaraIDE {
     this.consoleLogStream.innerHTML = "";
     const filtered = this.activeAgentFilter === "all"
       ? this.allLogs
-      : this.allLogs.filter((l) => l.agent.toLowerCase() === this.activeAgentFilter.toLowerCase());
+      : this.allLogs.filter((l) => l.agent.toUpperCase() === this.activeAgentFilter.toUpperCase());
 
     filtered.forEach((log) => {
-      const div = document.createElement("div");
-      div.className = `log-line ${log.agent}`;
-      div.innerHTML = `
-        <span class="timestamp">[${log.timestamp}]</span>
-        <span class="badge-agent">[${log.agent}]</span>
+      const line = document.createElement("div");
+      let cls = "info";
+      const ag = log.agent.toUpperCase();
+      if (ag === "CEO") cls = "hitl";
+      else if (ag === "DEVELOPER") cls = "info";
+      else if (ag === "QA") cls = "warn";
+      else if (ag === "SECURITY") cls = "error";
+      else if (ag === "ANTIGRAVITY") cls = "antigravity";
+      else if (ag === "TERMINAL") cls = "terminal";
+
+      line.className = `log-line ${cls}`;
+      line.innerHTML = `
+        <span class="timestamp">[${log.timestamp}] [${log.agent.toUpperCase()}]</span>
         <span class="log-msg">${this.escapeHtml(log.message)}</span>
       `;
-      this.consoleLogStream.appendChild(div);
+      this.consoleLogStream.appendChild(line);
     });
+
     this.consoleLogStream.scrollTop = this.consoleLogStream.scrollHeight;
   }
 
-  escapeHtml(text) {
-    const div = document.createElement("div");
-    div.innerText = text;
-    return div.innerHTML;
+  setStepperStep(step) {
+    const steps = ["spec", "ceo", "gate", "build", "security", "package"];
+    const targetIdx = steps.indexOf(step);
+
+    document.querySelectorAll(".step-item").forEach((el, idx) => {
+      el.classList.remove("active", "completed");
+      if (idx < targetIdx) {
+        el.classList.add("completed");
+      } else if (idx === targetIdx) {
+        el.classList.add("active");
+      }
+    });
   }
 
   async startPipeline() {
     const prdText = this.prdTextarea.value.trim();
     if (!prdText) {
-      alert("Please provide PRD content before launching.");
+      alert("Please paste or upload PRD specification text first.");
       return;
     }
 
     this.btnStartPipeline.disabled = true;
-    this.btnStartPipeline.innerHTML = `<span class="btn-icon">⏳</span><span>Analyzing PRD...</span>`;
+    this.btnStartPipeline.innerHTML = `<span class="btn-icon">⏳</span><span>Consultancy Pipeline Running...</span>`;
     this.setStepperStep("ceo");
-    this.stageStatusText.textContent = "CEO Evaluating PRD...";
-
-    this.appendLog("SYSTEM", `Starting pipeline run for session: ${this.sessionId}`);
+    this.stageStatusText.textContent = "CEO Evaluating PRD Viability...";
 
     try {
+      const payload = {
+        session_id: this.sessionId,
+        prd_text: prdText,
+        prd_filename: "architecture_spec.md"
+      };
+
       const res = await fetch("/api/sessions/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: this.sessionId,
-          prd_text: prdText,
-          prd_filename: "PRD.md"
-        })
+        body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
+      }
+
       const snapshot = await res.json();
       this.handleSessionUpdate(snapshot);
-
-      // Connect WebSocket for streaming updates
-      this.initWebSocket();
     } catch (err) {
-      this.appendLog("SYSTEM", `Error starting session: ${err.message}`);
-      alert("Failed to start session: " + err.message);
+      alert("Pipeline error: " + err.message);
+      this.appendLog("SYSTEM", `Pipeline initialization error: ${err.message}`);
       this.btnStartPipeline.disabled = false;
-      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Launch Consultancy Pipeline</span>`;
-    }
-  }
-
-  initWebSocket() {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/api/sessions/${this.sessionId}/stream`;
-    this.socket = new WebSocket(wsUrl);
-
-    this.socket.onopen = () => {
-      this.appendLog("SYSTEM", "Live telemetry stream established.");
-    };
-
-    this.socket.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === "node_update" && payload.data && payload.data.snapshot) {
-          this.handleLiveNodeUpdate(payload.data.node, payload.data.snapshot);
-        } else if (payload.data && payload.data.logs) {
-          payload.data.logs.forEach((l) => this.appendLog(l.agent, l.message, l.timestamp));
-        }
-      } catch (e) {
-        console.error("WS error:", e);
-      }
-    };
-  }
-
-  handleLiveNodeUpdate(node, snapshot) {
-    this.currentSession = snapshot;
-
-    // Stream logs live
-    if (snapshot.logs && Array.isArray(snapshot.logs)) {
-      const currentCount = this.allLogs.length;
-      if (snapshot.logs.length > currentCount) {
-        const newLogs = snapshot.logs.slice(currentCount);
-        newLogs.forEach((l) => this.appendLog(l.agent, l.message, l.timestamp));
-      }
-    }
-
-    // Dynamic stage status update
-    if (node === "ceo_evaluation") {
-      this.setStepperStep("ceo");
-      this.stageStatusText.textContent = "AI CEO Reviewing Product Feasibility";
-    } else if (node === "software_developer") {
-      this.setStepperStep("build");
-      this.stageStatusText.textContent = "Developer Agent Generating Python Architecture";
-    } else if (node === "qa_engineer") {
-      this.setStepperStep("build");
-      this.stageStatusText.textContent = "QA Engineer Validating & Refactoring Code";
-    } else if (node === "security_officer") {
-      this.setStepperStep("security");
-      this.stageStatusText.textContent = "Security Officer Running Dynamic SAST in Sandbox";
-    }
-
-    // LIVE FILE TREE UPDATE: Immediately render any files generated as events stream in!
-    const hasFiles = (snapshot.security_patches && Object.keys(snapshot.security_patches).length > 0) ||
-                     (snapshot.qa_refactored_files && Object.keys(snapshot.qa_refactored_files).length > 0) ||
-                     (snapshot.dev_code_files && Object.keys(snapshot.dev_code_files).length > 0);
-
-    if (hasFiles) {
-      this.renderArtifacts(snapshot, false);
-    }
-
-    // Check if HITL gate or completion reached
-    if (snapshot.status === "awaiting_approval" && snapshot.ceo_critique) {
-      this.setStepperStep("gate");
-      this.stageStatusText.textContent = "Awaiting Human-in-the-Loop Sign-off";
-      this.openApprovalModal(snapshot.ceo_critique, snapshot.revision_count);
-    } else if (snapshot.status === "completed") {
-      this.closeApprovalModal();
-      this.setStepperStep("package");
-      this.stageStatusText.textContent = "Pipeline Completed & Packaged";
-      this.btnDownloadZip.disabled = false;
-      if (this.btnRunCode) this.btnRunCode.disabled = false;
-      this.btnStartPipeline.disabled = false;
-      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Run New Iteration</span>`;
-      this.renderArtifacts(snapshot, true);
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Launch Multi-Agent Pipeline</span>`;
     }
   }
 
@@ -638,7 +859,7 @@ class TaraIDE {
       if (this.btnRunCode) this.btnRunCode.disabled = false;
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Run New Iteration</span>`;
-      this.renderArtifacts(snapshot);
+      this.renderArtifacts(snapshot, true);
     } else if (snapshot.user_action === "reject") {
       this.closeApprovalModal();
       this.stageStatusText.textContent = "Workflow Rejected by Stakeholder";
@@ -656,7 +877,6 @@ class TaraIDE {
     this.modalRevisionPill.textContent = `Revision Round #${revisionCount}`;
     this.feedbackNotesInput.value = "";
 
-    // Reset button states & adapt label if critique flagged flaws
     this.btnGateApprove.disabled = false;
     this.btnGateRequestChanges.disabled = false;
     this.btnGateReject.disabled = false;
@@ -667,10 +887,8 @@ class TaraIDE {
     } else {
       this.btnGateApprove.innerHTML = `<span>Approve & Proceed to Build ➔</span>`;
     }
-    this.btnGateRequestChanges.innerHTML = `<span>Request Changes (Loop Back)</span>`;
-    this.btnGateReject.innerHTML = `<span>Reject & Terminate</span>`;
 
-    // Gaps
+    // Gaps & Flaws
     this.modalGapsList.innerHTML = "";
     (critique.feature_gaps || []).forEach((gap) => {
       const li = document.createElement("li");
@@ -678,7 +896,6 @@ class TaraIDE {
       this.modalGapsList.appendChild(li);
     });
 
-    // Flaws
     this.modalFlawsList.innerHTML = "";
     (critique.structural_flaws || []).forEach((flaw) => {
       const li = document.createElement("li");
@@ -694,10 +911,7 @@ class TaraIDE {
   }
 
   async submitDecision(action, notes = "") {
-    // 1. Immediately close the modal so user is never frozen waiting
     this.closeApprovalModal();
-
-    // 2. Prevent duplicate clicks
     this.btnGateApprove.disabled = true;
     this.btnGateRequestChanges.disabled = true;
     this.btnGateReject.disabled = true;
@@ -705,7 +919,7 @@ class TaraIDE {
     if (action === "approve") {
       this.setStepperStep("build");
       this.stageStatusText.textContent = "Approved! Generating full Python code for your PRD...";
-      this.appendLog("HITL", `Human Approved: Proceeding to build code for PRD` + (notes ? ` with directives: "${notes}"` : " (overriding evaluation flaws)"));
+      this.appendLog("HITL", `Human Approved: Proceeding to build code for PRD` + (notes ? ` with directives: "${notes}"` : ""));
       this.btnStartPipeline.disabled = true;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚙️</span><span>Agents Building Code...</span>`;
     } else if (action === "request_changes") {
@@ -735,7 +949,7 @@ class TaraIDE {
       alert("Failed to submit decision: " + err.message);
       this.appendLog("SYSTEM", `Decision submission error: ${err.message}`);
       this.btnStartPipeline.disabled = false;
-      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Launch Consultancy Pipeline</span>`;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Launch Multi-Agent Pipeline</span>`;
     }
   }
 
@@ -745,7 +959,8 @@ class TaraIDE {
     this.btnRunCode.disabled = true;
     this.btnRunCode.innerHTML = `<span class="btn-icon">⏳</span><span>Executing...</span>`;
 
-    // Switch to Terminal tab
+    // Switch to Terminal tab and open drawer
+    this.consoleDrawer.classList.remove("collapsed");
     const terminalTab = document.getElementById("tab-terminal");
     if (terminalTab) terminalTab.click();
 
@@ -771,9 +986,6 @@ class TaraIDE {
       if (data.stderr) {
         this.appendLog("TERMINAL", `=== STDERR ===\n${data.stderr.trim()}`);
       }
-      if (!data.stdout && !data.stderr) {
-        this.appendLog("TERMINAL", `(Process completed with no console output)`);
-      }
     } catch (err) {
       this.appendLog("TERMINAL", `❌ Sandbox execution error: ${err.message}`);
     } finally {
@@ -793,17 +1005,13 @@ class TaraIDE {
     const finalFiles = snapshot.security_patches || snapshot.qa_refactored_files || snapshot.dev_code_files || {};
     const fileNames = Object.keys(finalFiles);
 
-    // Switch to file explorer tab if files are available
-    if (fileNames.length > 0) {
-      const filesTab = document.querySelector('.sidebar-tab[data-panel="files-panel"]');
-      if (filesTab && !filesTab.classList.contains("active")) {
-        filesTab.click();
-      }
-    }
+    // Update count badges
+    if (this.filesCountBadge) this.filesCountBadge.textContent = fileNames.length;
+    if (this.dockFilesCount) this.dockFilesCount.textContent = fileNames.length;
+    if (this.filesTagTotal) this.filesTagTotal.textContent = `${fileNames.length} files`;
 
     // Populate file explorer
     this.fileTreeContainer.innerHTML = "";
-    this.filesCountBadge.textContent = fileNames.length;
 
     fileNames.forEach((fname, idx) => {
       const item = document.createElement("div");
@@ -842,7 +1050,7 @@ class TaraIDE {
       }
     }
 
-    // Populate Audit Summary if present
+    // Populate Audit Summary
     if (snapshot.audit_summary) {
       this.renderAuditReport(snapshot.audit_summary, snapshot.security_findings);
     }
@@ -851,6 +1059,9 @@ class TaraIDE {
   selectFile(filename, content) {
     this.activeFile = filename;
     this.activeFilenamePill.textContent = filename;
+    if (this.copilotTargetDisplay) {
+      this.copilotTargetDisplay.textContent = filename;
+    }
 
     document.querySelectorAll(".file-tree-item").forEach((el) => {
       el.classList.toggle("active", el.innerText.trim() === filename);
@@ -880,7 +1091,6 @@ class TaraIDE {
     const primContainer = document.getElementById("monaco-diff-primary");
 
     if (stage === "dual") {
-      // Dual Side-by-Side 3-Way Mode: Dev ➔ QA on left, QA ➔ Security on right
       if (secContainer) {
         secContainer.style.display = "block";
         secContainer.style.width = "50%";
@@ -901,7 +1111,6 @@ class TaraIDE {
         });
       }
     } else {
-      // Single Stage Diff Mode (100% width)
       if (secContainer) {
         secContainer.style.display = "none";
       }

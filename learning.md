@@ -231,6 +231,17 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 18: Dribbble-Inspired "IDE — AI Developer Environment" UI/UX Overhaul
+- **What was done:**
+  - **Slim Vertical Activity Dock (52px):** Implemented a high-end icon dock on the far left with glowing SVG icons for PRD Spec, File Explorer, Code Canvas, 3-Way Diff, Security SAST, Sandbox Terminal, and Copilot Toggle.
+  - **Right-Side Dedicated AI Copilot Panel (350px):** Built an interactive AI copilot drawer directly connected to the `/ws/tara` WebSocket stream. Displays real-time typing responses, collapsible thought accordions with subtle violet glow, tool execution pill badges, and quick action chips (`⚡ Add TTL Eviction`, `🛡️ SAST Hardening`, `🧪 Generate Pytest`).
+  - **Floating Monaco Canvas Controls & Breadcrumbs:** Added path breadcrumbs (`workspace / src / main.py`), live editing indicator, and floating action pills (`▶ Run in Sandbox`, `❖ 3-Way Diff`).
+  - **Obsidian Glassmorphic Theme:** Designed a deep charcoal/obsidian palette (`#07090e`, `#10141f`, `#151a28`) with electric violet (`#8b5cf6`) and cyber cyan (`#06b6d4`) accents, subtle glowing borders, and backdrop blurs (`backdrop-filter: blur(16px)`).
+- **Why we built it:**
+  - Directly matches the high-end, futuristic **"IDE - AI developer environment"** visual concept by Anatoliy Demyanchuk on Dribbble, giving TARA a world-class developer experience.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -255,6 +266,7 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/tests/test_persistence_cleanup.py` | Added automated persistence, TTL cleanup, and API test suite | 100% test pass rate verifying SQLite restart durability and cleanup pruning. |
 | 2026-09-15 | `backend/app/agents/antigravity_agent.py` & `requirements.txt` | Integrated `google-antigravity` SDK & file tool configuration | Enables agents to inspect, view, edit, and create code files via official Antigravity tools. |
 | 2026-09-15 | `backend/app/routers/tara.py` & `tara_agent.py` | Built non-blocking `/api/tara/edit`, `/ws/tara` diff streaming, and Monaco viewer | Autonomous workspace file execution with progressive line diffs rendered directly in Monaco. |
+| 2026-09-15 | `frontend` (`index.html`, `style.css`, `app.js`) | Re-engineered UI to match Dribbble "IDE - AI developer environment" | Slim Activity Dock, right AI Copilot drawer, floating Monaco breadcrumb bar, and obsidian glassmorphism. |
 | 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
 | 2026-09-14 | `learning.md` | Maintained this comprehensive learning document | To explain everything built in simple English and log all future progress. |
 
