@@ -287,5 +287,6 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
 | 2026-09-14 | `learning.md` | Maintained this comprehensive learning document | To explain everything built in simple English and log all future progress. |
 | 2026-09-16 | `backend/app/main.py` | Fixed WebSocket 403 Forbidden errors on `/ws/security` and `/ws/tara` | Root cause: `allow_credentials=True` with `allow_origins=["*"]` violates CORS spec and rejects WS upgrades. Fixed by setting `allow_credentials=False` and reordering routes so WebSocket endpoints are registered before StaticFiles mounts. |
+| 2026-09-16 | `backend/app/static/style.css` | Complete CSS redesign: forest-green/cream color palette and IDE layout | Replaced obsidian-charcoal/purple theme with deep forest green (`#2B3F31`) backgrounds and warm cream (`#E5D5BE`) accents, matching user's reference images. Layout refined to mirror the two-panel IDE split from the Dribbble screenshot. |
 
 
