@@ -217,10 +217,17 @@ Here is the journey of your project requirements document (PRD) from start to fi
 ### Step 16: Google Antigravity SDK Integration (`google-antigravity`)
 - **What was done:**
   - Installed `google-antigravity` (version `0.1.16`) and pinned `google-antigravity>=0.1.16` in `backend/requirements.txt`.
-  - Built an adapter in `backend/app/agents/antigravity_agent.py` to configure and spawn Antigravity autonomous agents with built-in code read and write capabilities (`VIEW_FILE`, `CREATE_FILE`, `EDIT_FILE`, `LIST_DIR`, `FIND_FILE`).
-  - Added unit test suite `backend/tests/test_antigravity_sdk.py` to verify SDK installation, agent configuration, and tool availability.
+---
+
+### Step 17: Antigravity SDK Autonomous Workspace Execution & Monaco Diff Streaming
+- **What was done:**
+  - **SDK Integration & Capabilities Configuration:** Configured the Google Antigravity Agent runtime (`google-antigravity` / `antigravity-sdk-python`) with built-in workspace capabilities (`READ_FILE`, `WRITE_FILE`, `LIST_DIR`) that map directly to Antigravity's `VIEW_FILE`, `CREATE_FILE`, `EDIT_FILE`, and `LIST_DIR` tools, targeting the local workspace root directory.
+  - **Non-Blocking FastAPI Endpoints:** Created `POST /api/tara/edit` in `backend/app/routers/tara.py` which accepts user instructions, targets specific workspace files, and launches background agent tasks asynchronously (`asyncio.create_task`) without blocking the primary Uvicorn event loop. Added `GET /api/tara/jobs/{job_id}` for job status tracking and `GET /api/tara/status` for SDK readiness diagnostics.
+  - **Real-Time WebSockets & Diff Streaming:** Implemented `/ws/tara` WebSocket route that passes user prompts to `agent.chat(prompt)` and streams agent thoughts, tool invocations, tokens, and progressive line-by-line diffs (`diff_line`) and complete diff models (`file_diff`) over WebSockets.
+  - **Monaco Diff Editor Integration:** Connected frontend `app.js` to `/ws/tara` so incoming diffs stream directly into Monaco's `createDiffEditor()` via `monaco.editor.createModel()`, rendering real-time code additions, deletions, and modifications.
+  - **Comprehensive Test Suite:** Built automated tests in `backend/tests/test_antigravity_sdk.py` verifying SDK capability resolution, workspace targeting, diff calculations, asynchronous REST endpoints, and WebSocket streaming.
 - **Why we built it:**
-  - Enables TARA's agents to use Google Antigravity's official SDK directly to read, navigate, create, and edit code files programmatically.
+  - Moves TARA beyond basic LLM prompts into a true agentic coding engine capable of directly reading, navigating, editing, and streaming codebase diffs into the Monaco editor with non-blocking concurrency.
 
 ---
 
@@ -247,5 +254,7 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/core/cleanup.py` & `main.py` | Added APScheduler 24h automated TTL cleanup job & FastAPI lifespan hook | Automatically purges expired session checkpoints, packages, and temp folders every 24h. |
 | 2026-09-14 | `backend/tests/test_persistence_cleanup.py` | Added automated persistence, TTL cleanup, and API test suite | 100% test pass rate verifying SQLite restart durability and cleanup pruning. |
 | 2026-09-15 | `backend/app/agents/antigravity_agent.py` & `requirements.txt` | Integrated `google-antigravity` SDK & file tool configuration | Enables agents to inspect, view, edit, and create code files via official Antigravity tools. |
+| 2026-09-15 | `backend/app/routers/tara.py` & `tara_agent.py` | Built non-blocking `/api/tara/edit`, `/ws/tara` diff streaming, and Monaco viewer | Autonomous workspace file execution with progressive line diffs rendered directly in Monaco. |
 | 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
 | 2026-09-14 | `learning.md` | Maintained this comprehensive learning document | To explain everything built in simple English and log all future progress. |
+

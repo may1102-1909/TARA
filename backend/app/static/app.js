@@ -54,6 +54,7 @@ class TaraIDE {
 
     this.initElements();
     this.initMonaco();
+    this.initTaraWebSocket();
     this.bindEvents();
     this.applyPreset("cache");
     this.updateSessionBadge();
@@ -169,6 +170,108 @@ class TaraIDE {
       container.style.display = "none";
       fallback.style.display = "block";
     }
+  }
+
+  initTaraWebSocket() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host || "127.0.0.1:8000";
+    const wsUrl = `${protocol}//${host}/ws/tara`;
+
+    try {
+      this.socket = new WebSocket(wsUrl);
+
+      this.socket.onopen = () => {
+        this.appendLog("ANTIGRAVITY", "Connected to TARA Antigravity WebSocket stream (/ws/tara)");
+      };
+
+      this.socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleTaraSocketMessage(data);
+        } catch (e) {
+          console.error("Failed to parse WebSocket message:", e);
+        }
+      };
+
+      this.socket.onerror = (err) => {
+        console.warn("TARA WebSocket notice:", err);
+      };
+
+      this.socket.onclose = () => {
+        // Auto-reconnect after delay
+        setTimeout(() => {
+          if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
+            this.initTaraWebSocket();
+          }
+        }, 5000);
+      };
+    } catch (e) {
+      console.warn("Could not establish WebSocket to /ws/tara:", e);
+    }
+  }
+
+  handleTaraSocketMessage(data) {
+    if (!data || !data.type) return;
+
+    switch (data.type) {
+      case "init":
+        this.appendLog("ANTIGRAVITY", `Runtime connected. Workspace: ${data.workspace || "active root"}`);
+        break;
+      case "thought":
+        this.appendLog("ANTIGRAVITY", `💭 Thinking: ${data.content}`);
+        break;
+      case "tool_call":
+        const name = data.data?.name || "tool";
+        const args = JSON.stringify(data.data?.args || {});
+        this.appendLog("ANTIGRAVITY", `🔧 Tool Invocation: ${name}(${args})`);
+        break;
+      case "diff_stream_start":
+        this.appendLog("ANTIGRAVITY", `📝 Streaming live diff for ${data.filename} (+${data.additions}, -${data.deletions})`);
+        const diffTab = document.getElementById("tab-diff-view");
+        if (diffTab && !diffTab.classList.contains("active")) {
+          diffTab.click();
+        }
+        break;
+      case "diff_line":
+        this.appendLog("ANTIGRAVITY", `  ${data.line}`);
+        break;
+      case "file_diff":
+        if (data.diff && this.diffEditorPrimary && window.monaco) {
+          const diff = data.diff;
+          const lang = diff.filename && diff.filename.endsWith(".py") ? "python" : "plaintext";
+          this.diffEditorPrimary.setModel({
+            original: monaco.editor.createModel(diff.original || "", lang),
+            modified: monaco.editor.createModel(diff.modified || "", lang),
+          });
+          this.appendLog("ANTIGRAVITY", `✅ Loaded live diff into Monaco Editor for ${diff.filename}`);
+          this.layoutDiffEditors();
+        }
+        break;
+      case "diff_stream_end":
+        this.appendLog("ANTIGRAVITY", `✨ Completed diff stream for ${data.filename}`);
+        break;
+      case "complete":
+        this.appendLog("ANTIGRAVITY", `🎉 Agent task finished successfully.`);
+        break;
+      case "error":
+        this.appendLog("ANTIGRAVITY", `❌ Agent execution error: ${data.error}`);
+        break;
+    }
+  }
+
+  sendTaraPrompt(prompt, targetFile = null, workspace = null) {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      this.appendLog("ANTIGRAVITY", "⚠️ WebSocket reconnecting...");
+      this.initTaraWebSocket();
+      setTimeout(() => this.sendTaraPrompt(prompt, targetFile, workspace), 1000);
+      return;
+    }
+    this.socket.send(JSON.stringify({
+      prompt,
+      target_file: targetFile || this.activeFile,
+      workspace: workspace || null
+    }));
+    this.appendLog("ANTIGRAVITY", `🚀 Prompt dispatched: "${prompt}"`);
   }
 
   bindEvents() {

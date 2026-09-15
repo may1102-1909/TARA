@@ -1,5 +1,24 @@
+import sys
+import types
+import uuid
 from pathlib import Path
 from contextlib import asynccontextmanager
+
+# Provide fallback for uuid_utils if OS Application Control blocks compiled .pyd
+try:
+    import uuid_utils
+except ImportError:
+    _m = types.ModuleType("uuid_utils")
+    _m.UUID = uuid.UUID
+    _m.uuid4 = uuid.uuid4
+    _m.uuid7 = lambda: uuid.uuid4()
+    _m_compat = types.ModuleType("uuid_utils.compat")
+    _m_compat.uuid7 = lambda: uuid.uuid4()
+    _m_compat.UUID = uuid.UUID
+    _m.compat = _m_compat
+    sys.modules["uuid_utils"] = _m
+    sys.modules["uuid_utils.compat"] = _m_compat
+
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI
 # pyrefly: ignore [missing-import]
@@ -11,6 +30,7 @@ from fastapi.responses import FileResponse
 from app.core.config import settings
 from app.core.cleanup import start_cleanup_scheduler, stop_cleanup_scheduler
 from app.api.sessions import router as sessions_router
+from app.routers.tara import router as tara_router, tara_websocket_endpoint
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -48,6 +68,10 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(sessions_router, prefix=settings.api_prefix)
+app.include_router(tara_router, prefix=settings.api_prefix)
+
+# Mount direct /ws/tara WebSocket route for Monaco frontend
+app.add_api_websocket_route("/ws/tara", tara_websocket_endpoint)
 
 
 @app.get("/")
