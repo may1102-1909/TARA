@@ -214,6 +214,16 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 16: Google Antigravity SDK Integration (`google-antigravity`)
+- **What was done:**
+  - Installed `google-antigravity` (version `0.1.16`) and pinned `google-antigravity>=0.1.16` in `backend/requirements.txt`.
+  - Built an adapter in `backend/app/agents/antigravity_agent.py` to configure and spawn Antigravity autonomous agents with built-in code read and write capabilities (`VIEW_FILE`, `CREATE_FILE`, `EDIT_FILE`, `LIST_DIR`, `FIND_FILE`).
+  - Added unit test suite `backend/tests/test_antigravity_sdk.py` to verify SDK installation, agent configuration, and tool availability.
+- **Why we built it:**
+  - Enables TARA's agents to use Google Antigravity's official SDK directly to read, navigate, create, and edit code files programmatically.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -236,5 +246,6 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-14 | `backend/app/core/session_manager.py` | Integrated `SqliteSaver` persistent checkpointer & session metadata | Persists multi-agent workflow checkpoints in SQLite across server restarts. |
 | 2026-09-14 | `backend/app/core/cleanup.py` & `main.py` | Added APScheduler 24h automated TTL cleanup job & FastAPI lifespan hook | Automatically purges expired session checkpoints, packages, and temp folders every 24h. |
 | 2026-09-14 | `backend/tests/test_persistence_cleanup.py` | Added automated persistence, TTL cleanup, and API test suite | 100% test pass rate verifying SQLite restart durability and cleanup pruning. |
+| 2026-09-15 | `backend/app/agents/antigravity_agent.py` & `requirements.txt` | Integrated `google-antigravity` SDK & file tool configuration | Enables agents to inspect, view, edit, and create code files via official Antigravity tools. |
 | 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
 | 2026-09-14 | `learning.md` | Maintained this comprehensive learning document | To explain everything built in simple English and log all future progress. |
