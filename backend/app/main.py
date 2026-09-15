@@ -57,24 +57,25 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static web assets & repository brand assets
-if ASSETS_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
+# Register API routers first (including their subrouted websockets)
 app.include_router(sessions_router, prefix=settings.api_prefix)
 app.include_router(tara_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 
-# Mount direct WebSockets routes for Monaco frontend
+# Mount direct WebSockets routes for Monaco frontend BEFORE static files
 app.add_api_websocket_route("/ws/tara", tara_websocket_endpoint)
 app.add_api_websocket_route("/ws/security", security_websocket_endpoint)
+
+# Mount static web assets & repository brand assets LAST (catch-all)
+if ASSETS_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/")
