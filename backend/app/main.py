@@ -31,6 +31,7 @@ from app.core.config import settings
 from app.core.cleanup import start_cleanup_scheduler, stop_cleanup_scheduler
 from app.api.sessions import router as sessions_router
 from app.routers.tara import router as tara_router, tara_websocket_endpoint
+from app.routers.security import router as security_router, security_websocket_endpoint
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -69,9 +70,11 @@ if STATIC_DIR.exists():
 
 app.include_router(sessions_router, prefix=settings.api_prefix)
 app.include_router(tara_router, prefix=settings.api_prefix)
+app.include_router(security_router, prefix=settings.api_prefix)
 
-# Mount direct /ws/tara WebSocket route for Monaco frontend
+# Mount direct WebSockets routes for Monaco frontend
 app.add_api_websocket_route("/ws/tara", tara_websocket_endpoint)
+app.add_api_websocket_route("/ws/security", security_websocket_endpoint)
 
 
 @app.get("/")

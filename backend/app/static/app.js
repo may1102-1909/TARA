@@ -53,11 +53,14 @@ class TaraIDE {
     this.activePersona = "antigravity";
     this.allLogs = [];
     this.socket = null;
+    this.securitySocket = null;
+    this.latestPatchedDiff = null;
     this.activeBotMsgBody = null;
 
     this.initElements();
     this.initMonaco();
     this.initTaraWebSocket();
+    this.initSecurityWebSocket();
     this.bindEvents();
     this.applyPreset("cache");
     this.updateSessionBadge();
@@ -98,6 +101,7 @@ class TaraIDE {
     this.activeFilenamePill = document.getElementById("active-filename-pill");
     this.stageStatusText = document.getElementById("stage-status-text");
     this.btnRunCode = document.getElementById("btn-run-code");
+    this.btnRunStrixScan = document.getElementById("btn-run-strix-scan");
     this.consoleLogStream = document.getElementById("console-log-stream");
     this.btnToggleConsole = document.getElementById("btn-toggle-console");
 
@@ -105,6 +109,7 @@ class TaraIDE {
     this.diffFileSelector = document.getElementById("diff-file-selector");
     this.diffStageButtons = document.querySelectorAll(".diff-stage-btn");
     this.btnToggleDiffInline = document.getElementById("btn-toggle-diff-inline");
+    this.btnAcceptPatch = document.getElementById("btn-accept-patch");
     this.diffContainerPrimary = document.getElementById("monaco-diff-primary");
     this.diffContainerSecondary = document.getElementById("monaco-diff-secondary");
     this.activeDiffStage = "dev-qa";
@@ -387,6 +392,278 @@ class TaraIDE {
     this.appendLog("ANTIGRAVITY", `🚀 Prompt dispatched: "${prompt}"`);
   }
 
+  initSecurityWebSocket() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host || "127.0.0.1:8000";
+    const wsUrl = `${protocol}//${host}/ws/security`;
+
+    try {
+      this.securitySocket = new WebSocket(wsUrl);
+
+      this.securitySocket.onopen = () => {
+        this.appendLog("SECURITY", "Connected to Security Agent & Strix WebSocket stream (/ws/security)");
+      };
+
+      this.securitySocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleSecuritySocketMessage(data);
+        } catch (e) {
+          console.error("Failed to parse security WebSocket message:", e);
+        }
+      };
+
+      this.securitySocket.onerror = (err) => {
+        console.warn("Security WebSocket notice:", err);
+      };
+
+      this.securitySocket.onclose = () => {
+        setTimeout(() => {
+          if (!this.securitySocket || this.securitySocket.readyState === WebSocket.CLOSED) {
+            this.initSecurityWebSocket();
+          }
+        }, 5000);
+      };
+    } catch (e) {
+      console.warn("Could not establish WebSocket to /ws/security:", e);
+    }
+  }
+
+  handleSecuritySocketMessage(data) {
+    if (!data || !data.type) return;
+
+    switch (data.type) {
+      case "init":
+        this.appendLog("SECURITY", `Stream initialized with tools: ${(data.tools || []).join(", ")}`);
+        break;
+
+      case "e2b_status":
+        this.appendLog(data.tool || "SECURITY", data.message);
+        if (this.stageStatusText) {
+          this.stageStatusText.textContent = data.message;
+        }
+        break;
+
+      case "status":
+        this.appendLog("SECURITY", data.message);
+        if (this.stageStatusText) {
+          this.stageStatusText.textContent = data.message;
+        }
+        break;
+
+      case "scan_complete":
+        this.appendLog("SECURITY", `Security scan finished. Total findings: ${data.total_findings} (Tier: ${data.tier})`);
+        break;
+
+      case "diff_stream_start":
+        this.appendLog("SECURITY", `📝 Streaming patched diff for ${data.filename} (+${data.additions}, -${data.deletions})`);
+        break;
+
+      case "diff_line":
+        this.appendLog("SECURITY", `  ${data.line}`);
+        break;
+
+      case "file_diff":
+        if (data.diff && this.diffEditorPrimary && window.monaco) {
+          const diff = data.diff;
+          const lang = diff.filename && diff.filename.endsWith(".py") ? "python" : "plaintext";
+          this.latestPatchedDiff = diff;
+
+          // Render inline or side-by-side diff in Monaco createDiffEditor
+          this.diffEditorPrimary.setModel({
+            original: monaco.editor.createModel(diff.original || "", lang),
+            modified: monaco.editor.createModel(diff.modified || "", lang),
+          });
+          this.diffEditorPrimary.updateOptions({ renderSideBySide: this.diffRenderSideBySide });
+          this.appendLog("SECURITY", `✅ Monaco DiffEditor updated with secure patched code for ${diff.filename}`);
+          this.layoutDiffEditors();
+
+          // Automatically switch to Diff View
+          const tabDiff = document.getElementById("tab-diff-view");
+          if (tabDiff) tabDiff.click();
+
+          // Show Accept Patch button
+          if (this.btnAcceptPatch) {
+            this.btnAcceptPatch.style.display = "inline-flex";
+            this.btnAcceptPatch.disabled = false;
+            this.btnAcceptPatch.innerHTML = `<span>✓ Accept Patch (${diff.filename})</span>`;
+          }
+
+          // Cache patch into current session
+          if (!this.currentSession) this.currentSession = {};
+          if (!this.currentSession.security_patches) this.currentSession.security_patches = {};
+          this.currentSession.security_patches[diff.filename] = diff.modified;
+        }
+        break;
+
+      case "complete":
+        this.appendLog("SECURITY", `🎉 Security pipeline finished. Patches and diffs ready for review.`);
+        if (this.stageStatusText) this.stageStatusText.textContent = "Security Hardening Complete";
+        if (this.btnRunStrixScan) {
+          this.btnRunStrixScan.disabled = false;
+          this.btnRunStrixScan.innerHTML = `<span class="btn-icon">🛡️</span><span>Strix Scan</span>`;
+        }
+        if (data.data) {
+          if (data.data.patched_files && this.currentSession) {
+            this.currentSession.security_patches = data.data.patched_files;
+          }
+          if (data.data.findings) {
+            this.renderAuditReport(
+              {
+                timeline: [
+                  { phase: "Flake8 Linter", status: "Completed" },
+                  { phase: "Bandit AST SAST", status: "Completed" },
+                  { phase: "Strix Autonomous Penetration Testing", status: "Completed" },
+                  { phase: "ChatGoogleGenerativeAI Hardening", status: "Patches Applied" }
+                ],
+                key_decisions: [
+                  "Executed triple-layer dynamic security scan (Flake8 + Bandit + Strix).",
+                  "Synthesized hardened code patches using ChatGoogleGenerativeAI.",
+                  "Generated inline side-by-side Monaco diffs."
+                ],
+                unresolved_risks: ["Maintain active E2B sandbox verification in CI/CD pipeline."]
+              },
+              data.data.findings
+            );
+          }
+        }
+        break;
+
+      case "error":
+        this.appendLog("SECURITY", `❌ Security scan error: ${data.error}`);
+        if (this.btnRunStrixScan) {
+          this.btnRunStrixScan.disabled = false;
+          this.btnRunStrixScan.innerHTML = `<span class="btn-icon">🛡️</span><span>Strix Scan</span>`;
+        }
+        break;
+    }
+  }
+
+  runStrixScan() {
+    if (this.btnRunStrixScan) {
+      this.btnRunStrixScan.disabled = true;
+      this.btnRunStrixScan.innerHTML = `<span class="btn-icon">⏳</span><span>Scanning (Strix/Bandit)...</span>`;
+    }
+
+    // Switch to Security log tab and open drawer
+    this.consoleDrawer.classList.remove("collapsed");
+    document.querySelectorAll(".console-tab").forEach((t) => t.classList.remove("active"));
+    const secTab = Array.from(document.querySelectorAll(".console-tab")).find((t) => t.dataset.agent === "Security");
+    if (secTab) {
+      secTab.classList.add("active");
+      this.activeAgentFilter = "Security";
+      this.renderLogs();
+    }
+
+    this.appendLog("SECURITY", "🚀 Triggering triple-layer security scan (Flake8 + Bandit + Strix)...");
+
+    // Gather active files to scan
+    const filesToScan = {};
+    if (this.currentSession && this.currentSession.qa_refactored_files) {
+      Object.assign(filesToScan, this.currentSession.qa_refactored_files);
+    } else if (this.currentSession && this.currentSession.dev_code_files) {
+      Object.assign(filesToScan, this.currentSession.dev_code_files);
+    }
+    if (this.editor && this.activeFile) {
+      filesToScan[this.activeFile] = this.editor.getValue();
+    }
+
+    // Attempt streaming over WebSocket first
+    if (this.securitySocket && this.securitySocket.readyState === WebSocket.OPEN) {
+      this.securitySocket.send(JSON.stringify({
+        action: "scan",
+        files: filesToScan,
+        session_id: this.sessionId,
+      }));
+    } else {
+      // Reconnect and send or fallback to REST endpoint
+      fetch("/api/security/strix-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          files: filesToScan,
+          session_id: this.sessionId,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          this.appendLog("SECURITY", `Scan complete via API. Found ${data.findings_count} findings.`);
+          if (data.patched_files && Object.keys(data.patched_files).length) {
+            const firstFile = Object.keys(data.patched_files)[0];
+            const orig = filesToScan[firstFile] || "";
+            const patched = data.patched_files[firstFile];
+            if (this.diffEditorPrimary && window.monaco) {
+              this.diffEditorPrimary.setModel({
+                original: monaco.editor.createModel(orig, "python"),
+                modified: monaco.editor.createModel(patched, "python"),
+              });
+              document.getElementById("tab-diff-view").click();
+            }
+          }
+        })
+        .catch((err) => {
+          this.appendLog("SECURITY", `API fallback error: ${err.message}`);
+        })
+        .finally(() => {
+          if (this.btnRunStrixScan) {
+            this.btnRunStrixScan.disabled = false;
+            this.btnRunStrixScan.innerHTML = `<span class="btn-icon">🛡️</span><span>Strix Scan</span>`;
+          }
+        });
+    }
+  }
+
+  async applySecurityPatch() {
+    if (!this.latestPatchedDiff) {
+      alert("No active security patch to apply.");
+      return;
+    }
+
+    const { filename, modified } = this.latestPatchedDiff;
+    if (!filename || !modified) return;
+
+    if (this.btnAcceptPatch) {
+      this.btnAcceptPatch.disabled = true;
+      this.btnAcceptPatch.innerHTML = `<span>⏳ Applying Patch...</span>`;
+    }
+
+    try {
+      const res = await fetch("/api/security/apply-patch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file_path: filename,
+          patched_code: modified,
+          session_id: this.sessionId,
+        }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      this.appendLog("SECURITY", `✅ Applied security patch to workspace: ${filename}`);
+
+      // Update active editor if viewing the same file
+      if (this.activeFile === filename && this.editor) {
+        this.editor.setValue(modified);
+      }
+
+      if (this.btnAcceptPatch) {
+        this.btnAcceptPatch.innerHTML = `<span>✓ Patch Applied to Workspace</span>`;
+        setTimeout(() => {
+          if (this.btnAcceptPatch) this.btnAcceptPatch.style.display = "none";
+        }, 3000);
+      }
+    } catch (err) {
+      alert("Error applying patch: " + err.message);
+      this.appendLog("SECURITY", `❌ Patch application error: ${err.message}`);
+      if (this.btnAcceptPatch) {
+        this.btnAcceptPatch.disabled = false;
+        this.btnAcceptPatch.innerHTML = `<span>✓ Accept Patch (${filename})</span>`;
+      }
+    }
+  }
+
   appendCopilotUserMessage(text) {
     const msg = document.createElement("div");
     msg.className = "copilot-msg user";
@@ -608,6 +885,16 @@ class TaraIDE {
     // Run Code in Sandbox
     if (this.btnRunCode) {
       this.btnRunCode.addEventListener("click", () => this.runSandboxedCode());
+    }
+
+    // Run Strix Autonomous Security Penetration Test
+    if (this.btnRunStrixScan) {
+      this.btnRunStrixScan.addEventListener("click", () => this.runStrixScan());
+    }
+
+    // Accept and Apply Security Patch to Workspace
+    if (this.btnAcceptPatch) {
+      this.btnAcceptPatch.addEventListener("click", () => this.applySecurityPatch());
     }
 
     // Diff stage selection

@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "commands": [
+    {
+      "id": "run-strix-scan",
+      "name": "Run Strix Autonomous Security Scan",
+      "description": "Executes triple-layer security scan (Flake8, Bandit, Strix) and streams patches to Monaco Diff Editor.",
+      "action": "execute",
+      "endpoint": "http://127.0.0.1:8000/api/security/strix-scan",
+      "websocket": "ws://127.0.0.1:8000/ws/security",
+      "acceptPatchEndpoint": "http://127.0.0.1:8000/api/security/apply-patch"
+    }
+  ]
+}

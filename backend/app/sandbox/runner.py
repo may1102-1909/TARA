@@ -49,7 +49,12 @@ class BaseSandbox(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def run_command(self, cmd: List[str], timeout: int = 30) -> ExecutionResult:
+    def run_command(
+        self,
+        cmd: List[str],
+        timeout: int = 30,
+        envs: Optional[Dict[str, str]] = None
+    ) -> ExecutionResult:
         """Executes a command inside the sandbox."""
         pass
 
@@ -99,7 +104,12 @@ class LocalEphemeralSandbox(BaseSandbox):
                     pass
         return result
 
-    def run_command(self, cmd: List[str], timeout: int = 30) -> ExecutionResult:
+    def run_command(
+        self,
+        cmd: List[str],
+        timeout: int = 30,
+        envs: Optional[Dict[str, str]] = None
+    ) -> ExecutionResult:
         # Build sanitized environment (prevent leaking host API keys into sandbox processes)
         clean_env = {
             "PATH": os.environ.get("PATH", ""),
@@ -113,11 +123,25 @@ class LocalEphemeralSandbox(BaseSandbox):
             if k in os.environ:
                 clean_env[k] = os.environ[k]
 
-        # Use the current Python interpreter if 'python' is invoked
+        # Inject forwarded sandbox environment variables (e.g. STRIX_LLM, LLM_API_KEY)
+        if envs:
+            clean_env.update(envs)
+
+        # Use the current Python interpreter if 'python', 'flake8', or 'bandit' is invoked
         formatted_cmd = []
         for i, part in enumerate(cmd):
             if i == 0 and part in ("python", "python3"):
                 formatted_cmd.append(sys.executable)
+            elif i == 0 and part in ("flake8", "bandit"):
+                # Run as python -m tool to avoid Windows PATH issues
+                formatted_cmd.extend([sys.executable, "-m", part])
+            elif i == 0 and part == "strix":
+                # Strix command: check if strix is in PATH or can be invoked
+                strix_path = shutil.which("strix")
+                if strix_path:
+                    formatted_cmd.append(strix_path)
+                else:
+                    formatted_cmd.append("strix")
             else:
                 formatted_cmd.append(part)
 
@@ -201,7 +225,12 @@ class DockerSandbox(BaseSandbox):
                     pass
         return result
 
-    def run_command(self, cmd: List[str], timeout: int = 30) -> ExecutionResult:
+    def run_command(
+        self,
+        cmd: List[str],
+        timeout: int = 30,
+        envs: Optional[Dict[str, str]] = None
+    ) -> ExecutionResult:
         # Construct docker run command with security limits
         host_mount = str(self.root_path).replace("\\", "/")
         docker_cmd = [
@@ -211,8 +240,12 @@ class DockerSandbox(BaseSandbox):
             "--cpus", "1.0",
             "-v", f"{host_mount}:/workspace",
             "-w", "/workspace",
-            self.image
-        ] + cmd
+        ]
+        if envs:
+            for k, v in envs.items():
+                docker_cmd.extend(["-e", f"{k}={v}"])
+        docker_cmd.append(self.image)
+        docker_cmd.extend(cmd)
 
         start_time = time.time()
         try:
@@ -260,11 +293,17 @@ class DockerSandbox(BaseSandbox):
 class E2BSandbox(BaseSandbox):
     """Tier 1: Cloud isolated microVM execution using E2B Code Interpreter."""
 
-    def __init__(self, session_id: str, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        session_id: str,
+        api_key: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None
+    ):
         super().__init__(session_id)
         self.tier_name = "E2BSandbox"
         from app.core.config import settings
         self.api_key = api_key or settings.e2b_api_key or os.getenv("E2B_API_KEY")
+        self.envs = dict(envs or {})
         self.files_cache: Dict[str, str] = {}
         self.sandbox_instance = None
         self._sast_tools_installed = False
@@ -272,7 +311,10 @@ class E2BSandbox(BaseSandbox):
     def _ensure_sandbox(self):
         if self.sandbox_instance is None:
             from e2b_code_interpreter import Sandbox
-            self.sandbox_instance = Sandbox.create(api_key=self.api_key)
+            self.sandbox_instance = Sandbox.create(
+                api_key=self.api_key,
+                envs=self.envs if self.envs else None
+            )
 
     def write_files(self, files: Dict[str, str]) -> None:
         self.files_cache.update(files)
@@ -300,24 +342,39 @@ class E2BSandbox(BaseSandbox):
                 updated[path] = self.files_cache[path]
         return updated
 
-    def run_command(self, cmd: List[str], timeout: int = 30) -> ExecutionResult:
+    def run_command(
+        self,
+        cmd: List[str],
+        timeout: int = 30,
+        envs: Optional[Dict[str, str]] = None
+    ) -> ExecutionResult:
         start_time = time.time()
         try:
             self._ensure_sandbox()
             cmd_str = " ".join(cmd)
-            # If command involves bandit or flake8, ensure they are installed in E2B microVM
-            if ("bandit" in cmd_str or "flake8" in cmd_str) and not self._sast_tools_installed:
+            # If command involves bandit, flake8, or strix, ensure they are installed in E2B microVM
+            if ("bandit" in cmd_str or "flake8" in cmd_str or "strix" in cmd_str) and not self._sast_tools_installed:
                 try:
                     self.sandbox_instance.commands.run("pip install bandit flake8", timeout=60)
+                    if "strix" in cmd_str:
+                        self.sandbox_instance.commands.run("pip install strix-ai || pip install strix", timeout=60)
                     self._sast_tools_installed = True
                 except Exception as inst_err:
-                    logger.warning("Failed to install SAST tools in E2B: %s", inst_err)
+                    logger.warning("Failed to install SAST/Strix tools in E2B: %s", inst_err)
+
+            combined_envs = dict(self.envs)
+            if envs:
+                combined_envs.update(envs)
 
             stdout = ""
             stderr = ""
             exit_code = 0
             try:
-                exec_out = self.sandbox_instance.commands.run(cmd_str, timeout=timeout)
+                exec_out = self.sandbox_instance.commands.run(
+                    cmd_str,
+                    timeout=timeout,
+                    envs=combined_envs if combined_envs else None
+                )
                 stdout = exec_out.stdout or ""
                 stderr = exec_out.stderr or ""
                 exit_code = exec_out.exit_code or 0
@@ -384,11 +441,11 @@ def _is_e2b_available() -> bool:
         return False
 
 
-def get_sandbox(session_id: str) -> BaseSandbox:
+def get_sandbox(session_id: str, envs: Optional[Dict[str, str]] = None) -> BaseSandbox:
     """Factory creating the appropriate sandbox instance according to environment capabilities."""
     if _is_e2b_available():
         logger.info("Initializing Tier 1: E2BSandbox for session %s", session_id)
-        return E2BSandbox(session_id)
+        return E2BSandbox(session_id, envs=envs)
 
     if _is_docker_available():
         logger.info("Initializing Tier 2: DockerSandbox for session %s", session_id)

@@ -221,6 +221,10 @@
 
           <!-- Floating Action Controls (Right Canvas) -->
           <div class="canvas-nav-right">
+            <button class="btn btn-sm btn-outline" id="btn-run-strix-scan" title="Run Strix Autonomous Security Penetration Test">
+              <span class="btn-icon">🛡️</span>
+              <span>Strix Scan</span>
+            </button>
             <button class="btn btn-sm btn-sandbox" id="btn-run-code" disabled title="Execute generated code inside isolated sandbox">
               <span class="btn-icon">▶️</span>
               <span>Run in Sandbox</span>
@@ -263,6 +267,9 @@
               </div>
             </div>
             <div class="diff-right-controls">
+              <button id="btn-accept-patch" class="btn btn-sm btn-success" style="display:none;" title="Accept and apply this security patch to workspace">
+                <span>✓ Accept Patch</span>
+              </button>
               <button id="btn-toggle-diff-inline" class="btn-diff-inline" title="Toggle Side-by-Side / Inline Diff">
                 <span>Toggle Inline Diff</span>
               </button>
