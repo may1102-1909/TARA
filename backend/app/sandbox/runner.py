@@ -195,7 +195,7 @@ class LocalEphemeralSandbox(BaseSandbox):
 class DockerSandbox(BaseSandbox):
     """Tier 2: Isolated Docker micro-container execution with CPU/Memory limits and no network."""
 
-    def __init__(self, session_id: str, image: str = "python:3.11-slim"):
+    def __init__(self, session_id: str, image: str = "python:3.12-slim"):
         super().__init__(session_id)
         self.tier_name = "DockerSandbox"
         self.image = image
@@ -357,7 +357,7 @@ class E2BSandbox(BaseSandbox):
                 try:
                     self.sandbox_instance.commands.run("pip install bandit flake8", timeout=60)
                     if "strix" in cmd_str:
-                        self.sandbox_instance.commands.run("pip install strix-ai || pip install strix", timeout=60)
+                        self.sandbox_instance.commands.run("pip install strix-agent", timeout=60)
                     self._sast_tools_installed = True
                 except Exception as inst_err:
                     logger.warning("Failed to install SAST/Strix tools in E2B: %s", inst_err)
