@@ -1,156 +1,121 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="obsidian">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TARA — AI Developer Environment & Architecture Assistant</title>
-  <meta name="description" content="TARA: Autonomous Tech-Architecture & Review Assistant powered by Google Antigravity SDK. Multi-agent AI IDE for code generation, QA, and security hardening.">
+  <title>TARA — Autonomous AI Developer Environment</title>
+  <meta name="description" content="TARA: Autonomous Tech-Architecture & Review Assistant. Multi-agent AI IDE for code generation, QA, and security hardening.">
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
-  <!-- Monaco Editor loader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.js"></script>
 </head>
 <body class="dark-theme">
-  <!-- App Container -->
   <div id="app" class="ide-container">
-    
-    <!-- Top Header -->
+
+    <!-- ─── Top Header ─── -->
     <header class="ide-header">
       <div class="header-left">
         <div class="brand-section">
           <div class="logo-wrapper">
-            <img src="/assets/logo.png" alt="TARA Logo" class="brand-logo" id="brand-logo-img">
-            <div class="logo-glow"></div>
+            <img src="/assets/logo.png" alt="TARA" class="brand-logo" id="brand-logo-img">
           </div>
           <div class="brand-text">
             <div class="title-row">
               <h1 class="brand-title">TARA</h1>
-              <span class="version-badge">v2.0 AI-IDE</span>
+              <span class="version-badge">v2.0</span>
             </div>
-            <span class="brand-tagline">Autonomous Tech-Architecture & Engineering Environment</span>
+            <span class="brand-tagline">Autonomous AI Developer Environment</span>
           </div>
         </div>
       </div>
 
-      <!-- Center: Stepper Indicator -->
       <div class="header-center">
         <div class="stepper-container" id="workflow-stepper">
-          <div class="step-item active" data-step="spec" title="1. Product Requirements Specification">
-            <div class="step-bullet">1</div>
-            <span class="step-label">Spec</span>
-          </div>
+          <div class="step-item active" data-step="spec"><div class="step-bullet">1</div><span class="step-label">Spec</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="ceo" title="2. Executive Viability & PRD Critique">
-            <div class="step-bullet">2</div>
-            <span class="step-label">CEO</span>
-          </div>
+          <div class="step-item" data-step="ceo"><div class="step-bullet">2</div><span class="step-label">CEO</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="gate" title="3. Human-in-the-Loop Sign-off Gate">
-            <div class="step-bullet">3</div>
-            <span class="step-label">Gate</span>
-          </div>
+          <div class="step-item" data-step="gate"><div class="step-bullet">3</div><span class="step-label">Gate</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="build" title="4. Developer Multi-file Code & QA">
-            <div class="step-bullet">4</div>
-            <span class="step-label">Dev + QA</span>
-          </div>
+          <div class="step-item" data-step="build"><div class="step-bullet">4</div><span class="step-label">Build</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="security" title="5. Bandit/OWASP SAST Hardening">
-            <div class="step-bullet">5</div>
-            <span class="step-label">Security</span>
-          </div>
+          <div class="step-item" data-step="security"><div class="step-bullet">5</div><span class="step-label">Security</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="package" title="6. Release Package Ready">
-            <div class="step-bullet">6</div>
-            <span class="step-label">Release</span>
-          </div>
+          <div class="step-item" data-step="package"><div class="step-bullet">6</div><span class="step-label">Release</span></div>
         </div>
       </div>
 
-      <!-- Right Header Actions -->
       <div class="header-right">
-        <!-- Theme Selector -->
-        <div class="theme-selector-wrap">
-          <select id="theme-selector" class="theme-dropdown" title="Switch IDE Theme">
-            <option value="dark">🌑 Obsidian Dark</option>
-            <option value="light">☀️ Clean Slate</option>
-            <option value="cyber">⚡ Cyber</option>
-          </select>
-        </div>
         <div class="session-badge" id="session-badge">
           <span class="status-dot online"></span>
-          <span id="session-id-text">Session: Initializing...</span>
+          <span id="session-id-text">Session: —</span>
         </div>
-        <button id="btn-download-zip" class="btn btn-outline" disabled title="Download hardened production ZIP package">
-          <svg class="icon" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Export ZIP</span>
+        <button id="btn-download-zip" class="btn btn-outline btn-sm" disabled>
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Export</span>
         </button>
       </div>
     </header>
 
-    <!-- Main Workspace Layout -->
+    <!-- ─── Workspace ─── -->
     <div class="workspace-layout">
-      
-      <!-- 1. Leftmost Slim Vertical Activity Dock -->
+
+      <!-- Left Activity Dock -->
       <nav class="activity-dock" id="activity-dock">
         <div class="dock-top-group">
-          <button class="dock-item active" data-view-target="spec" id="dock-btn-spec" title="PRD Specification (Alt+1)">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            <span class="dock-tooltip">PRD Spec</span>
+          <button class="dock-item active" id="dock-btn-spec" title="PRD Spec">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span class="dock-tooltip">Spec</span>
           </button>
-          <button class="dock-item" data-view-target="files" id="dock-btn-files" title="File Explorer (Alt+2)">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <button class="dock-item" id="dock-btn-files" title="Explorer">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             <span class="dock-badge" id="dock-files-count">0</span>
             <span class="dock-tooltip">Explorer</span>
           </button>
-          <button class="dock-item" data-view-target="editor" id="dock-btn-editor" title="Monaco Code Editor">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span class="dock-tooltip">Source Editor</span>
+          <button class="dock-item" id="dock-btn-editor" title="Editor">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span class="dock-tooltip">Code</span>
           </button>
-          <button class="dock-item" data-view-target="diff" id="dock-btn-diff" title="3-Way Diff Viewer">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span class="dock-tooltip">Diff Viewer</span>
+          <button class="dock-item" id="dock-btn-diff" title="Diff">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span class="dock-tooltip">Diff</span>
           </button>
-          <button class="dock-item" data-view-target="audit" id="dock-btn-audit" title="Security SAST & Governance Audit">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span class="dock-tooltip">Audit Report</span>
+          <button class="dock-item" id="dock-btn-audit" title="Audit">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="dock-tooltip">Audit</span>
           </button>
-          <button class="dock-item" data-view-target="terminal" id="dock-btn-terminal" title="Sandbox Terminal">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          <button class="dock-item" id="dock-btn-terminal" title="Terminal">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
             <span class="dock-tooltip">Terminal</span>
           </button>
         </div>
-
         <div class="dock-bottom-group">
-          <button class="dock-item active-accent" id="dock-btn-copilot-toggle" title="Toggle AI Copilot Panel">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span class="dock-tooltip">AI Copilot</span>
+          <button class="dock-item active-accent" id="dock-btn-copilot-toggle" title="Toggle TARA Panel">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="dock-tooltip">TARA</span>
           </button>
         </div>
       </nav>
 
-      <!-- 2. Primary Collapsible Left Sidebar (Spec / Files) -->
+      <!-- Left Sidebar -->
       <aside class="sidebar-panel" id="primary-sidebar">
         <div class="sidebar-header-tabs">
           <button class="sidebar-tab active" data-panel="spec-panel" id="tab-btn-spec">
-            <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>PRD Specification</span>
+            <span>Specification</span>
           </button>
           <button class="sidebar-tab" data-panel="files-panel" id="tab-btn-files">
-            <svg class="tab-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            <span>Explorer</span>
+            <span>Files</span>
             <span class="badge" id="files-count-badge">0</span>
           </button>
         </div>
 
-        <!-- Panel 1: PRD Specification & Pipeline Starter -->
         <div class="sidebar-content active" id="spec-panel">
           <div class="spec-section-card">
             <div class="sample-preset-row">
-              <label for="preset-select">Architecture Presets:</label>
+              <label for="preset-select">Preset</label>
               <select id="preset-select" class="preset-dropdown">
                 <option value="cache">In-Memory Cache Microservice</option>
                 <option value="auth">JWT Auth & Rate Limiter</option>
@@ -161,9 +126,9 @@
             <div class="upload-box" id="drop-zone">
               <input type="file" id="file-upload-input" accept=".md,.pdf,.txt" class="file-hidden">
               <div class="upload-icon-wrap">
-                <svg class="upload-icon" viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               </div>
-              <p class="upload-hint">Drag & drop PRD (<strong>.md</strong>, <strong>.pdf</strong>) or browse</p>
+              <p class="upload-hint">Drop PRD file or <strong>browse</strong></p>
             </div>
 
             <div class="editor-textarea-wrapper">
@@ -171,80 +136,56 @@
                 <label class="section-label">PRD Content</label>
                 <span class="char-counter" id="prd-char-counter">0 chars</span>
               </div>
-              <textarea id="prd-input-textarea" class="prd-textarea" spellcheck="false" placeholder="Paste product requirements, functional architecture, or user stories here..."></textarea>
+              <textarea id="prd-input-textarea" class="prd-textarea" spellcheck="false" placeholder="Paste product requirements, architecture specs, or user stories..."></textarea>
             </div>
 
             <button id="btn-start-pipeline" class="btn btn-primary btn-block glow-button">
-              <span class="btn-icon">⚡</span>
-              <span>Launch Multi-Agent Pipeline</span>
+              Launch Pipeline
             </button>
           </div>
         </div>
 
-        <!-- Panel 2: File Explorer Tree -->
         <div class="sidebar-content" id="files-panel">
           <div class="file-tree-header">
-            <span class="section-label">WORKSPACE ARTIFACTS</span>
+            <span class="section-label">Workspace</span>
             <span class="files-tag" id="files-tag-total">0 files</span>
           </div>
           <div class="file-tree-view" id="file-tree-container">
             <div class="empty-state-notice">
-              <div class="empty-icon">📁</div>
-              <p>No files generated yet.</p>
-              <small>Launch pipeline or ask TARA Copilot to generate modules.</small>
+              <p>No files yet</p>
+              <small>Launch pipeline or prompt TARA to generate code.</small>
             </div>
           </div>
         </div>
       </aside>
 
-      <!-- 3. Central Stage (Monaco Code Canvas / Diff Viewer / Audit) -->
+      <!-- Center Stage -->
       <main class="center-stage" id="center-stage">
-        
-        <!-- Breadcrumbs & Stage Canvas Top Control Bar -->
         <div class="canvas-top-bar">
           <div class="canvas-nav-left">
             <div class="breadcrumbs-row">
-              <svg class="breadcrumb-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span class="breadcrumb-item">workspace</span>
-              <span class="breadcrumb-sep">/</span>
               <span class="breadcrumb-item">src</span>
               <span class="breadcrumb-sep">/</span>
               <span class="breadcrumb-item active" id="active-filename-pill">main.py</span>
             </div>
             <div class="nav-tabs">
-              <button class="stage-tab active" data-view="editor-view" id="tab-editor-view">
-                <svg class="tab-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                <span>Code</span>
-              </button>
-              <button class="stage-tab" data-view="diff-view" id="tab-diff-view">
-                <svg class="tab-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                <span>3-Way Diff</span>
-                <span class="badge badge-accent">Dev ➔ QA ➔ Sec</span>
-              </button>
-              <button class="stage-tab" data-view="audit-view" id="tab-audit-view">
-                <svg class="tab-icon" viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                <span>Audit</span>
-              </button>
+              <button class="stage-tab active" data-view="editor-view" id="tab-editor-view">Code</button>
+              <button class="stage-tab" data-view="diff-view" id="tab-diff-view">Diff</button>
+              <button class="stage-tab" data-view="audit-view" id="tab-audit-view">Audit</button>
             </div>
           </div>
-
-          <!-- Floating Action Controls (Right Canvas) -->
           <div class="canvas-nav-right">
-            <button class="btn btn-sm btn-outline" id="btn-run-strix-scan" title="Run Strix Autonomous Security Penetration Test">
-              <span class="btn-icon">🛡️</span>
-              <span>Strix Scan</span>
+            <button class="btn btn-outline btn-sm" id="btn-run-strix-scan">
+              <span>🛡 Scan</span>
             </button>
-            <button class="btn btn-sm btn-sandbox" id="btn-run-code" disabled title="Execute generated code inside isolated sandbox">
-              <span class="btn-icon">▶️</span>
-              <span>Run in Sandbox</span>
+            <button class="btn btn-outline btn-sm" id="btn-run-code" disabled>
+              <span>▶ Run</span>
             </button>
-            <div class="stage-status-indicator" id="stage-status-text">
-              Ready for PRD
-            </div>
+            <div class="stage-status-indicator" id="stage-status-text">Ready</div>
           </div>
         </div>
 
-        <!-- View 1: Monaco Source Editor Canvas -->
+        <!-- Editor View -->
         <div class="stage-content active" id="editor-view">
           <div id="monaco-editor-container" class="editor-frame"></div>
           <div id="fallback-editor-container" class="fallback-frame" style="display:none;">
@@ -252,7 +193,7 @@
           </div>
         </div>
 
-        <!-- View 2: Monaco Native 3-Way Diff Viewer -->
+        <!-- Diff View -->
         <div class="stage-content" id="diff-view">
           <div class="diff-header-bar">
             <div class="diff-left-controls">
@@ -260,212 +201,163 @@
                 <label>File:</label>
                 <select id="diff-file-selector" class="preset-dropdown"></select>
               </div>
-              <div class="diff-stage-selector" id="diff-stage-buttons">
-                <button class="diff-stage-btn active" data-stage="dev-qa" title="Compare Developer Draft vs QA Refactored">
-                  <span class="stage-num">1</span> Dev ➔ QA
-                </button>
-                <button class="diff-stage-btn" data-stage="qa-sec" title="Compare QA Refactored vs Security Hardened">
-                  <span class="stage-num">2</span> QA ➔ Security
-                </button>
-                <button class="diff-stage-btn" data-stage="dev-sec" title="Compare Original Draft vs Final Hardened Code">
-                  <span class="stage-num">3</span> Dev ➔ Security (Full)
-                </button>
-                <button class="diff-stage-btn" data-stage="dual" title="Side-by-side Dual Monaco Diff Editors">
-                  <span class="stage-num">❖</span> 3-Way Dual View
-                </button>
+              <div class="diff-stage-selector">
+                <button class="diff-stage-btn active" data-stage="dev-qa"><span class="stage-num">1</span> Dev → QA</button>
+                <button class="diff-stage-btn" data-stage="qa-sec"><span class="stage-num">2</span> QA → Sec</button>
+                <button class="diff-stage-btn" data-stage="dev-sec"><span class="stage-num">3</span> Full</button>
+                <button class="diff-stage-btn" data-stage="dual"><span class="stage-num">❖</span> Dual</button>
               </div>
             </div>
             <div class="diff-right-controls">
-              <button id="btn-accept-patch" class="btn btn-sm btn-success" style="display:none;" title="Accept and apply this security patch to workspace">
-                <span>✓ Accept Patch</span>
-              </button>
-              <button id="btn-toggle-diff-inline" class="btn-diff-inline" title="Toggle Side-by-Side / Inline Diff">
-                <span>Toggle Inline Diff</span>
-              </button>
+              <button id="btn-accept-patch" class="btn btn-primary btn-sm" style="display:none;">✓ Accept Patch</button>
+              <button id="btn-toggle-diff-inline" class="btn btn-outline btn-sm"><span>Inline</span></button>
               <div class="diff-legend">
-                <span class="legend-item original"><span class="legend-box"></span> Original / Removed</span>
-                <span class="legend-item hardened"><span class="legend-box"></span> Modified / Added</span>
+                <span class="legend-item original"><span class="legend-box"></span>Removed</span>
+                <span class="legend-item hardened"><span class="legend-box"></span>Added</span>
               </div>
             </div>
           </div>
           <div class="diff-editors-container" id="diff-editors-container">
             <div id="monaco-diff-primary" class="monaco-diff-pane"></div>
-            <div id="monaco-diff-secondary" class="monaco-diff-pane" style="display: none;"></div>
+            <div id="monaco-diff-secondary" class="monaco-diff-pane" style="display:none;"></div>
           </div>
         </div>
 
-        <!-- View 3: Audit Summary -->
+        <!-- Audit View -->
         <div class="stage-content" id="audit-view">
           <div class="audit-wrapper" id="audit-content-container">
             <div class="empty-state-notice">
-              <div class="empty-icon">🛡️</div>
-              <p>Audit report will be generated after the Security SAST phase completes.</p>
+              <p>Audit report appears after security scan.</p>
             </div>
           </div>
         </div>
 
-        <!-- Bottom Observability & Terminal Console Drawer -->
+        <!-- Console Drawer -->
         <section class="console-drawer" id="console-drawer">
           <div class="console-bar">
             <div class="console-tabs">
-              <button class="console-tab active" data-agent="all">All Stream</button>
+              <button class="console-tab active" data-agent="all">All</button>
               <button class="console-tab" data-agent="CEO">CEO</button>
-              <button class="console-tab" data-agent="Developer">Developer</button>
+              <button class="console-tab" data-agent="Developer">Dev</button>
               <button class="console-tab" data-agent="QA">QA</button>
-              <button class="console-tab" data-agent="Security">Security</button>
-              <button class="console-tab" data-agent="ANTIGRAVITY">⚡ Antigravity</button>
-              <button class="console-tab" data-agent="terminal" id="tab-terminal">💻 Terminal</button>
+              <button class="console-tab" data-agent="Security">Sec</button>
+              <button class="console-tab" data-agent="ANTIGRAVITY">Agent</button>
+              <button class="console-tab" data-agent="terminal" id="tab-terminal">Terminal</button>
             </div>
             <div class="console-controls">
-              <button class="btn-icon-sm" id="btn-toggle-console" title="Minimize / Expand Console">⎯</button>
-              <button class="btn-icon-sm" id="btn-clear-console" title="Clear Console">🧹</button>
+              <button class="btn-icon-sm" id="btn-toggle-console" title="Toggle">⎯</button>
+              <button class="btn-icon-sm" id="btn-clear-console" title="Clear">✕</button>
             </div>
           </div>
           <div class="console-output" id="console-log-stream">
             <div class="log-line info">
-              <span class="timestamp">[SYSTEM]</span>
-              <span class="log-msg">TARA AI Developer Environment ready. Antigravity Agent runtime initialized.</span>
+              <span class="timestamp">[SYS]</span>
+              <span class="log-msg">TARA ready. Antigravity runtime initialized.</span>
             </div>
           </div>
         </section>
       </main>
 
-      <!-- 4. Right-Side Dedicated AI Copilot Panel -->
+      <!-- Right Copilot Panel -->
       <aside class="copilot-panel" id="copilot-panel">
         <div class="copilot-header">
           <div class="copilot-brand">
-            <div class="copilot-icon-wrap">
-              <span class="copilot-sparkle">✨</span>
-            </div>
-            <div class="copilot-title-wrap">
-              <h3>TARA Copilot</h3>
-              <span class="copilot-badge">Antigravity SDK</span>
-            </div>
+            <span class="copilot-title">TARA</span>
+            <span class="copilot-badge">Agent</span>
           </div>
           <div class="copilot-actions">
-            <button class="btn-icon-sm" id="btn-clear-copilot" title="Clear Copilot Chat">🧹</button>
-            <button class="btn-icon-sm" id="btn-close-copilot" title="Close Copilot Panel">✕</button>
+            <button class="btn-icon-sm" id="btn-clear-copilot" title="Clear">✕</button>
+            <button class="btn-icon-sm" id="btn-close-copilot" title="Close">⏏</button>
           </div>
         </div>
 
-        <!-- Agent Personas Selection Pill Strip -->
         <div class="copilot-personas">
-          <button class="persona-chip active" data-persona="antigravity">⚡ Autonomous</button>
-          <button class="persona-chip" data-persona="ceo">👔 CEO</button>
-          <button class="persona-chip" data-persona="qa">🧪 QA</button>
-          <button class="persona-chip" data-persona="security">🛡️ Security</button>
+          <button class="persona-chip active" data-persona="antigravity">Autonomous</button>
+          <button class="persona-chip" data-persona="ceo">CEO</button>
+          <button class="persona-chip" data-persona="qa">QA</button>
+          <button class="persona-chip" data-persona="security">Security</button>
         </div>
 
-        <!-- Copilot Interactive Chat Stream -->
         <div class="copilot-chat-container" id="copilot-chat-stream">
           <div class="copilot-msg bot">
-            <div class="msg-avatar">⚡</div>
+            <div class="msg-avatar">T</div>
             <div class="msg-body">
-              <p>Welcome! I'm your <strong>Antigravity Autonomous Engineer</strong>. I can read, refactor, and write workspace files directly, and stream line-by-line diffs straight into Monaco.</p>
-              <p>What would you like to build or modify?</p>
+              <p>I can read, refactor, and write workspace files. What would you like to build?</p>
             </div>
           </div>
         </div>
 
-        <!-- Quick Action Prompt Chips -->
         <div class="copilot-chips-row">
-          <button class="copilot-chip" data-prompt="Add thread-safe TTL expiration and key eviction to cache in main.py">
-            ⚡ Add TTL Eviction
-          </button>
-          <button class="copilot-chip" data-prompt="Inspect main.py with SAST rules and add input sanitization">
-            🛡️ SAST Hardening
-          </button>
-          <button class="copilot-chip" data-prompt="Generate pytest unit tests with mock fixtures for main.py">
-            🧪 Generate Pytest
-          </button>
+          <button class="copilot-chip" data-prompt="Add thread-safe TTL expiration and key eviction to cache in main.py">Add TTL Eviction</button>
+          <button class="copilot-chip" data-prompt="Inspect main.py with SAST rules and add input sanitization">SAST Hardening</button>
+          <button class="copilot-chip" data-prompt="Generate pytest unit tests with mock fixtures for main.py">Generate Tests</button>
         </div>
 
-        <!-- Copilot Input Box -->
         <div class="copilot-input-box">
           <div class="copilot-input-meta">
             <span class="input-target-label">Target:</span>
             <span class="input-target-file" id="copilot-target-display">main.py</span>
           </div>
-          <textarea id="copilot-prompt-input" rows="2" placeholder="Ask TARA Agent to inspect, edit, or refactor code (Ctrl+Enter to send)..."></textarea>
+          <textarea id="copilot-prompt-input" rows="2" placeholder="Ask TARA to inspect, edit, or generate code..."></textarea>
           <div class="copilot-input-footer">
-            <span class="keyboard-hint">Press ↵ or Ctrl+Enter</span>
-            <button id="btn-send-copilot" class="btn-copilot-send" title="Send instruction to Antigravity Agent">
-              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span class="keyboard-hint">↵ to send</span>
+            <button id="btn-send-copilot" class="btn-copilot-send" title="Send">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </button>
           </div>
         </div>
       </aside>
-
     </div>
 
-    <!-- Human-in-the-Loop (HITL) Approval Gate Modal -->
+    <!-- HITL Approval Modal -->
     <div class="modal-overlay" id="approval-gate-modal">
       <div class="modal-card">
         <div class="modal-header">
           <div class="modal-header-left">
             <div class="modal-badge pulse-dot"></div>
-            <h3>HUMAN-IN-THE-LOOP APPROVAL GATE</h3>
+            <h3>Approval Gate</h3>
           </div>
           <div class="revision-counter" id="modal-revision-pill">Round #0</div>
         </div>
-
         <div class="modal-body">
-          <div class="critique-header">
-            <div class="verdict-banner" id="modal-verdict-banner">
-              <span class="verdict-label">Executive Verdict:</span>
-              <span class="verdict-val" id="modal-verdict-text">VIABLE</span>
-            </div>
+          <div class="verdict-banner">
+            <span class="verdict-label">Verdict:</span>
+            <span class="verdict-val" id="modal-verdict-text">VIABLE</span>
           </div>
-
           <div class="critique-section">
-            <h4>Market & Commercial Viability</h4>
+            <h4>Market Viability</h4>
             <p id="modal-market-text" class="critique-paragraph"></p>
           </div>
-
           <div class="critique-grid">
             <div class="critique-col">
-              <h4>Feature Gaps Identified</h4>
+              <h4>Feature Gaps</h4>
               <ul id="modal-gaps-list" class="styled-list gaps"></ul>
             </div>
             <div class="critique-col">
-              <h4>Architectural Flaws</h4>
+              <h4>Structural Flaws</h4>
               <ul id="modal-flaws-list" class="styled-list flaws"></ul>
             </div>
           </div>
-
           <div class="critique-section">
-            <h4>CEO Recommendation</h4>
+            <h4>Recommendation</h4>
             <p id="modal-recommendation-text" class="critique-paragraph highlight"></p>
           </div>
-
-          <!-- Notes Input for Request Changes or Directives -->
-          <div class="feedback-input-box" id="feedback-input-wrapper">
-            <label for="feedback-notes-input">Stakeholder Directives / Revision Notes (Optional):</label>
-            <textarea id="feedback-notes-input" placeholder="Add specific guidance, or leave blank and click 'Approve & Build Code Anyway' to generate code immediately..."></textarea>
-            <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
-              💡 <strong>Tip:</strong> Even if gaps or flaws were flagged, clicking <strong>Approve & Build Code Anyway</strong> instructs the Developer agent to proceed and generate full Python code for your submitted PRD.
-            </small>
+          <div class="feedback-input-box">
+            <label for="feedback-notes-input">Notes (optional)</label>
+            <textarea id="feedback-notes-input" placeholder="Add guidance or leave blank to proceed..."></textarea>
           </div>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-danger" id="btn-gate-reject">
-            Reject & Terminate
-          </button>
+          <button class="btn btn-danger-subtle" id="btn-gate-reject">Reject</button>
           <div class="modal-footer-right">
-            <button class="btn btn-warning" id="btn-gate-request-changes">
-              Request Changes (Loop Back)
-            </button>
-            <button class="btn btn-success" id="btn-gate-approve">
-              Approve & Proceed to Build ➔
-            </button>
+            <button class="btn btn-outline" id="btn-gate-request-changes">Request Changes</button>
+            <button class="btn btn-primary" id="btn-gate-approve">Approve & Build →</button>
           </div>
         </div>
       </div>
     </div>
 
   </div>
-
   <script src="/static/app.js"></script>
   <script src="/static/theme.js"></script>
 </body>
