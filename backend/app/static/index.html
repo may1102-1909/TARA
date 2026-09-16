@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TARA — AI Developer Environment & Architecture Assistant</title>
+  <meta name="description" content="TARA: Autonomous Tech-Architecture & Review Assistant powered by Google Antigravity SDK. Multi-agent AI IDE for code generation, QA, and security hardening.">
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,6 +72,14 @@
 
       <!-- Right Header Actions -->
       <div class="header-right">
+        <!-- Theme Selector -->
+        <div class="theme-selector-wrap">
+          <select id="theme-selector" class="theme-dropdown" title="Switch IDE Theme">
+            <option value="dark">🌑 Obsidian Dark</option>
+            <option value="light">☀️ Clean Slate</option>
+            <option value="cyber">⚡ Cyber</option>
+          </select>
+        </div>
         <div class="session-badge" id="session-badge">
           <span class="status-dot online"></span>
           <span id="session-id-text">Session: Initializing...</span>
@@ -85,39 +94,39 @@
     <!-- Main Workspace Layout -->
     <div class="workspace-layout">
       
-      <!-- 1. Leftmost Slim Vertical Activity Dock (Dribbble-style) -->
+      <!-- 1. Leftmost Slim Vertical Activity Dock -->
       <nav class="activity-dock" id="activity-dock">
         <div class="dock-top-group">
           <button class="dock-item active" data-view-target="spec" id="dock-btn-spec" title="PRD Specification (Alt+1)">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             <span class="dock-tooltip">PRD Spec</span>
           </button>
           <button class="dock-item" data-view-target="files" id="dock-btn-files" title="File Explorer (Alt+2)">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             <span class="dock-badge" id="dock-files-count">0</span>
             <span class="dock-tooltip">Explorer</span>
           </button>
           <button class="dock-item" data-view-target="editor" id="dock-btn-editor" title="Monaco Code Editor">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             <span class="dock-tooltip">Source Editor</span>
           </button>
           <button class="dock-item" data-view-target="diff" id="dock-btn-diff" title="3-Way Diff Viewer">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             <span class="dock-tooltip">Diff Viewer</span>
           </button>
           <button class="dock-item" data-view-target="audit" id="dock-btn-audit" title="Security SAST & Governance Audit">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <span class="dock-tooltip">Audit Report</span>
           </button>
           <button class="dock-item" data-view-target="terminal" id="dock-btn-terminal" title="Sandbox Terminal">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
             <span class="dock-tooltip">Terminal</span>
           </button>
         </div>
 
         <div class="dock-bottom-group">
           <button class="dock-item active-accent" id="dock-btn-copilot-toggle" title="Toggle AI Copilot Panel">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.8" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <span class="dock-tooltip">AI Copilot</span>
           </button>
         </div>
@@ -182,7 +191,7 @@
             <div class="empty-state-notice">
               <div class="empty-icon">📁</div>
               <p>No files generated yet.</p>
-              <small>Launch pipeline or ask Antigravity Copilot to generate modules.</small>
+              <small>Launch pipeline or ask TARA Copilot to generate modules.</small>
             </div>
           </div>
         </div>
@@ -321,7 +330,7 @@
         </section>
       </main>
 
-      <!-- 4. Right-Side Dedicated AI Copilot Panel (Dribbble AI Assistant Style) -->
+      <!-- 4. Right-Side Dedicated AI Copilot Panel -->
       <aside class="copilot-panel" id="copilot-panel">
         <div class="copilot-header">
           <div class="copilot-brand">
@@ -377,7 +386,7 @@
             <span class="input-target-label">Target:</span>
             <span class="input-target-file" id="copilot-target-display">main.py</span>
           </div>
-          <textarea id="copilot-prompt-input" rows="2" placeholder="Ask Antigravity Agent to inspect, edit, or refactor code (Ctrl+Enter to send)..."></textarea>
+          <textarea id="copilot-prompt-input" rows="2" placeholder="Ask TARA Agent to inspect, edit, or refactor code (Ctrl+Enter to send)..."></textarea>
           <div class="copilot-input-footer">
             <span class="keyboard-hint">Press ↵ or Ctrl+Enter</span>
             <button id="btn-send-copilot" class="btn-copilot-send" title="Send instruction to Antigravity Agent">
@@ -458,5 +467,6 @@
   </div>
 
   <script src="/static/app.js"></script>
+  <script src="/static/theme.js"></script>
 </body>
 </html>
