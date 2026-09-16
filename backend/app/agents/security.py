@@ -73,9 +73,17 @@ def run_unified_security_scan(
     files: Dict[str, str],
     session_id: str = "default_session",
     event_callback: Optional[Union[Callable[[Dict[str, Any]], None], Callable[[Dict[str, Any]], Awaitable[None]]]] = None,
+    mcp_config: Optional[str] = None,
+    mcp_server: Optional[str] = None,
+    mcp_exclude: Optional[str] = None,
 ) -> Tuple[List[SecurityFinding], str]:
-    """Runs Flake8, Bandit, and Strix via E2BSecurityRunner, returning unified findings."""
-    runner = E2BSecurityRunner(session_id=session_id)
+    """Runs Flake8, Bandit, and Strix via E2BSecurityRunner with optional MCP servers."""
+    runner = E2BSecurityRunner(
+        session_id=session_id,
+        mcp_config=mcp_config,
+        mcp_server=mcp_server,
+        mcp_exclude=mcp_exclude,
+    )
     findings = runner.run_security_pipeline(files, event_callback=event_callback)
     return findings, "E2B/Triple-Layer"
 

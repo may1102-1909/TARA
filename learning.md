@@ -256,6 +256,19 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 20: Model Context Protocol (MCP) Servers Integration with Strix & Google Antigravity IDE
+- **What was done:**
+  - **Strix MCP Configuration:** Created `~/.strix/mcp-servers.json` and project workspace `./mcp-servers.json` defining both local stdio tools (`local_fs` via `@modelcontextprotocol/server-filesystem`) and remote HTTP tools (`github` via Copilot MCP endpoint).
+  - **Antigravity IDE Customization Registration:** Configured `~/.gemini/config/mcp_config.json` and `.agents/mcp_config.json` using Antigravity's `mcpServers` schema (`serverUrl` and `headers` for HTTP transports, `command` and `args` for stdio).
+  - **Strix Runner & E2B Runner MCP Flags:** Enhanced `backend/app/sandbox/strix_runner.py` and `backend/app/sandbox/e2b_runner.py` to support `--mcp-config`, `--mcp-server`, and `--mcp-exclude` CLI flags, mount configuration paths, bundle `mcp-servers.json` into sandbox payloads, and parse MCP connection logs (`MCP: connected X servers (Y tools): ...`).
+  - **Security Agent & API Schemas:** Added `mcp_config`, `mcp_server`, and `mcp_exclude` fields to `StrixScanRequest` in `backend/app/routers/security.py` and passed them down to `run_unified_security_scan`.
+  - **Skill Documentation:** Updated `.agents/skills/strix-security-scan/SKILL.md` with configuration guides, CLI options, verification steps, and dashboard commands (`strix view`).
+- **Why we built it:**
+  - Standardizes tool access across both the Antigravity agent runtime and Strix's autonomous penetration testing loops through open Model Context Protocol (MCP) servers.
+  - Allows Strix to discover issues, query repositories, and interact with external systems using verified MCP tools with granular inclusion and exclusion controls.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -292,5 +305,7 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-16 | `backend/app/static/index.html` | Antigravity Layout Redesign | Restructured to: Left Nav Rail (dock icons) → File Tree Sidebar → Center Monaco Canvas (code/diff/audit tabs) → Right AI Copilot Panel → Bottom Terminal. Added theme selector dropdown in header. All DOM IDs preserved for `app.js` backward compatibility. |
 | 2026-09-16 | `backend/app/static/theme.js` | Dynamic Theme Switching Engine | New file: switches `data-theme` on `<html>`, syncs Monaco themes (`vs-dark`/`vs`/`hc-black`), persists to localStorage, supports `Ctrl+Shift+T` keyboard shortcut for cycling. Exposes `window.TaraTheme` API. |
 | 2026-09-16 | `style.css`, `index.html`, `theme.js` | **Monochrome Obsidian Redesign** | Complete rewrite to ChatGPT/Vercel/Shadcn-inspired aesthetic. Pitch black `#09090B` base, `#121215` surfaces, `#27272A` zinc borders, pure white `#FFFFFF` primary CTAs (white bg, black text). Zero gradients, glows, or neon. 6px radius, 150ms transitions, Inter + JetBrains Mono. Active dock items use 2px white left-border indicator. Diff highlights use muted green/red rgba overlays. |
+| 2026-09-16 | `mcp-servers.json`, `~/.strix/`, `strix_runner.py`, `e2b_runner.py` | **Model Context Protocol (MCP) Integration for Strix & Antigravity** | Registered global and workspace MCP servers for `local_fs` and `github`. Added `--mcp-config`, `--mcp-server`, `--mcp-exclude` execution options to Strix and E2B runners. Surfaced live MCP tool connection status events in WebSocket pipeline and updated skill documentation. |
+
 
 

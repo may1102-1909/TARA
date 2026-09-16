@@ -28,13 +28,22 @@ logger = logging.getLogger(__name__)
 class StrixRunner:
     """Runs Strix programmatically in headless mode against a target workspace."""
 
-    def __init__(self, workspace_path: Optional[str] = None):
+    def __init__(
+        self,
+        workspace_path: Optional[str] = None,
+        mcp_config: Optional[str] = None,
+        mcp_server: Optional[str] = None,
+        mcp_exclude: Optional[str] = None,
+    ):
         if workspace_path:
             self.workspace_path = Path(workspace_path).resolve()
         else:
             self.workspace_path = Path(__file__).resolve().parent.parent.parent.parent
         self.strix_llm = os.getenv("STRIX_LLM", "gemini/gemini-2.5-flash")
         self.llm_api_key = os.getenv("LLM_API_KEY", settings.gemini_api_key or os.getenv("GEMINI_API_KEY", ""))
+        self.mcp_config = mcp_config
+        self.mcp_server = mcp_server
+        self.mcp_exclude = mcp_exclude
 
     def is_docker_available(self) -> bool:
         """Checks if Docker daemon is running and reachable."""
@@ -56,9 +65,12 @@ class StrixRunner:
     def run_strix(
         self,
         target_dir: Optional[str] = None,
-        timeout: int = 60
+        timeout: int = 60,
+        mcp_config: Optional[str] = None,
+        mcp_server: Optional[str] = None,
+        mcp_exclude: Optional[str] = None,
     ) -> List[SecurityFindingModel]:
-        """Runs Strix in non-interactive mode (`strix -n --target <path>`) and parses findings."""
+        """Runs Strix in non-interactive mode (`strix -n --target <path>`) with optional MCP flags."""
         target = Path(target_dir).resolve() if target_dir else self.workspace_path
         findings: List[SecurityFindingModel] = []
         stdout = ""
@@ -68,6 +80,15 @@ class StrixRunner:
         env["STRIX_LLM"] = self.strix_llm
         env["LLM_API_KEY"] = self.llm_api_key
 
+        # Resolve MCP parameters
+        active_mcp_config = mcp_config or self.mcp_config
+        if not active_mcp_config:
+            candidate_cfg = target / "mcp-servers.json"
+            if candidate_cfg.exists():
+                active_mcp_config = str(candidate_cfg)
+        active_mcp_server = mcp_server or self.mcp_server
+        active_mcp_exclude = mcp_exclude or self.mcp_exclude
+
         # Option A: Isolated Docker Container Execution
         if self.is_docker_available():
             logger.info("Running Strix inside isolated Docker container mounting: %s", target)
@@ -76,9 +97,20 @@ class StrixRunner:
                 "-v", f"{str(target)}:/src",
                 "-e", f"STRIX_LLM={self.strix_llm}",
                 "-e", f"LLM_API_KEY={self.llm_api_key}",
-                "usestrix/strix:latest",
-                "strix", "-n", "--target", "/src"
             ]
+            # Mount user ~/.strix if it exists
+            home_strix = Path.home() / ".strix"
+            if home_strix.exists():
+                docker_cmd.extend(["-v", f"{str(home_strix)}:/root/.strix"])
+
+            docker_cmd.extend(["usestrix/strix:latest", "strix", "-n", "--target", "/src"])
+            if active_mcp_config:
+                docker_cmd.extend(["--mcp-config", active_mcp_config])
+            if active_mcp_server:
+                docker_cmd.extend(["--mcp-server", active_mcp_server])
+            if active_mcp_exclude:
+                docker_cmd.extend(["--mcp-exclude", active_mcp_exclude])
+
             try:
                 proc = subprocess.run(
                     docker_cmd,
@@ -96,6 +128,13 @@ class StrixRunner:
         if not stdout and self.is_strix_cli_available():
             logger.info("Running Strix via host CLI binary...")
             cli_cmd = ["strix", "-n", "--target", str(target)]
+            if active_mcp_config:
+                cli_cmd.extend(["--mcp-config", active_mcp_config])
+            if active_mcp_server:
+                cli_cmd.extend(["--mcp-server", active_mcp_server])
+            if active_mcp_exclude:
+                cli_cmd.extend(["--mcp-exclude", active_mcp_exclude])
+
             try:
                 proc = subprocess.run(
                     cli_cmd,
@@ -109,6 +148,12 @@ class StrixRunner:
                 stderr = proc.stderr
             except Exception as c_err:
                 logger.warning("CLI Strix execution failed: %s", c_err)
+
+        # Log MCP tool connection if reported in output
+        combined_logs = f"{stdout}\n{stderr}"
+        for line in combined_logs.splitlines():
+            if "MCP: connected" in line:
+                logger.info("[MCP Status] %s", line.strip())
 
         # Parse output into SecurityFindingModel schema
         findings = self.parse_strix_results(stdout, stderr, target)

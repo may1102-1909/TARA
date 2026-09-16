@@ -26,6 +26,9 @@ class StrixScanRequest(BaseModel):
     session_id: Optional[str] = Field(default="default_session")
     target_dir: Optional[str] = Field(default=None, description="Optional custom target directory")
     auto_patch: bool = Field(default=False, description="Automatically write patched files directly to workspace")
+    mcp_config: Optional[str] = Field(default=None, description="Optional path to custom MCP servers configuration file")
+    mcp_server: Optional[str] = Field(default=None, description="Optional target specific MCP server")
+    mcp_exclude: Optional[str] = Field(default=None, description="Optional MCP server to exclude")
 
 
 class ApplyPatchRequest(BaseModel):
@@ -56,7 +59,13 @@ async def trigger_strix_scan(req: StrixScanRequest):
             "main.py": "# Default entrypoint\ndef run():\n    pass\n"
         }
 
-    findings, tier = run_unified_security_scan(files_to_scan, session_id=req.session_id)
+    findings, tier = run_unified_security_scan(
+        files_to_scan,
+        session_id=req.session_id,
+        mcp_config=req.mcp_config,
+        mcp_server=req.mcp_server,
+        mcp_exclude=req.mcp_exclude,
+    )
     patched_files = patch_codebase_with_chat_google(
         files_to_scan,
         findings,

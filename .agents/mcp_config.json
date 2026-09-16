@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "local_fs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
+    },
+    "github": {
+      "serverUrl": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer your-github-token-here"
+      }
+    }
+  }
+}

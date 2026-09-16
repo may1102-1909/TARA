@@ -85,8 +85,17 @@ def map_strix_to_owasp(issue_title: str) -> str:
 class E2BSecurityRunner:
     """Manages E2B execution for Flake8, Bandit, and Strix."""
 
-    def __init__(self, session_id: str = "security_scan"):
+    def __init__(
+        self,
+        session_id: str = "security_scan",
+        mcp_config: Optional[str] = None,
+        mcp_server: Optional[str] = None,
+        mcp_exclude: Optional[str] = None,
+    ):
         self.session_id = session_id
+        self.mcp_config = mcp_config
+        self.mcp_server = mcp_server
+        self.mcp_exclude = mcp_exclude
         self.gemini_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY", "")
         self.strix_llm = os.getenv("STRIX_LLM", "gemini/gemini-2.5-flash")
         self.llm_api_key = os.getenv("LLM_API_KEY", self.gemini_key)
@@ -118,6 +127,14 @@ class E2BSecurityRunner:
                         event_callback(event_dict)
                 except Exception as ex:
                     logger.warning("Event emission error: %s", ex)
+
+        # Auto-detect and bundle project mcp-servers.json into files payload
+        if "mcp-servers.json" not in files and os.path.exists("mcp-servers.json"):
+            try:
+                with open("mcp-servers.json", "r", encoding="utf-8") as mcp_f:
+                    files["mcp-servers.json"] = mcp_f.read()
+            except Exception:
+                pass
 
         # 1. Acquire sandbox (E2B / Docker / LocalEphemeral) forwarding STRIX_LLM and LLM_API_KEY
         with get_sandbox(self.session_id, envs=self.forwarded_envs) as sb:
@@ -230,7 +247,29 @@ class E2BSecurityRunner:
                 "message": "Running Strix autonomous penetration testing (strix -n --target ./)...",
             })
             strix_cmd = ["strix", "-n", "--target", "./"]
+            active_mcp_config = self.mcp_config
+            if not active_mcp_config and "mcp-servers.json" in files:
+                active_mcp_config = "./mcp-servers.json"
+            if active_mcp_config:
+                strix_cmd.extend(["--mcp-config", active_mcp_config])
+            if self.mcp_server:
+                strix_cmd.extend(["--mcp-server", self.mcp_server])
+            if self.mcp_exclude:
+                strix_cmd.extend(["--mcp-exclude", self.mcp_exclude])
+
             strix_res = sb.run_command(strix_cmd, timeout=45, envs=self.forwarded_envs)
+
+            # Check for MCP server connection status in output
+            combined_strix = f"{strix_res.stdout}\n{strix_res.stderr}"
+            for line in combined_strix.splitlines():
+                if "MCP: connected" in line:
+                    emit_event({
+                        "type": "e2b_status",
+                        "tool": "STRIX_MCP",
+                        "phase": "connected",
+                        "message": line.strip(),
+                    })
+                    break
 
             strix_findings = self.parse_strix_output(strix_res.stdout, strix_res.stderr, files)
             findings.extend(strix_findings)
