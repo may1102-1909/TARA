@@ -52,3 +52,7 @@ yarn-error.log*
 *.sqlite3
 backend/storage/
 storage/
+
+# Windows / OS Search artifacts
+Searches/
+desktop.ini

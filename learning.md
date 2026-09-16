@@ -317,8 +317,55 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-16 | `backend/app/static/theme.js` | Dynamic Theme Switching Engine | New file: switches `data-theme` on `<html>`, syncs Monaco themes (`vs-dark`/`vs`/`hc-black`), persists to localStorage, supports `Ctrl+Shift+T` keyboard shortcut for cycling. Exposes `window.TaraTheme` API. |
 | 2026-09-16 | `style.css`, `index.html`, `theme.js` | **Monochrome Obsidian Redesign** | Complete rewrite to ChatGPT/Vercel/Shadcn-inspired aesthetic. Pitch black `#09090B` base, `#121215` surfaces, `#27272A` zinc borders, pure white `#FFFFFF` primary CTAs (white bg, black text). Zero gradients, glows, or neon. 6px radius, 150ms transitions, Inter + JetBrains Mono. Active dock items use 2px white left-border indicator. Diff highlights use muted green/red rgba overlays. |
 | 2026-09-16 | `mcp-servers.json`, `~/.strix/`, `strix_runner.py`, `e2b_runner.py` | **Model Context Protocol (MCP) Integration for Strix & Antigravity** | Registered global and workspace MCP servers for `local_fs` and `github`. Added `--mcp-config`, `--mcp-server`, `--mcp-exclude` execution options to Strix and E2B runners. Surfaced live MCP tool connection status events in WebSocket pipeline and updated skill documentation. |
+---
+
+### Step 22: Live Code Writing on Human Approval & Interactive Streaming
+- **What was done:**
+  - **Live Code Writing on Human Approval (`backend/app/static/app.js`):** When the user approves at the Human Approval Gate, TARA now immediately switches the center Monaco canvas to the "Code" tab (`#tab-editor-view`), clears the initial template comments, sets the active file to `src / main.py`, and triggers token-by-token live streaming via `/ws/tara/stream`.
+  - **Direct Character Buffer Streaming:** As content deltas arrive via WebSockets, Monaco inserts text continuously using `executeEdits` and scrolls along with the cursor using `revealLine`, giving the user real-time visual feedback of code being authored live.
+  - **Clean Code Output (`backend/app/routers/tara_stream.py`):** Stripped markdown code fences (````python` and ````) on chunk arrival and reinforced the system instruction to write raw executable Python directly into the editor buffer.
+  - **Automatic Prompt Routing:** Any prompt in the right Copilot panel requesting code generation or modifications (or using the `⚡ Live Stream` chip) now streams directly into Monaco in real time.
+- **Why we built it:**
+  - In earlier versions, clicking "Approve" triggered a synchronous background server job. While agents were thinking and generating code on the server, the user was left looking at an empty editor with a static comment for 30 seconds wondering if anything was happening. Live streaming makes the entire development process visible, transparent, and engaging.
+
+---
+
+## 4. Ongoing Work & Changelog
+
+*(New updates will be logged here as we continue building)*
+
+| Date | Component / File | What Was Done | Why |
+|---|---|---|---|
+| 2026-09-14 | `backend/requirements.txt` | Installed & verified `google-genai` and `pydantic` | Core libraries required for Gemini API calls & schema outputs. |
+| 2026-09-14 | `backend/app/agents/ceo.py` | Added `Verdict`, `CEOCritique`, and `evaluate_prd` | CEO agent to evaluate PRD viability using Gemini 2.5 Flash. |
+| 2026-09-14 | `backend/app/agents/developer.py` | Added `GeneratedFile`, `DeveloperCodeOutput`, and `generate_code_from_prd` | Developer agent to generate full Python code using Gemini 2.5 Pro. |
+| 2026-09-14 | `backend/app/agents/qa.py` | Added `QAIssue`, `QAReport`, and `analyze_code_qa` | QA agent to inspect multi-file code for bugs and quality issues. |
+| 2026-09-14 | `backend/app/agents/security.py` | Added `Vulnerability`, `SecurityReport`, and `analyze_code_security` | Security agent to perform SAST analysis and output patches. |
+| 2026-09-14 | `backend/app/graph/builder.py` | Created sequential LangGraph pipeline (`ceo` -> `developer` -> `qa` -> `security`) | Direct multi-agent execution pipeline without HITL pause. |
+| 2026-09-14 | `backend/app/api/sessions.py` | Added `POST /api/sessions/graph/run` endpoint | Allows running the sequential graph via HTTP API. |
+| 2026-09-14 | `backend/app/main.py` | Hosted locally via Uvicorn on `http://127.0.0.1:8000` | Makes Web IDE and API accessible locally in real time. |
+| 2026-09-14 | `backend/app/core/llm.py` & agents | Built automatic high-quota model failover chain | `gemini-3.6-flash` has a strict preview limit of 20 requests/day (`429 RESOURCE_EXHAUSTED`), while `gemini-2.5-flash` was deprecated for new users (`404 NOT_FOUND`). Added `call_gemini_with_fallback` defaulting to `gemini-3.5-flash` and `gemini-3.5-flash-lite` to guarantee abundant free tier quota and zero interruptions. |
+| 2026-09-14 | `backend/app/sandbox/` & `security.py` | Built 3-Tier Sandbox Runner, real Bandit/Flake8/AST SAST, and Web IDE 'Run in Sandbox' | Replaced mock strings with real Bandit JSON parsing mapped to OWASP Top 10, isolated execution sandbox, and live terminal execution in the browser. |
+| 2026-09-14 | `backend/app/sandbox/runner.py` & `.env` | Enabled Tier 1 E2B Cloud MicroVM Sandbox with user API key | Cloud hardware-level isolation for running untrusted code and SAST scans. |
+| 2026-09-14 | `backend/app/api/sessions.py` & `app.js` | Built PDF parsing support & `POST /api/sessions/upload` endpoint | Fulfills FR-6 by allowing drag-and-drop ingestion of `.pdf`, `.md`, and `.txt` specifications. |
+| 2026-09-14 | `frontend` & `session_manager.py` | Added Monaco Native 3-Way Diff, Live WS File Updates, and Live Editing | Native diff highlighting (Dev ➔ QA ➔ Sec), live file tree updates during streaming, and live editing. |
+| 2026-09-14 | `backend/app/core/session_manager.py` | Integrated `SqliteSaver` persistent checkpointer & session metadata | Persists multi-agent workflow checkpoints in SQLite across server restarts. |
+| 2026-09-14 | `backend/app/core/cleanup.py` & `main.py` | Added APScheduler 24h automated TTL cleanup job & FastAPI lifespan hook | Automatically purges expired session checkpoints, packages, and temp folders every 24h. |
+| 2026-09-14 | `backend/tests/test_persistence_cleanup.py` | Added automated persistence, TTL cleanup, and API test suite | 100% test pass rate verifying SQLite restart durability and cleanup pruning. |
+| 2026-09-15 | `backend/app/agents/antigravity_agent.py` & `requirements.txt` | Integrated `google-antigravity` SDK & file tool configuration | Enables agents to inspect, view, edit, and create code files via official Antigravity tools. |
+| 2026-09-15 | `backend/app/routers/tara.py` & `tara_agent.py` | Built non-blocking `/api/tara/edit`, `/ws/tara` diff streaming, and Monaco viewer | Autonomous workspace file execution with progressive line diffs rendered directly in Monaco. |
+| 2026-09-15 | `frontend` (`index.html`, `style.css`, `app.js`) | Re-engineered UI to match Dribbble "IDE - AI developer environment" | Slim Activity Dock, right AI Copilot drawer, floating Monaco breadcrumb bar, and obsidian glassmorphism. |
+| 2026-09-15 | `backend/app/sandbox/e2b_runner.py` & `runner.py` | Integrated Strix (`strix -n --target ./`), Flake8, and Bandit in E2B with env forwarding | Triple-layer SAST & penetration testing with `STRIX_LLM` and `LLM_API_KEY` forwarded to E2B context. |
+| 2026-09-15 | `backend/app/agents/security.py` & `routers/security.py` | Unified `SecurityFinding` Pydantic parser, ChatGoogleGenerativeAI patcher, and `/ws/security` | Automatic code patch synthesis, disk writes, and real-time Monaco `createDiffEditor()` streaming. |
+| 2026-09-15 | `backend/tests/test_e2b_strix.py` | Comprehensive test suite for Strix E2B runner, parser, and WebSocket diff stream | 100% pass rate across 9 tests verifying triple-layer security pipeline. |
+| 2026-09-14 | `want.md` | Created project requirements document for user inputs | Lists upcoming credentials (GitHub PAT) and Web IDE preferences. |
+| 2026-09-14 | `learning.md` | Maintained this comprehensive learning document | To explain everything built in simple English and log all future progress. |
+| 2026-09-16 | `backend/app/main.py` | Fixed WebSocket 403 Forbidden errors on `/ws/security` and `/ws/tara` | Root cause: `allow_credentials=True` with `allow_origins=["*"]` violates CORS spec and rejects WS upgrades. Fixed by setting `allow_credentials=False` and reordering routes so WebSocket endpoints are registered before StaticFiles mounts. |
+| 2026-09-16 | `backend/app/static/style.css` | Complete CSS redesign: forest-green/cream color palette and IDE layout | Replaced obsidian-charcoal/purple theme with deep forest green (`#2B3F31`) backgrounds and warm cream (`#E5D5BE`) accents, matching user's reference images. Layout refined to mirror the two-panel IDE split from the Dribbble screenshot. |
+| 2026-09-16 | `backend/app/static/style.css` | Antigravity 3-Theme CSS Engine | Complete rewrite with `data-theme` attribute-driven CSS variables. 3 palettes: Dark Obsidian (`#1E1F22`), Light Clean Slate (`#FFFFFF`), Cyber High-Contrast (`#0B0E14`). All colors reference CSS variables for instant theme switching. Glassmorphism on modals, 4px corners, smooth transitions. |
+| 2026-09-16 | `backend/app/static/index.html` | Antigravity Layout Redesign | Restructured to: Left Nav Rail (dock icons) → File Tree Sidebar → Center Monaco Canvas (code/diff/audit tabs) → Right AI Copilot Panel → Bottom Terminal. Added theme selector dropdown in header. All DOM IDs preserved for `app.js` backward compatibility. |
+| 2026-09-16 | `backend/app/static/theme.js` | Dynamic Theme Switching Engine | New file: switches `data-theme` on `<html>`, syncs Monaco themes (`vs-dark`/`vs`/`hc-black`), persists to localStorage, supports `Ctrl+Shift+T` keyboard shortcut for cycling. Exposes `window.TaraTheme` API. |
+| 2026-09-16 | `style.css`, `index.html`, `theme.js` | **Monochrome Obsidian Redesign** | Complete rewrite to ChatGPT/Vercel/Shadcn-inspired aesthetic. Pitch black `#09090B` base, `#121215` surfaces, `#27272A` zinc borders, pure white `#FFFFFF` primary CTAs (white bg, black text). Zero gradients, glows, or neon. 6px radius, 150ms transitions, Inter + JetBrains Mono. Active dock items use 2px white left-border indicator. Diff highlights use muted green/red rgba overlays. |
+| 2026-09-16 | `mcp-servers.json`, `~/.strix/`, `strix_runner.py`, `e2b_runner.py` | **Model Context Protocol (MCP) Integration for Strix & Antigravity** | Registered global and workspace MCP servers for `local_fs` and `github`. Added `--mcp-config`, `--mcp-server`, `--mcp-exclude` execution options to Strix and E2B runners. Surfaced live MCP tool connection status events in WebSocket pipeline and updated skill documentation. |
 | 2026-09-16 | `tara_stream.py`, `main.py`, `app.js` | **Token-by-Token Antigravity Code Streaming into Monaco** | Built `/ws/tara/stream` WebSocket endpoint using Antigravity Agent async iterator `chat(stream=True)`. Integrated Monaco `executeEdits` buffer insertion and `revealLine` auto-scroller for live typing. |
-
-
-
-
+| 2026-09-16 | `app.js`, `tara_stream.py`, `learning.md` | **Live Code Writing on Approval Gate** | Connected HITL Approve action and Copilot prompt inputs directly to `/ws/tara/stream` so Monaco immediately opens `main.py` and live-types code character by character in real time. |

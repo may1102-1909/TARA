@@ -1087,7 +1087,15 @@ class TaraIDE {
     const prompt = this.copilotPromptInput.value.trim();
     if (!prompt) return;
     this.copilotPromptInput.value = "";
-    if (this.activePersona === "live-stream" || prompt.startsWith("/stream") || prompt.startsWith("/live")) {
+    
+    // Auto-route to live code streaming if persona is live-stream, autonomous, or code generation request
+    const isCode = this.activePersona === "live-stream" || 
+                   this.activePersona === "antigravity" ||
+                   prompt.startsWith("/stream") || 
+                   prompt.startsWith("/live") ||
+                   /\b(write|code|generate|create|add|implement|refactor|fix|build|make)\b/i.test(prompt);
+
+    if (isCode) {
       const cleanPrompt = prompt.replace(/^\/(stream|live)\s*/i, "");
       this.sendTaraStreamPrompt(cleanPrompt || prompt, this.activeFile);
     } else {
@@ -1343,10 +1351,30 @@ class TaraIDE {
 
     if (action === "approve") {
       this.setStepperStep("build");
-      this.stageStatusText.textContent = "Approved! Generating full Python code for your PRD...";
+      this.stageStatusText.textContent = "⚡ Approved! Streaming live code for your PRD...";
       this.appendLog("HITL", `Human Approved: Proceeding to build code for PRD` + (notes ? ` with directives: "${notes}"` : ""));
       this.btnStartPipeline.disabled = true;
-      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚙️</span><span>Agents Building Code...</span>`;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Writing Code Live...</span>`;
+
+      // 1. Focus Code tab immediately so user sees live code writing
+      const editorTab = document.getElementById("tab-editor-view");
+      if (editorTab && !editorTab.classList.contains("active")) {
+        editorTab.click();
+      }
+
+      // 2. Prepare Monaco buffer and active file pill
+      this.activeFile = "main.py";
+      if (this.activeFilenamePill) {
+        this.activeFilenamePill.textContent = "src / main.py";
+      }
+      if (this.editor) {
+        this.editor.setValue("");
+      }
+
+      // 3. Immediately launch token-by-token live stream into Monaco Editor
+      const prdText = (this.prdTextarea && this.prdTextarea.value.trim()) || "In-Memory Cache Microservice";
+      const streamPrompt = `Generate the complete, production-ready Python codebase implementing this PRD:\n\n${prdText}` + (notes ? `\n\nStakeholder Directives: ${notes}` : "");
+      this.sendTaraStreamPrompt(streamPrompt, "main.py");
     } else if (action === "request_changes") {
       this.setStepperStep("ceo");
       this.stageStatusText.textContent = "Re-evaluating PRD with your feedback notes...";

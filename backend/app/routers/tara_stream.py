@@ -121,7 +121,8 @@ class AntigravityStreamAgent:
                 system_inst = (
                     "You are TARA's Lead Systems Architect & Autonomous Engineer. "
                     "Generate clean, modular, production-ready Python code. "
-                    "Output pure code without introductory chit-chat so it streams directly into the Monaco editor."
+                    "Output ONLY raw executable Python code directly into the editor buffer. "
+                    "Do NOT include markdown fences (```python or ```) or introductory conversational text."
                 )
 
                 response_stream = client.models.generate_content_stream(
@@ -131,8 +132,10 @@ class AntigravityStreamAgent:
                 )
                 for chunk in response_stream:
                     if chunk.text:
-                        yield StreamChunk(chunk.text)
-                        await asyncio.sleep(0.01)
+                        clean_text = chunk.text.replace("```python", "").replace("```", "")
+                        if clean_text:
+                            yield StreamChunk(clean_text)
+                            await asyncio.sleep(0.01)
                 return
             except Exception as g_err:
                 logger.warning("Direct Gemini stream error: %s. Using deterministic fallback.", g_err)
@@ -207,11 +210,13 @@ async def tara_stream_websocket(websocket: WebSocket):
             # Use SDK's native async iterator to stream content deltas as TARA generates them
             async for chunk in agent.chat(user_prompt, stream=True):
                 if chunk.text:
-                    await websocket.send_json({
-                        "type": "CODE_DELTA",
-                        "file_path": file_path,
-                        "delta": chunk.text,
-                    })
+                    clean_chunk = chunk.text.replace("```python", "").replace("```", "")
+                    if clean_chunk:
+                        await websocket.send_json({
+                            "type": "CODE_DELTA",
+                            "file_path": file_path,
+                            "delta": clean_chunk,
+                        })
 
             await websocket.send_json({
                 "type": "STREAM_END",
