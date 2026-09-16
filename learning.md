@@ -269,6 +269,17 @@ Here is the journey of your project requirements document (PRD) from start to fi
 
 ---
 
+### Step 21: Real-Time Token-by-Token Code Generation with Antigravity SDK & Monaco Live Streaming
+- **What was done:**
+  - **Antigravity SDK Backend Streaming (`backend/app/routers/tara_stream.py`):** Created a dedicated streaming router initializing `google.antigravity.Agent` using `LocalAgentConfig` with `api_key=os.getenv("GEMINI_API_KEY")`. Implemented `async for chunk in agent.chat(user_prompt, stream=True):` to capture content deltas and streamed structured JSON payloads (`{ "type": "CODE_DELTA", "file_path": "main.py", "delta": chunk.text }`) over the `/ws/tara/stream` WebSocket endpoint.
+  - **FastAPI Lifecycle Mount:** Registered the WebSocket `/ws/tara/stream` endpoint before static asset mounts in `backend/app/main.py`.
+  - **Client-Side Live Monaco Typing (`backend/app/static/app.js`):** Connected to `/ws/tara/stream`. On receiving `CODE_DELTA`, resolves the active Monaco editor model (`this.editor.getModel()`), calculates the active cursor boundary, and applies character edits directly into the buffer via `editor.executeEdits("tara-stream", [...])` rather than replacing the buffer at the end. Automatically tracks cursor positioning via `editor.revealLine()`.
+  - **Interactive UI Support:** Added a "⚡ Live Stream" persona chip in the copilot panel and enabled `/stream` / `/live` prompt prefixes.
+- **Why we built it:**
+  - Moves beyond batch generation or whole-file replacements, giving developers an interactive AI pair-programming experience where code appears token-by-token in real time.
+
+---
+
 ## 4. Ongoing Work & Changelog
 
 *(New updates will be logged here as we continue building)*
@@ -306,6 +317,8 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-16 | `backend/app/static/theme.js` | Dynamic Theme Switching Engine | New file: switches `data-theme` on `<html>`, syncs Monaco themes (`vs-dark`/`vs`/`hc-black`), persists to localStorage, supports `Ctrl+Shift+T` keyboard shortcut for cycling. Exposes `window.TaraTheme` API. |
 | 2026-09-16 | `style.css`, `index.html`, `theme.js` | **Monochrome Obsidian Redesign** | Complete rewrite to ChatGPT/Vercel/Shadcn-inspired aesthetic. Pitch black `#09090B` base, `#121215` surfaces, `#27272A` zinc borders, pure white `#FFFFFF` primary CTAs (white bg, black text). Zero gradients, glows, or neon. 6px radius, 150ms transitions, Inter + JetBrains Mono. Active dock items use 2px white left-border indicator. Diff highlights use muted green/red rgba overlays. |
 | 2026-09-16 | `mcp-servers.json`, `~/.strix/`, `strix_runner.py`, `e2b_runner.py` | **Model Context Protocol (MCP) Integration for Strix & Antigravity** | Registered global and workspace MCP servers for `local_fs` and `github`. Added `--mcp-config`, `--mcp-server`, `--mcp-exclude` execution options to Strix and E2B runners. Surfaced live MCP tool connection status events in WebSocket pipeline and updated skill documentation. |
+| 2026-09-16 | `tara_stream.py`, `main.py`, `app.js` | **Token-by-Token Antigravity Code Streaming into Monaco** | Built `/ws/tara/stream` WebSocket endpoint using Antigravity Agent async iterator `chat(stream=True)`. Integrated Monaco `executeEdits` buffer insertion and `revealLine` auto-scroller for live typing. |
+
 
 
 

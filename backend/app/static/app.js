@@ -54,12 +54,14 @@ class TaraIDE {
     this.allLogs = [];
     this.socket = null;
     this.securitySocket = null;
+    this.streamSocket = null;
     this.latestPatchedDiff = null;
     this.activeBotMsgBody = null;
 
     this.initElements();
     this.initMonaco();
     this.initTaraWebSocket();
+    this.initTaraStreamWebSocket();
     this.initSecurityWebSocket();
     this.bindEvents();
     this.applyPreset("cache");
@@ -366,6 +368,137 @@ class TaraIDE {
         }
         break;
     }
+  }
+
+  initTaraStreamWebSocket() {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host || "127.0.0.1:8000";
+    const wsUrl = `${protocol}//${host}/ws/tara/stream`;
+
+    try {
+      this.streamSocket = new WebSocket(wsUrl);
+
+      this.streamSocket.onopen = () => {
+        this.appendLog("ANTIGRAVITY", "⚡ Connected to TARA Token-by-Token Stream (/ws/tara/stream)");
+      };
+
+      this.streamSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleTaraStreamMessage(data);
+        } catch (e) {
+          console.error("Failed to parse stream WebSocket message:", e);
+        }
+      };
+
+      this.streamSocket.onerror = (err) => {
+        console.warn("TARA Stream WebSocket notice:", err);
+      };
+
+      this.streamSocket.onclose = () => {
+        setTimeout(() => {
+          if (!this.streamSocket || this.streamSocket.readyState === WebSocket.CLOSED) {
+            this.initTaraStreamWebSocket();
+          }
+        }, 5000);
+      };
+    } catch (e) {
+      console.warn("Could not establish WebSocket to /ws/tara/stream:", e);
+    }
+  }
+
+  handleTaraStreamMessage(data) {
+    if (!data || !data.type) return;
+
+    switch (data.type) {
+      case "STREAM_INIT":
+        this.appendLog("ANTIGRAVITY", `🚀 ${data.message}`);
+        break;
+
+      case "STREAM_START":
+        this.appendLog("ANTIGRAVITY", `⚡ Token generation started for ${data.file_path || "main.py"}`);
+        if (this.stageStatusText) {
+          this.stageStatusText.textContent = "TARA Streaming Live...";
+        }
+        if (this.activeFilenamePill) {
+          this.activeFilenamePill.textContent = data.file_path || "main.py";
+        }
+        this.activeFile = data.file_path || "main.py";
+
+        // Ensure Editor tab is active so the user sees live character typing
+        const editorTab = document.getElementById("tab-editor-view");
+        if (editorTab && !editorTab.classList.contains("active")) {
+          editorTab.click();
+        }
+
+        // Prepare editor buffer for clean incoming stream
+        if (this.editor) {
+          this.editor.setValue("");
+        }
+        break;
+
+      case "CODE_DELTA":
+        if (this.editor && window.monaco && data.delta) {
+          const model = this.editor.getModel();
+          if (model) {
+            const lineCount = model.getLineCount();
+            const maxCol = model.getLineMaxColumn(lineCount);
+            const range = new monaco.Range(lineCount, maxCol, lineCount, maxCol);
+
+            // Apply live character edits directly into the buffer
+            this.editor.executeEdits("tara-stream", [{
+              range: range,
+              text: data.delta,
+              forceMoveMarkers: true,
+            }]);
+
+            // Auto-scroll the Monaco viewport to track TARA's live cursor
+            this.editor.revealLine(model.getLineCount());
+          }
+        }
+        break;
+
+      case "STREAM_END":
+        this.appendLog("ANTIGRAVITY", `✅ Token streaming completed for ${data.file_path || "main.py"}`);
+        if (this.stageStatusText) {
+          this.stageStatusText.textContent = "Live Stream Finished";
+        }
+        // Cache code to current session state
+        if (this.editor && this.activeFile && this.currentSession) {
+          const val = this.editor.getValue();
+          if (!this.currentSession.dev_code_files) this.currentSession.dev_code_files = {};
+          this.currentSession.dev_code_files[this.activeFile] = val;
+        }
+        break;
+
+      case "ERROR":
+        this.appendLog("ANTIGRAVITY", `❌ Stream error: ${data.message}`);
+        if (this.stageStatusText) {
+          this.stageStatusText.textContent = "Stream Error";
+        }
+        break;
+    }
+  }
+
+  sendTaraStreamPrompt(prompt, targetFile = null, workspace = null) {
+    if (!prompt) return;
+
+    this.appendCopilotUserMessage(prompt);
+    this.activeBotMsgBody = this.createCopilotBotMessage();
+
+    if (!this.streamSocket || this.streamSocket.readyState !== WebSocket.OPEN) {
+      this.appendLog("ANTIGRAVITY", "⚠️ Stream WebSocket reconnecting...");
+      this.initTaraStreamWebSocket();
+      setTimeout(() => this.sendTaraStreamPrompt(prompt, targetFile, workspace), 1000);
+      return;
+    }
+
+    this.streamSocket.send(JSON.stringify({
+      prompt: prompt,
+      file_path: targetFile || this.activeFile || "main.py",
+      workspace: workspace || null,
+    }));
+    this.appendLog("ANTIGRAVITY", `📡 Live stream prompt dispatched: "${prompt}"`);
   }
 
   sendTaraPrompt(prompt, targetFile = null, workspace = null) {
@@ -954,7 +1087,12 @@ class TaraIDE {
     const prompt = this.copilotPromptInput.value.trim();
     if (!prompt) return;
     this.copilotPromptInput.value = "";
-    this.sendTaraPrompt(prompt, this.activeFile);
+    if (this.activePersona === "live-stream" || prompt.startsWith("/stream") || prompt.startsWith("/live")) {
+      const cleanPrompt = prompt.replace(/^\/(stream|live)\s*/i, "");
+      this.sendTaraStreamPrompt(cleanPrompt || prompt, this.activeFile);
+    } else {
+      this.sendTaraPrompt(prompt, this.activeFile);
+    }
   }
 
   setDockActive(dockBtn) {

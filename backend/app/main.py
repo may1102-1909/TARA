@@ -32,6 +32,7 @@ from app.core.cleanup import start_cleanup_scheduler, stop_cleanup_scheduler
 from app.api.sessions import router as sessions_router
 from app.routers.tara import router as tara_router, tara_websocket_endpoint
 from app.routers.security import router as security_router, security_websocket_endpoint
+from app.routers.tara_stream import router as tara_stream_router, tara_stream_websocket
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -65,10 +66,12 @@ app.add_middleware(
 # Register API routers first (including their subrouted websockets)
 app.include_router(sessions_router, prefix=settings.api_prefix)
 app.include_router(tara_router, prefix=settings.api_prefix)
+app.include_router(tara_stream_router, prefix=settings.api_prefix)
 app.include_router(security_router, prefix=settings.api_prefix)
 
 # Mount direct WebSockets routes for Monaco frontend BEFORE static files
 app.add_api_websocket_route("/ws/tara", tara_websocket_endpoint)
+app.add_api_websocket_route("/ws/tara/stream", tara_stream_websocket)
 app.add_api_websocket_route("/ws/security", security_websocket_endpoint)
 
 # Mount static web assets & repository brand assets LAST (catch-all)
