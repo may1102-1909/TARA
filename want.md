@@ -37,4 +37,5 @@ To continue transforming **TARA** into an enterprise-grade AI Software Engineeri
 ## 4. Cloud Quota & API Health
 
 - **E2B API Credits**: Ensure your [E2B Dashboard](https://e2b.dev) has active credits for Tier 1 cloud microVM execution.
-- **Gemini Free Tier Quota**: If you have multiple Gemini API keys or paid tier access, let us know if you want higher rate limits for complex 10+ file architectures.
+- **Gemini API Key**: ✅ **Active & Verified in `.env`**. Loaded automatically into `Settings` and forwarded to all agents (`CEO`, `Developer`, `QA`, `SecurityOfficer`, and Strix runners).
+
