@@ -175,6 +175,9 @@
             </div>
           </div>
           <div class="canvas-nav-right">
+            <button class="btn btn-outline btn-sm" id="btn-editor-ai-edit" title="Interactive Edit with TARA (Ctrl+K)">
+              <span>✨ Edit with TARA</span>
+            </button>
             <button class="btn btn-outline btn-sm" id="btn-run-strix-scan">
               <span>🛡 Scan</span>
             </button>
@@ -187,6 +190,41 @@
 
         <!-- Editor View -->
         <div class="stage-content active" id="editor-view">
+          <!-- Floating Interactive AI Command Bar -->
+          <div id="editor-ai-bar" class="editor-ai-bar" style="display: none;">
+            <div class="editor-ai-bar-header">
+              <div class="editor-ai-title">
+                <span class="editor-ai-icon">✨</span>
+                <span>TARA Interactive Edit</span>
+                <span class="editor-ai-target-pill" id="editor-ai-target-pill">src / main.py</span>
+              </div>
+              <button class="editor-ai-close" id="btn-editor-ai-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="editor-ai-bar-input-row">
+              <input type="text" id="editor-ai-input" class="editor-ai-input" placeholder="Tell TARA what to edit or add (e.g. 'Add TTL eviction', 'Add docstrings', 'Refactor to async')...">
+              <button id="btn-editor-ai-submit" class="btn btn-primary btn-sm">Apply Edit ↵</button>
+            </div>
+            <div class="editor-ai-chips">
+              <button class="editor-ai-chip" data-edit="Add thread-safe TTL expiration and key eviction to cache in main.py">⚡ TTL Eviction</button>
+              <button class="editor-ai-chip" data-edit="Add robust try/except error handling and logging to main.py">🛡 Error Handling</button>
+              <button class="editor-ai-chip" data-edit="Add complete PEP 484 type annotations and docstrings to main.py">📝 Types & Docs</button>
+              <button class="editor-ai-chip" data-edit="Refactor methods in main.py to use async / await">⚡ Async Refactor</button>
+              <button class="editor-ai-chip" data-edit="Generate pytest unit tests with mock fixtures for main.py">🧪 Generate Tests</button>
+            </div>
+          </div>
+
+          <!-- Edit Review Action Bar (Accept / Undo) -->
+          <div id="editor-edit-review-bar" class="editor-edit-review-bar" style="display: none;">
+            <div class="review-status-text">
+              <span class="review-pulse">●</span>
+              <span id="editor-review-message">TARA applied edit to main.py</span>
+            </div>
+            <div class="review-actions">
+              <button id="btn-review-accept" class="btn btn-primary btn-xs">✓ Accept</button>
+              <button id="btn-review-undo" class="btn btn-outline btn-xs">↺ Undo</button>
+            </div>
+          </div>
+
           <div id="monaco-editor-container" class="editor-frame"></div>
           <div id="fallback-editor-container" class="fallback-frame" style="display:none;">
             <pre><code id="fallback-code-content"># Generating code...</code></pre>

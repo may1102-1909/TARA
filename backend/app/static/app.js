@@ -416,9 +416,10 @@ class TaraIDE {
         break;
 
       case "STREAM_START":
-        this.appendLog("ANTIGRAVITY", `⚡ Token generation started for ${data.file_path || "main.py"}`);
+        const actionLabel = data.is_edit ? "Applying live edit" : "Generating code";
+        this.appendLog("ANTIGRAVITY", `⚡ ${actionLabel} for ${data.file_path || "main.py"}`);
         if (this.stageStatusText) {
-          this.stageStatusText.textContent = "TARA Streaming Live...";
+          this.stageStatusText.textContent = data.is_edit ? "⚡ TARA Editing Live..." : "⚡ TARA Streaming Live...";
         }
         if (this.activeFilenamePill) {
           this.activeFilenamePill.textContent = data.file_path || "main.py";
@@ -430,6 +431,15 @@ class TaraIDE {
         if (editorTab && !editorTab.classList.contains("active")) {
           editorTab.click();
         }
+
+        // Save rollback snapshot if this is an edit
+        if (data.is_edit && this.editor) {
+          this.editorRollbackCode = this.editor.getValue();
+        }
+
+        // Hide command bar and existing review bar
+        this.toggleEditorAiBar(false);
+        this.hideEditorReviewBar();
 
         // Prepare editor buffer for clean incoming stream
         if (this.editor) {
@@ -459,15 +469,26 @@ class TaraIDE {
         break;
 
       case "STREAM_END":
-        this.appendLog("ANTIGRAVITY", `✅ Token streaming completed for ${data.file_path || "main.py"}`);
+        this.appendLog("ANTIGRAVITY", `✅ ${data.is_edit ? "Edit applied" : "Streaming completed"} for ${data.file_path || "main.py"}`);
         if (this.stageStatusText) {
-          this.stageStatusText.textContent = "Live Stream Finished";
+          this.stageStatusText.textContent = data.is_edit ? "Edit Applied ✓" : "Live Stream Finished";
         }
         // Cache code to current session state
         if (this.editor && this.activeFile && this.currentSession) {
           const val = this.editor.getValue();
           if (!this.currentSession.dev_code_files) this.currentSession.dev_code_files = {};
           this.currentSession.dev_code_files[this.activeFile] = val;
+        }
+
+        // Show review action bar if it was an edit
+        if (data.is_edit && this.editorRollbackCode) {
+          this.showEditorReviewBar(data.file_path || "main.py", data.summary || "Interactive edit applied");
+        }
+        break;
+
+      case "COPILOT_MESSAGE":
+        if (data.message) {
+          this.appendCopilotBotFormattedMessage(data.message);
         }
         break;
 
@@ -480,7 +501,7 @@ class TaraIDE {
     }
   }
 
-  sendTaraStreamPrompt(prompt, targetFile = null, workspace = null) {
+  sendTaraStreamPrompt(prompt, targetFile = null, currentCode = null, selection = null, action = null) {
     if (!prompt) return;
 
     this.appendCopilotUserMessage(prompt);
@@ -489,16 +510,80 @@ class TaraIDE {
     if (!this.streamSocket || this.streamSocket.readyState !== WebSocket.OPEN) {
       this.appendLog("ANTIGRAVITY", "⚠️ Stream WebSocket reconnecting...");
       this.initTaraStreamWebSocket();
-      setTimeout(() => this.sendTaraStreamPrompt(prompt, targetFile, workspace), 1000);
+      setTimeout(() => this.sendTaraStreamPrompt(prompt, targetFile, currentCode, selection, action), 1000);
       return;
     }
 
-    this.streamSocket.send(JSON.stringify({
+    const payload = {
       prompt: prompt,
       file_path: targetFile || this.activeFile || "main.py",
-      workspace: workspace || null,
-    }));
-    this.appendLog("ANTIGRAVITY", `📡 Live stream prompt dispatched: "${prompt}"`);
+      workspace: null,
+      current_code: currentCode !== null ? currentCode : (this.editor ? this.editor.getValue() : null),
+      selection: selection !== null ? selection : (this.editor && this.editor.getSelection() && this.editor.getModel() ? this.editor.getModel().getValueInRange(this.editor.getSelection()) : null),
+      action: action || "edit",
+    };
+
+    this.streamSocket.send(JSON.stringify(payload));
+    this.appendLog("ANTIGRAVITY", `📡 Interactive edit prompt dispatched: "${prompt}"`);
+  }
+
+  toggleEditorAiBar(show) {
+    const bar = document.getElementById("editor-ai-bar");
+    if (!bar) return;
+    const isVisible = bar.style.display !== "none";
+    const shouldShow = show !== undefined ? show : !isVisible;
+
+    if (shouldShow) {
+      bar.style.display = "flex";
+      const targetPill = document.getElementById("editor-ai-target-pill");
+      if (targetPill) {
+        const selection = (this.editor && this.editor.getSelection() && !this.editor.getSelection().isEmpty())
+          ? ` (Selected lines ${this.editor.getSelection().startLineNumber}–${this.editor.getSelection().endLineNumber})`
+          : "";
+        targetPill.textContent = `src / ${this.activeFile || "main.py"}${selection}`;
+      }
+      const input = document.getElementById("editor-ai-input");
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    } else {
+      bar.style.display = "none";
+      if (this.editor) this.editor.focus();
+    }
+  }
+
+  showEditorReviewBar(filename, message) {
+    const bar = document.getElementById("editor-edit-review-bar");
+    const msgEl = document.getElementById("editor-review-message");
+    if (bar) {
+      if (msgEl) msgEl.textContent = message || `TARA edited ${filename}`;
+      bar.style.display = "flex";
+    }
+  }
+
+  hideEditorReviewBar() {
+    const bar = document.getElementById("editor-edit-review-bar");
+    if (bar) bar.style.display = "none";
+  }
+
+  appendCopilotBotFormattedMessage(text) {
+    if (!text) return;
+    if (!this.copilotChatStream) return;
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "copilot-msg bot";
+    const avatarDiv = document.createElement("div");
+    avatarDiv.className = "msg-avatar";
+    avatarDiv.textContent = "T";
+    const bodyDiv = document.createElement("div");
+    bodyDiv.className = "msg-body";
+    const p = document.createElement("p");
+    p.innerHTML = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\n/g, "<br>");
+    bodyDiv.appendChild(p);
+    msgDiv.appendChild(avatarDiv);
+    msgDiv.appendChild(bodyDiv);
+    this.copilotChatStream.appendChild(msgDiv);
+    this.scrollCopilotToBottom();
   }
 
   sendTaraPrompt(prompt, targetFile = null, workspace = null) {
@@ -1081,6 +1166,94 @@ class TaraIDE {
         this.submitDecision("reject");
       }
     });
+
+    // Wire up Copilot quick action chips (e.g. Add TTL Eviction, SAST Hardening, Generate Tests)
+    document.querySelectorAll(".copilot-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const promptText = chip.getAttribute("data-prompt") || chip.textContent.trim();
+        if (this.copilotPromptInput) {
+          this.copilotPromptInput.value = promptText;
+          this.sendCurrentCopilotPrompt();
+        }
+      });
+    });
+
+    // Wire up Interactive Editor AI Command Bar
+    const btnAiEdit = document.getElementById("btn-editor-ai-edit");
+    if (btnAiEdit) {
+      btnAiEdit.addEventListener("click", () => this.toggleEditorAiBar());
+    }
+
+    const btnAiClose = document.getElementById("btn-editor-ai-close");
+    if (btnAiClose) {
+      btnAiClose.addEventListener("click", () => this.toggleEditorAiBar(false));
+    }
+
+    const btnAiSubmit = document.getElementById("btn-editor-ai-submit");
+    const inputAi = document.getElementById("editor-ai-input");
+    if (btnAiSubmit && inputAi) {
+      const submitAiEdit = () => {
+        const prompt = inputAi.value.trim();
+        if (!prompt) return;
+        inputAi.value = "";
+        this.toggleEditorAiBar(false);
+        const currentCode = this.editor ? this.editor.getValue() : "";
+        const selection = (this.editor && this.editor.getSelection() && this.editor.getModel())
+          ? this.editor.getModel().getValueInRange(this.editor.getSelection())
+          : "";
+        this.sendTaraStreamPrompt(prompt, this.activeFile, currentCode, selection, "edit");
+      };
+
+      btnAiSubmit.addEventListener("click", submitAiEdit);
+      inputAi.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          submitAiEdit();
+        } else if (e.key === "Escape") {
+          this.toggleEditorAiBar(false);
+        }
+      });
+    }
+
+    document.querySelectorAll(".editor-ai-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const editPrompt = chip.getAttribute("data-edit") || chip.textContent.trim();
+        this.toggleEditorAiBar(false);
+        const currentCode = this.editor ? this.editor.getValue() : "";
+        const selection = (this.editor && this.editor.getSelection() && this.editor.getModel())
+          ? this.editor.getModel().getValueInRange(this.editor.getSelection())
+          : "";
+        this.sendTaraStreamPrompt(editPrompt, this.activeFile, currentCode, selection, "edit");
+      });
+    });
+
+    // Global keyboard shortcut: Ctrl+K or Cmd+K
+    window.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        this.toggleEditorAiBar();
+      }
+    });
+
+    // Review bar action buttons (Accept / Undo)
+    const btnReviewAccept = document.getElementById("btn-review-accept");
+    if (btnReviewAccept) {
+      btnReviewAccept.addEventListener("click", () => {
+        this.hideEditorReviewBar();
+        this.appendLog("ANTIGRAVITY", "✓ Code changes accepted.");
+      });
+    }
+
+    const btnReviewUndo = document.getElementById("btn-review-undo");
+    if (btnReviewUndo) {
+      btnReviewUndo.addEventListener("click", () => {
+        if (this.editorRollbackCode && this.editor) {
+          this.editor.setValue(this.editorRollbackCode);
+          this.appendLog("ANTIGRAVITY", "↺ Reverted to previous code snapshot.");
+        }
+        this.hideEditorReviewBar();
+      });
+    }
   }
 
   sendCurrentCopilotPrompt() {
@@ -1088,19 +1261,14 @@ class TaraIDE {
     if (!prompt) return;
     this.copilotPromptInput.value = "";
     
-    // Auto-route to live code streaming if persona is live-stream, autonomous, or code generation request
-    const isCode = this.activePersona === "live-stream" || 
-                   this.activePersona === "antigravity" ||
-                   prompt.startsWith("/stream") || 
-                   prompt.startsWith("/live") ||
-                   /\b(write|code|generate|create|add|implement|refactor|fix|build|make)\b/i.test(prompt);
+    const cleanPrompt = prompt.replace(/^\/(stream|live)\s*/i, "");
+    const currentCode = this.editor ? this.editor.getValue() : "";
+    const selection = (this.editor && this.editor.getSelection() && this.editor.getModel())
+      ? this.editor.getModel().getValueInRange(this.editor.getSelection())
+      : "";
 
-    if (isCode) {
-      const cleanPrompt = prompt.replace(/^\/(stream|live)\s*/i, "");
-      this.sendTaraStreamPrompt(cleanPrompt || prompt, this.activeFile);
-    } else {
-      this.sendTaraPrompt(prompt, this.activeFile);
-    }
+    // Always route code edits, additions, and pair-programming prompts to live stream with active editor context
+    this.sendTaraStreamPrompt(cleanPrompt || prompt, this.activeFile, currentCode, selection, "edit");
   }
 
   setDockActive(dockBtn) {
