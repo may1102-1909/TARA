@@ -370,6 +370,7 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-16 | `tara_stream.py`, `main.py`, `app.js` | **Token-by-Token Antigravity Code Streaming into Monaco** | Built `/ws/tara/stream` WebSocket endpoint using Antigravity Agent async iterator `chat(stream=True)`. Integrated Monaco `executeEdits` buffer insertion and `revealLine` auto-scroller for live typing. |
 | 2026-09-16 | `app.js`, `tara_stream.py`, `learning.md` | **Live Code Writing on Approval Gate** | Connected HITL Approve action and Copilot prompt inputs directly to `/ws/tara/stream` so Monaco immediately opens `main.py` and live-types code character by character in real time. |
 | 2026-09-17 | `tara_stream.py`, `app.js`, `index.html`, `style.css` | **Interactive Code Editing & Pair-Programming System** | Transformed the editor and copilot chat into a fully interactive AI pair-programmer: context-aware editing of existing editor code, inline `Ctrl+K` AI command bar, Accept/Undo review banner, multi-model failover, and interactive quick action chips. |
+| 2026-09-19 | `prompt-bar.js`, `prompt-bar.css`, `PromptBar.jsx`, `index.html`, `app.js` | **React Bits PromptBar Component Integration** | Integrated the state-of-the-art React Bits `PromptBar` into the AI Copilot input area with SVG path morphing (Arrow ↔ Stop Square with squash & tilt), canvas drifting particle sparks on Max effort, interactive menus (@ sources, / commands, models picker, effort slider), auto-growing textarea, file chips, and voice dictation. |
 
 ---
 
@@ -382,3 +383,20 @@ Here is the journey of your project requirements document (PRD) from start to fi
   - **Interactive Copilot Chat & Quick Action Chips:** Wired up all Copilot chips (`⚡ Add TTL Eviction`, `🛡 SAST Hardening`, `🧪 Generate Tests`) and the prompt textarea so any user instruction in the chat drawer applies directly to the active Monaco Editor and replies with conversational confirmation.
 - **Why we built it:**
   - Coding assistants should be conversational pair-programmers, not static one-way generators. Developers can now talk directly to their code: asking TARA to add a function, edit a line, fix an edge case, or generate tests, and watch the editor update live with full undo control.
+
+---
+
+### Step 24: React Bits PromptBar Component Integration
+- **What was done:**
+  - **PromptBar UI & CSS (`backend/app/static/prompt-bar.css`):** Integrated the exact, beautiful stylesheet from React Bits with custom properties for dark themes (`--pb-bg`, `--pb-ink`, `--pb-menu`, `--pb-spark: #b39dff`), smooth cubic-bezier easing, glow highlights, popover menus, and slider controls.
+  - **Interactive Component Engine (`backend/app/static/prompt-bar.js`):** Implemented the full component specification:
+    - **SVG Path Morphing:** Dynamic polygon vertex interpolation between Arrow Up and Stop Square with mid-morph squash and rotational tilt physics.
+    - **Canvas Particle Sparks:** When effort is set to "Max", a dedicated background canvas spawns glowing drifting particles with sway and twinkle.
+    - **Multi-Menu Triggers:** Interactive `@` sources menu (Attach files, Current Monaco tab, Web search, SAST audit), `/` commands menu (`/summarize`, `/refactor`, `/test`, `/sast`, `/explain`), Model Picker (`Gemini 3.5 Flash`, `Gemini 3.5 Lite`, `Gemini 3.8 Flash`), and interactive Effort Slider (`Low`, `Medium`, `High`, `Extra`, `Max`).
+    - **Auto-Growing Textarea & Attachment Chips:** Expands dynamically up to 5 rows before scrolling, with removable file chip badges.
+    - **Voice Dictation:** Web Speech API integration with animated equalizer bars.
+  - **Component Source Export (`backend/app/static/components/`):** Created `PromptBar.jsx` and `PromptBar.css` for modular React reuse.
+  - **TARA Copilot Integration (`backend/app/static/app.js`):** Mounted `PromptBar` directly inside the AI Copilot input drawer (`#tara-prompt-bar-root`), wired suggestion chips, and linked the send/stop lifecycle to `/ws/tara/stream`.
+  - **Automated Verification:** Added `backend/tests/test_promptbar.py` (3 tests passed) verifying DOM inclusion, static asset availability, and component source files.
+- **Why we built it:**
+  - Replaces the plain HTML textarea in the AI Copilot drawer with a modern, high-polish prompt bar from React Bits, giving developers a tactile, animated, and feature-rich interface to direct TARA's autonomous agents.

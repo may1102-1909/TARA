@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/prompt-bar.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.js"></script>
 </head>
 <body class="dark-theme">
@@ -337,13 +338,8 @@
             <span class="input-target-label">Target:</span>
             <span class="input-target-file" id="copilot-target-display">main.py</span>
           </div>
-          <textarea id="copilot-prompt-input" rows="2" placeholder="Ask TARA to inspect, edit, or generate code..."></textarea>
-          <div class="copilot-input-footer">
-            <span class="keyboard-hint">↵ to send</span>
-            <button id="btn-send-copilot" class="btn-copilot-send" title="Send">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-            </button>
-          </div>
+          <!-- React Bits PromptBar Component -->
+          <div id="tara-prompt-bar-root"></div>
         </div>
       </aside>
     </div>
@@ -397,6 +393,7 @@
     </div>
 
   </div>
+  <script src="/static/prompt-bar.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/theme.js"></script>
 </body>

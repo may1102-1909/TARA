@@ -132,6 +132,28 @@ class TaraIDE {
     this.copilotChips = document.querySelectorAll(".copilot-chip");
     this.personaChips = document.querySelectorAll(".persona-chip");
 
+    // Initialize React Bits PromptBar component
+    this.promptBar = null;
+    if (window.PromptBarComponent) {
+      this.promptBar = new window.PromptBarComponent("#tara-prompt-bar-root", {
+        placeholder: "Ask TARA to inspect, edit, or generate code…",
+        defaultModel: "gemini-3.5-flash",
+        defaultEffort: "High",
+        onSend: (text, payload) => {
+          this.handlePromptBarSend(text, payload);
+        },
+        onStop: () => {
+          this.handlePromptBarStop();
+        },
+        onAttach: () => {
+          return this.activeFile || "main.py";
+        }
+      });
+      if (this.activeFile && this.promptBar) {
+        this.promptBar.setTargetFile(this.activeFile);
+      }
+    }
+
     // Modal elements (Approval Gate)
     this.approvalModal = document.getElementById("approval-gate-modal");
     this.modalVerdictText = document.getElementById("modal-verdict-text");
@@ -473,6 +495,9 @@ class TaraIDE {
         if (this.stageStatusText) {
           this.stageStatusText.textContent = data.is_edit ? "Edit Applied ✓" : "Live Stream Finished";
         }
+        if (this.promptBar) {
+          this.promptBar.setBusy(false);
+        }
         // Cache code to current session state
         if (this.editor && this.activeFile && this.currentSession) {
           const val = this.editor.getValue();
@@ -490,12 +515,18 @@ class TaraIDE {
         if (data.message) {
           this.appendCopilotBotFormattedMessage(data.message);
         }
+        if (this.promptBar) {
+          this.promptBar.setBusy(false);
+        }
         break;
 
       case "ERROR":
         this.appendLog("ANTIGRAVITY", `❌ Stream error: ${data.message}`);
         if (this.stageStatusText) {
           this.stageStatusText.textContent = "Stream Error";
+        }
+        if (this.promptBar) {
+          this.promptBar.setBusy(false);
         }
         break;
     }
@@ -525,6 +556,45 @@ class TaraIDE {
 
     this.streamSocket.send(JSON.stringify(payload));
     this.appendLog("ANTIGRAVITY", `📡 Interactive edit prompt dispatched: "${prompt}"`);
+  }
+
+  handlePromptBarSend(text, payload = {}) {
+    if (!text) return;
+    if (this.promptBar) {
+      this.promptBar.setBusy(true);
+    }
+
+    const cleanPrompt = text.replace(/^\/(stream|live)\s*/i, "");
+    const currentCode = this.editor ? this.editor.getValue() : "";
+    const selection = (this.editor && this.editor.getSelection() && this.editor.getModel())
+      ? this.editor.getModel().getValueInRange(this.editor.getSelection())
+      : "";
+
+    if (payload.attachments && payload.attachments.length) {
+      this.appendLog("ANTIGRAVITY", `📎 Attached files: ${payload.attachments.join(", ")}`);
+    }
+
+    if (payload.model || payload.effort) {
+      this.appendLog("ANTIGRAVITY", `⚙️ Engine: ${payload.model || "Gemini 3.5 Flash"} | Effort: ${payload.effort || "High"}`);
+    }
+
+    this.sendTaraStreamPrompt(
+      cleanPrompt || text,
+      payload.targetFile || this.activeFile || "main.py",
+      currentCode,
+      selection,
+      "edit"
+    );
+  }
+
+  handlePromptBarStop() {
+    if (this.streamSocket && this.streamSocket.readyState === WebSocket.OPEN) {
+      this.streamSocket.send(JSON.stringify({ action: "cancel", session_id: this.sessionId }));
+    }
+    if (this.promptBar) {
+      this.promptBar.setBusy(false);
+    }
+    this.appendLog("ANTIGRAVITY", "🛑 User stopped active generation.");
   }
 
   toggleEditorAiBar(show) {
@@ -1002,8 +1072,12 @@ class TaraIDE {
       chip.addEventListener("click", () => {
         const prompt = chip.dataset.prompt;
         if (prompt) {
-          this.copilotPromptInput.value = prompt;
-          this.sendCurrentCopilotPrompt();
+          if (this.promptBar) {
+            this.promptBar.setDraft(prompt);
+          } else if (this.copilotPromptInput) {
+            this.copilotPromptInput.value = prompt;
+            this.sendCurrentCopilotPrompt();
+          }
         }
       });
     });
@@ -1018,14 +1092,18 @@ class TaraIDE {
       });
     });
 
-    // Copilot Send Button & Enter key
-    this.btnSendCopilot.addEventListener("click", () => this.sendCurrentCopilotPrompt());
-    this.copilotPromptInput.addEventListener("keydown", (e) => {
-      if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
-        e.preventDefault();
-        this.sendCurrentCopilotPrompt();
-      }
-    });
+    // Legacy Copilot Send Button & Enter key (if present)
+    if (this.btnSendCopilot) {
+      this.btnSendCopilot.addEventListener("click", () => this.sendCurrentCopilotPrompt());
+    }
+    if (this.copilotPromptInput) {
+      this.copilotPromptInput.addEventListener("keydown", (e) => {
+        if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) {
+          e.preventDefault();
+          this.sendCurrentCopilotPrompt();
+        }
+      });
+    }
 
     // Character Counter on PRD Textarea
     this.prdTextarea.addEventListener("input", () => {
@@ -1682,6 +1760,9 @@ class TaraIDE {
     this.activeFilenamePill.textContent = filename;
     if (this.copilotTargetDisplay) {
       this.copilotTargetDisplay.textContent = filename;
+    }
+    if (this.promptBar) {
+      this.promptBar.setTargetFile(filename);
     }
 
     document.querySelectorAll(".file-tree-item").forEach((el) => {
