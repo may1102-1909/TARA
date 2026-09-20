@@ -628,6 +628,21 @@ class TaraIDE {
     this.appendLog("ANTIGRAVITY", "🛑 User stopped active generation.");
   }
 
+  handlePreviewFixError(prompt, errorData = {}) {
+    if (!prompt) return;
+    this.appendLog("ANTIGRAVITY", `🛠️ Received Live Preview Error Boundary request: "${errorData.message || prompt}"`);
+
+    if (this.promptBar) {
+      this.promptBar.setDraft(prompt);
+      this.handlePromptBarSend(prompt, {
+        targetFile: errorData.source || this.activeFile || "main.py",
+        effort: "High",
+      });
+    } else {
+      this.sendTaraStreamPrompt(prompt, errorData.source || this.activeFile || "main.py");
+    }
+  }
+
   toggleEditorAiBar(show) {
     const bar = document.getElementById("editor-ai-bar");
     if (!bar) return;

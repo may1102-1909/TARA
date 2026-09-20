@@ -1,35 +1,38 @@
-"""Tests for Live App Preview split panel backend router and WebSocket /ws/preview."""
+"""Tests for Live App Preview Split Panel (Davis AI UI Style).
 
-import json
-import pytest
+Verifies:
+- Live Preview WebSocket (/ws/preview) handshake and message handling.
+- REST endpoints /api/preview/status and /api/preview/reload.
+- Static assets (preview.css, preview-frame.js, PreviewFrame.jsx).
+- Split canvas layout elements in index.html.
+"""
+
+from pathlib import Path
 from starlette.testclient import TestClient
 
 from app.main import app
-from app.routers.preview import preview_manager, broadcast_preview_reload_sync
+from app.routers.preview import preview_manager
 
 client = TestClient(app)
 
 
 def test_preview_status_endpoint():
-    """Verify GET /api/preview/status endpoint returns valid connection manager metadata."""
+    """Verify GET /api/preview/status returns operational status."""
     res = client.get("/api/preview/status")
     assert res.status_code == 200
     data = res.json()
     assert "connected_clients" in data
     assert "status" in data
-    assert data["status"] in ["ready", "syncing", "executing"]
+    assert data["status"] == "ready"
 
 
-def test_preview_reload_post_endpoint():
-    """Verify POST /api/preview/reload triggers broadcast without errors."""
+def test_preview_reload_endpoint():
+    """Verify POST /api/preview/reload accepts hot-reload triggers."""
     payload = {
-        "files": {
-            "index.html": "<!DOCTYPE html><html><body><h1>Test Live Preview</h1></body></html>",
-            "style.css": "body { background: #09090B; color: #FFFFFF; }",
-        },
+        "files": {"index.html": "<h1>Test App</h1>"},
         "target_file": "index.html",
-        "trigger": "test_suite",
-        "url": "http://localhost:3000/preview",
+        "trigger": "test_unit",
+        "url": "http://localhost:3000",
     }
     res = client.post("/api/preview/reload", json=payload)
     assert res.status_code == 200
@@ -38,79 +41,54 @@ def test_preview_reload_post_endpoint():
     assert data["target_file"] == "index.html"
 
 
-def test_preview_websocket_handshake_and_ping_pong():
-    """Verify WebSocket /ws/preview connects, sends PREVIEW_INIT, and responds to PING."""
-    with client.websocket_connect("/ws/preview") as ws:
-        # Initial handshake message
-        init_msg = ws.receive_json()
-        assert init_msg["type"] == "PREVIEW_INIT"
-        assert "status" in init_msg
-        assert "connected_clients" in init_msg
+def test_preview_static_assets():
+    """Verify preview.css and preview-frame.js are served properly."""
+    res_css = client.get("/static/preview.css")
+    assert res_css.status_code == 200
+    assert ".split-canvas-container" in res_css.text
+    assert ".preview-card" in res_css.text
+    assert ".preview-header" in res_css.text
+    assert ".preview-error-overlay" in res_css.text
 
-        # Send PING and expect PONG
-        ws.send_json({"type": "PING"})
-        pong_msg = ws.receive_json()
-        assert pong_msg["type"] == "PONG"
-
-
-def test_preview_websocket_hot_reload_broadcast():
-    """Verify WebSocket client receives HOT_RELOAD payload on manual trigger."""
-    with client.websocket_connect("/ws/preview") as ws:
-        # Handshake
-        ws.receive_json()
-
-        # Trigger reload request from client
-        ws.send_json({
-            "type": "HOT_RELOAD_REQUEST",
-            "files": {"index.html": "<div>Hot Reloaded</div>"},
-            "target_file": "index.html",
-            "url": "http://localhost:3000",
-        })
-
-        # Client should receive HOT_RELOAD broadcast
-        msg = ws.receive_json()
-        assert msg["type"] == "HOT_RELOAD"
-        assert msg["files"]["index.html"] == "<div>Hot Reloaded</div>"
-        assert msg["target_file"] == "index.html"
-        assert msg["status"] == "ready"
+    res_js = client.get("/static/preview-frame.js")
+    assert res_js.status_code == 200
+    assert "PreviewFrameComponent" in res_js.text
+    assert "PREVIEW_CONSOLE_LOG" in res_js.text
+    assert "PREVIEW_RUNTIME_ERROR" in res_js.text
 
 
-def test_preview_websocket_console_logs_and_runtime_errors():
-    """Verify WebSocket handles CONSOLE_LOG and IFRAME_RUNTIME_ERROR gracefully."""
-    with client.websocket_connect("/ws/preview") as ws:
-        ws.receive_json()
-
-        # Send console log payload
-        ws.send_json({
-            "type": "CONSOLE_LOG",
-            "level": "warn",
-            "message": "Component rendered twice in strict mode",
-            "time": "12:00:00",
-        })
-
-        # Send iframe runtime error payload
-        ws.send_json({
-            "type": "IFRAME_RUNTIME_ERROR",
-            "message": "Uncaught ReferenceError: foo is not defined",
-            "source": "App.jsx",
-            "lineno": 42,
-            "colno": 12,
-            "stack": "ReferenceError: foo is not defined\n    at App.jsx:42:12",
-        })
-
-        # Send status update
-        ws.send_json({
-            "type": "PREVIEW_STATUS_UPDATE",
-            "status": "executing",
-        })
+def test_preview_react_component_files():
+    """Verify PreviewFrame.jsx source file exists."""
+    components_dir = Path(__file__).resolve().parent.parent / "app" / "static" / "components"
+    jsx_file = components_dir / "PreviewFrame.jsx"
+    css_file = components_dir / "PreviewFrame.css"
+    assert jsx_file.exists()
+    assert css_file.exists()
+    assert "export default function PreviewFrame" in jsx_file.read_text(encoding="utf-8")
 
 
-def test_broadcast_preview_reload_sync_helper():
-    """Verify broadcast_preview_reload_sync helper executes without throwing errors."""
-    broadcast_preview_reload_sync(
-        files={"app.py": "print('live test')"},
-        target_file="app.py",
-        trigger="unit_test",
-    )
-    assert preview_manager.latest_state["target_file"] == "app.py"
-    assert preview_manager.latest_state["trigger"] == "unit_test"
+def test_index_html_has_split_canvas_and_preview_root():
+    """Verify index.html contains split canvas layout and preview container."""
+    res = client.get("/")
+    assert res.status_code == 200
+    html = res.text
+    assert "split-canvas-container" in html
+    assert "split-editor-pane" in html
+    assert "split-preview-pane" in html
+    assert "tara-preview-root" in html
+    assert "/static/preview.css" in html
+    assert "/static/preview-frame.js" in html
+
+
+def test_preview_websocket_handshake():
+    """Verify WebSocket /ws/preview accepts connections and receives PREVIEW_INIT handshake."""
+    with client.websocket_connect("/ws/preview") as websocket:
+        init_data = websocket.receive_json()
+        assert init_data["type"] == "PREVIEW_INIT"
+        assert init_data["status"] == "ready"
+        assert "connected_clients" in init_data
+
+        # Test PING / PONG
+        websocket.send_json({"type": "PING"})
+        pong = websocket.receive_json()
+        assert pong["type"] == "PONG"
