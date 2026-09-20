@@ -208,6 +208,19 @@ class SessionManager:
             "node": "pipeline_complete",
             "snapshot": snapshot,
         })
+
+        try:
+            from app.routers.preview import broadcast_preview_reload_sync
+            final_files = snapshot.get("security_patches") or snapshot.get("qa_refactored_files") or snapshot.get("dev_code_files", {})
+            if final_files:
+                broadcast_preview_reload_sync(
+                    files=final_files,
+                    target_file="index.html" if "index.html" in final_files else "main.py",
+                    trigger="pipeline_complete",
+                )
+        except Exception as err:
+            logger.debug("Preview reload broadcast on pipeline completion error: %s", err)
+
         return snapshot
 
     def list_sessions(self) -> List[Dict[str, Any]]:

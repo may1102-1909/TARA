@@ -240,6 +240,18 @@ def developer_node(state: AgentState) -> Dict[str, Any]:
         "message": f"Generated {len(generated_files)} dynamic Python modules: {list(generated_files.keys())}",
     }
 
+    # Trigger Live App Preview hot-reload broadcast
+    try:
+        from app.routers.preview import broadcast_preview_reload_sync
+        target_f = "index.html" if "index.html" in generated_files else "main.py"
+        broadcast_preview_reload_sync(
+            files=generated_files,
+            target_file=target_f,
+            trigger="developer_agent",
+        )
+    except Exception as e:
+        logger.debug("Preview hot-reload broadcast notice in developer_node: %s", e)
+
     return {
         "dev_code_files": generated_files,
         "generated_code": generated_files,

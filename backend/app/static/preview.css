@@ -1,0 +1,650 @@
+/* ==========================================================================
+   TARA IDE — Live App Preview Split Panel (Davis AI Style)
+   Design: Monochrome Obsidian (#09090B, #121215, 1px #27272A)
+   ========================================================================== */
+
+/* ── 2-Pane Split Canvas Layout ── */
+.split-canvas-container {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-base, #09090B);
+}
+
+.split-pane {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  min-width: 220px;
+}
+
+.split-pane-left {
+  flex: 1 1 50%;
+  border-right: 1px solid var(--border, #27272A);
+  z-index: 2;
+}
+
+.split-pane-right {
+  flex: 1 1 50%;
+  background: #09090B;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout Mode Overrides */
+.split-canvas-container[data-layout="code-only"] .split-pane-left {
+  flex: 1 1 100%;
+  border-right: none;
+}
+.split-canvas-container[data-layout="code-only"] .split-pane-right,
+.split-canvas-container[data-layout="code-only"] .split-resizer {
+  display: none !important;
+}
+
+.split-canvas-container[data-layout="preview-only"] .split-pane-left,
+.split-canvas-container[data-layout="preview-only"] .split-resizer {
+  display: none !important;
+}
+.split-canvas-container[data-layout="preview-only"] .split-pane-right {
+  flex: 1 1 100%;
+}
+
+/* Draggable Split Resizer */
+.split-resizer {
+  width: 6px;
+  margin: 0 -3px;
+  cursor: col-resize;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: background 150ms ease;
+}
+.split-resizer:hover,
+.split-resizer.dragging {
+  background: rgba(255, 255, 255, 0.15);
+}
+.split-resizer .resizer-handle {
+  width: 2px;
+  height: 28px;
+  background: #3F3F46;
+  border-radius: 2px;
+  transition: background 150ms ease;
+}
+.split-resizer:hover .resizer-handle,
+.split-resizer.dragging .resizer-handle {
+  background: #FFFFFF;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+/* ── Live App Preview Card Container (Davis Style) ── */
+.tara-preview-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #09090B;
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  background: #121215;
+  border-left: 1px solid #27272A;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Top Status & Address Header Bar ── */
+.preview-header {
+  height: 40px;
+  min-height: 40px;
+  background: #121215;
+  border-bottom: 1px solid #27272A;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  gap: 8px;
+  z-index: 15;
+}
+
+.preview-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-url-box {
+  display: flex;
+  align-items: center;
+  background: #09090B;
+  border: 1px solid #27272A;
+  border-radius: 6px;
+  padding: 3px 8px;
+  gap: 6px;
+  flex: 1;
+  max-width: 280px;
+  min-width: 140px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.preview-url-box:focus-within {
+  border-color: #3F3F46;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.preview-url-icon {
+  color: #71717A;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.preview-url-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: #E4E4E7;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status Badge */
+.preview-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #18181B;
+  border: 1px solid #27272A;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #A1A1AA;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 150ms ease;
+}
+.preview-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22C55E;
+}
+.preview-status-badge.ready .preview-status-dot {
+  background: #22C55E;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+.preview-status-badge.syncing .preview-status-dot {
+  background: #3B82F6;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+  animation: pulse-sync 1s infinite alternate ease-in-out;
+}
+.preview-status-badge.executing .preview-status-dot {
+  background: #F59E0B;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  animation: pulse-executing 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-sync {
+  from { opacity: 0.4; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1.15); }
+}
+@keyframes pulse-executing {
+  from { opacity: 0.3; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.2); }
+}
+
+/* Right Controls (Viewports, Refresh, New Tab) */
+.preview-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Device Viewport Toggle Segment */
+.preview-viewport-toggle {
+  display: flex;
+  align-items: center;
+  background: #09090B;
+  border: 1px solid #27272A;
+  border-radius: 6px;
+  padding: 1px;
+  gap: 1px;
+}
+.viewport-btn {
+  background: transparent;
+  border: none;
+  color: #71717A;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  transition: all 150ms ease;
+}
+.viewport-btn:hover {
+  color: #E4E4E7;
+  background: #1C1C21;
+}
+.viewport-btn.active {
+  background: #27272A;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.preview-action-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #71717A;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+.preview-action-btn:hover {
+  background: #1C1C21;
+  border-color: #27272A;
+  color: #FFFFFF;
+}
+.preview-action-btn.spin svg {
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.console-toggle-btn {
+  position: relative;
+}
+.console-badge-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #EF4444;
+  color: #FFFFFF;
+  font-size: 0.55rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 0 4px;
+  height: 12px;
+  line-height: 12px;
+  min-width: 12px;
+  text-align: center;
+  display: none;
+}
+.console-badge-count.visible {
+  display: inline-block;
+}
+
+/* ── Viewport Stage & Canvas ── */
+.preview-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #09090B;
+  position: relative;
+  overflow: hidden;
+  padding: 12px;
+}
+
+/* Subtle dot grid pattern on preview stage background */
+.preview-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#27272A 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Device Viewport Frames */
+.preview-frame-wrapper {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1), max-width 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.preview-frame-wrapper[data-device="desktop"] {
+  width: 100%;
+  max-width: 100%;
+}
+.preview-frame-wrapper[data-device="tablet"] {
+  width: 768px;
+  max-width: 100%;
+  border: 1px solid #27272A;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+.preview-frame-wrapper[data-device="mobile"] {
+  width: 375px;
+  max-width: 100%;
+  border: 4px solid #27272A;
+  border-radius: 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #FFFFFF;
+  border-radius: 0;
+  display: block;
+}
+.preview-frame-wrapper[data-device="mobile"] .preview-iframe {
+  border-radius: 24px;
+}
+.preview-frame-wrapper[data-device="tablet"] .preview-iframe {
+  border-radius: 11px;
+}
+
+/* ── Interactive Console Drawer ── */
+.preview-console-drawer {
+  height: 150px;
+  min-height: 150px;
+  background: #121215;
+  border-top: 1px solid #27272A;
+  display: flex;
+  flex-direction: column;
+  transition: height 180ms ease, min-height 180ms ease;
+  z-index: 10;
+}
+.preview-console-drawer.collapsed {
+  height: 28px;
+  min-height: 28px;
+}
+
+.preview-console-bar {
+  height: 28px;
+  min-height: 28px;
+  background: #18181B;
+  border-bottom: 1px solid #27272A;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.preview-console-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #A1A1AA;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.preview-console-filters {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.console-filter-btn {
+  background: transparent;
+  border: none;
+  color: #71717A;
+  font-size: 0.62rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.console-filter-btn:hover {
+  color: #E4E4E7;
+}
+.console-filter-btn.active {
+  background: #27272A;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.preview-console-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preview-console-stream {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #121215;
+}
+
+.preview-log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  word-break: break-all;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.preview-log-entry.info { color: #A1A1AA; }
+.preview-log-entry.warn { color: #F59E0B; background: rgba(245, 158, 11, 0.06); }
+.preview-log-entry.error { color: #EF4444; background: rgba(239, 68, 68, 0.08); }
+.preview-log-time {
+  color: #52525B;
+  flex-shrink: 0;
+}
+.preview-log-tag {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  flex-shrink: 0;
+}
+
+/* ── Dark-mode Error Boundary Alert Card Overlay ── */
+.preview-error-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.preview-error-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.preview-error-card {
+  width: 100%;
+  max-width: 520px;
+  background: #121215;
+  border: 1px solid #EF4444;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(239, 68, 68, 0.15), 0 0 0 1px rgba(239, 68, 68, 0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-error-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+}
+.preview-error-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #EF4444;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.preview-error-close {
+  background: transparent;
+  border: none;
+  color: #A1A1AA;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+.preview-error-close:hover {
+  color: #FFFFFF;
+}
+
+.preview-error-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.preview-error-msg {
+  color: #FFFFFF;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.preview-error-location {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+.preview-error-stack {
+  max-height: 120px;
+  overflow-y: auto;
+  background: #09090B;
+  border: 1px solid #27272A;
+  border-radius: 6px;
+  padding: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  line-height: 1.4;
+  color: #A1A1AA;
+  white-space: pre-wrap;
+}
+
+.preview-error-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #18181B;
+  border-top: 1px solid #27272A;
+}
+
+.btn-fix-error {
+  background: #FFFFFF;
+  color: #09090B;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 150ms ease;
+}
+.btn-fix-error:hover {
+  background: #E4E4E7;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.btn-dismiss-error {
+  background: transparent;
+  color: #A1A1AA;
+  border: 1px solid #27272A;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.btn-dismiss-error:hover {
+  color: #FFFFFF;
+  border-color: #3F3F46;
+}
+
+/* ── Top Bar Split Controls ── */
+.canvas-layout-toggle {
+  display: flex;
+  align-items: center;
+  background: #09090B;
+  border: 1px solid #27272A;
+  border-radius: 6px;
+  padding: 1px;
+  gap: 1px;
+}
+.layout-btn {
+  background: transparent;
+  border: none;
+  color: #71717A;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: all 150ms ease;
+}
+.layout-btn:hover {
+  color: #E4E4E7;
+  background: #1C1C21;
+}
+.layout-btn.active {
+  background: #27272A;
+  color: #FFFFFF;
+}

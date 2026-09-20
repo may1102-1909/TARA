@@ -371,6 +371,7 @@ Here is the journey of your project requirements document (PRD) from start to fi
 | 2026-09-16 | `app.js`, `tara_stream.py`, `learning.md` | **Live Code Writing on Approval Gate** | Connected HITL Approve action and Copilot prompt inputs directly to `/ws/tara/stream` so Monaco immediately opens `main.py` and live-types code character by character in real time. |
 | 2026-09-17 | `tara_stream.py`, `app.js`, `index.html`, `style.css` | **Interactive Code Editing & Pair-Programming System** | Transformed the editor and copilot chat into a fully interactive AI pair-programmer: context-aware editing of existing editor code, inline `Ctrl+K` AI command bar, Accept/Undo review banner, multi-model failover, and interactive quick action chips. |
 | 2026-09-19 | `prompt-bar.js`, `prompt-bar.css`, `PromptBar.jsx`, `index.html`, `app.js` | **React Bits PromptBar Component Integration** | Integrated the state-of-the-art React Bits `PromptBar` into the AI Copilot input area with SVG path morphing (Arrow ↔ Stop Square with squash & tilt), canvas drifting particle sparks on Max effort, interactive menus (@ sources, / commands, models picker, effort slider), auto-growing textarea, file chips, and voice dictation. |
+| 2026-09-20 | `preview.py`, `preview-frame.js`, `preview.css`, `PreviewFrame.jsx`, `app.js` | **Live App Preview Split Panel (Davis AI Style)** | Added real-time sandboxed Live App Preview 2-pane split panel with Monochrome Obsidian design (#09090B, #121215, 1px #27272A), draggable resizer, Monaco auto-layout, URL bar, live status badge ("● Syncing", "● Ready", "○ Executing"), device viewports (Desktop 100%, Tablet 768px, Mobile 375px), virtual hot reload with scroll restoration, collapsible console drawer, dark-mode runtime error overlay with "Ask TARA to Fix Error", and WebSocket `/ws/preview` pipeline synchronization. |
 
 ---
 
@@ -400,3 +401,33 @@ Here is the journey of your project requirements document (PRD) from start to fi
   - **Automated Verification:** Added `backend/tests/test_promptbar.py` (3 tests passed) verifying DOM inclusion, static asset availability, and component source files.
 - **Why we built it:**
   - Replaces the plain HTML textarea in the AI Copilot drawer with a modern, high-polish prompt bar from React Bits, giving developers a tactile, animated, and feature-rich interface to direct TARA's autonomous agents.
+
+---
+
+### Step 25: Live App Preview Split Panel (Davis AI Agent Platform Style)
+- **What was done:**
+  - **Canvas & Layout Split (Davis UI Style):**
+    - Built a flexible 2-pane workspace container (`.split-canvas-container`) housing the Monaco Code Editor on the left and the Live App Preview on the right.
+    - Designed the panel in our signature **Monochrome Obsidian** design aesthetic (`#09090B` background, `#121215` card container, 1px `#27272A` zinc border).
+    - Added an interactive draggable splitter bar (`#split-resizer`) with visual pill handle that lights up white on drag and allows fluid 60fps resizing while continually triggering `monaco.editor.layout()`.
+    - Added 3-way layout mode toggle buttons: `◧ Split` (restores 50/50 split), `▢ Code` (expands Monaco to 100%), and `▣ Preview` (expands Live Preview to 100%).
+  - **Preview Header Bar (`.preview-header`):**
+    - Left side: Monospace target URL input bar (`http://localhost:3000` / `/preview`) with security lock icon, and a live status badge (`pv-status-badge`) supporting `● Ready` (glowing green), `● Syncing` (pulsing blue), and `○ Executing` (pulsing amber).
+    - Right side: Device Viewport toggles for Desktop (100%), Tablet (768px with card bezel), and Mobile (375px with realistic phone chassis and notch border), plus an animated hot-reload Refresh button, and an Open in New Tab icon button.
+  - **Sandboxed Live Preview Engine (`PreviewFrame.jsx` / `PreviewFrame.js`):**
+    - Sandboxed `<iframe>` with strict isolated execution policies (`sandbox="allow-scripts allow-same-origin allow-modals allow-forms"`).
+    - **Virtual Hot-Module Reloading:** Preserves `window.scrollY` position before re-rendering and restores it smoothly upon `iframe.onload`, preventing jarring scroll resets.
+    - **Polyglot Bundle Engine:** Handles HTML/CSS/JS frontend code automatically, or renders an interactive live API runner test harness for Python backend microservices.
+    - **Injected Communication Bridge:** Intercepts `console.log`, `console.info`, `console.warn`, `console.error`, `window.onerror`, and `window.onunhandledrejection` inside the iframe and forwards them via `postMessage`.
+  - **Interactive Console Drawer & Error Boundary Overlay:**
+    - Collapsible bottom drawer inside the Preview Panel for "Preview Console Logs" with filter buttons (`All`, `Logs`, `Warnings`, `Errors`), clear button, and red unread error count badge.
+    - Dark-mode Error Boundary Alert Card overlaid on the preview canvas with clean error location, line/col numbers, and stack trace.
+    - Added a one-click **"✨ Ask TARA to Fix Error"** quick-action button that feeds the exact runtime error, file path, and stack trace directly into TARA's developer agent and streaming pipeline.
+  - **Developer Agent & WebSocket Pipeline Synchronization:**
+    - FastAPI router (`backend/app/routers/preview.py`) and direct WebSocket route `/ws/preview` for bidirectional hot-reload broadcasting.
+    - Hooked into `tara_stream.py`, `developer_node`, and `session_manager.py` so whenever autonomous agents write code, the preview reloads automatically in real time.
+    - Exported both modular React component (`backend/app/static/components/PreviewFrame.jsx` and `frontend/PreviewFrame.jsx`) and production Vanilla JS class (`preview-frame.js` and `frontend/PreviewFrame.js`).
+    - Added comprehensive automated test suite `backend/tests/test_preview.py` (6 passing tests).
+- **Why we built it:**
+  - Provides developers and agents with instantaneous visual feedback of code changes as they are streamed or edited, closing the feedback loop with automated error detection and one-click bug fixing.
+

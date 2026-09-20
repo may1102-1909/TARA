@@ -166,6 +166,27 @@ class TaraIDE {
     this.btnGateApprove = document.getElementById("btn-gate-approve");
     this.btnGateRequestChanges = document.getElementById("btn-gate-request-changes");
     this.btnGateReject = document.getElementById("btn-gate-reject");
+
+    // Split Canvas & Live Preview elements (Davis UI Style)
+    this.splitCanvasContainer = document.getElementById("split-canvas-container");
+    this.splitEditorPane = document.getElementById("split-editor-pane");
+    this.splitPreviewPane = document.getElementById("split-preview-pane");
+    this.splitResizer = document.getElementById("split-resizer");
+
+    // Live App Preview Component instance
+    this.previewFrame = null;
+    if (window.PreviewFrameComponent) {
+      this.previewFrame = new window.PreviewFrameComponent("#tara-preview-root", {
+        defaultUrl: "http://localhost:3000",
+        defaultDevice: "desktop",
+        onFixError: (prompt, errorData) => {
+          this.handlePreviewFixError(prompt, errorData);
+        },
+        onStatusChange: (status, label) => {
+          console.log(`[Preview Status] ${status} - ${label}`);
+        },
+      });
+    }
   }
 
   initMonaco() {
@@ -193,12 +214,15 @@ class TaraIDE {
 
         // Live Code Editing sync
         this.editor.onDidChangeModelContent(() => {
+          const updated = this.editor.getValue();
           if (this.activeFile && this.currentSession) {
-            const updated = this.editor.getValue();
             if (!this.currentSession.security_patches) this.currentSession.security_patches = {};
             this.currentSession.security_patches[this.activeFile] = updated;
             if (this.currentSession.qa_refactored_files) this.currentSession.qa_refactored_files[this.activeFile] = updated;
             if (this.currentSession.dev_code_files) this.currentSession.dev_code_files[this.activeFile] = updated;
+          }
+          if (this.previewFrame && this.activeFile) {
+            this.previewFrame.updateFile(this.activeFile, updated);
           }
         });
 
@@ -503,6 +527,12 @@ class TaraIDE {
           const val = this.editor.getValue();
           if (!this.currentSession.dev_code_files) this.currentSession.dev_code_files = {};
           this.currentSession.dev_code_files[this.activeFile] = val;
+        }
+
+        // Trigger Live App Preview hot reload on stream completion
+        if (this.previewFrame && this.editor) {
+          const target = data.file_path || this.activeFile || "main.py";
+          this.previewFrame.updateFile(target, this.editor.getValue());
         }
 
         // Show review action bar if it was an edit
@@ -1332,6 +1362,114 @@ class TaraIDE {
         this.hideEditorReviewBar();
       });
     }
+
+    // Davis Style Canvas Layout Split Toggles (Split | Code | Preview)
+    const layoutBtns = document.querySelectorAll(".layout-btn");
+    layoutBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const layout = btn.dataset.layout || "split";
+        this.setLayoutMode(layout);
+      });
+    });
+
+    // Draggable Split Resizer between Monaco and Preview
+    this.initSplitResizer();
+  }
+
+  setLayoutMode(layout) {
+    if (!this.splitCanvasContainer) return;
+    this.splitCanvasContainer.dataset.layout = layout;
+
+    document.querySelectorAll(".layout-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.layout === layout);
+    });
+
+    if (layout === "split") {
+      if (this.splitEditorPane) this.splitEditorPane.style.flex = "1 1 50%";
+      if (this.splitPreviewPane) this.splitPreviewPane.style.flex = "1 1 50%";
+    }
+
+    // Smoothly re-layout Monaco editor on mode switch
+    setTimeout(() => {
+      if (this.editor) this.editor.layout();
+      if (this.diffEditorPrimary) this.diffEditorPrimary.layout();
+    }, 60);
+  }
+
+  initSplitResizer() {
+    if (!this.splitResizer || !this.splitCanvasContainer || !this.splitEditorPane || !this.splitPreviewPane) return;
+
+    let isDragging = false;
+
+    const onMouseDown = (e) => {
+      if (this.splitCanvasContainer.dataset.layout !== "split") return;
+      isDragging = true;
+      this.splitResizer.classList.add("dragging");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+    };
+
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      const containerRect = this.splitCanvasContainer.getBoundingClientRect();
+      const offsetX = e.clientX - containerRect.left;
+      const containerWidth = containerRect.width;
+
+      const minWidth = 240;
+      if (offsetX < minWidth || offsetX > containerWidth - minWidth) return;
+
+      const leftPercent = (offsetX / containerWidth) * 100;
+      const rightPercent = 100 - leftPercent;
+
+      this.splitEditorPane.style.flex = `0 0 ${leftPercent}%`;
+      this.splitPreviewPane.style.flex = `0 0 ${rightPercent}%`;
+
+      if (this.editor) {
+        this.editor.layout();
+      }
+      if (this.diffEditorPrimary) {
+        this.diffEditorPrimary.layout();
+      }
+    };
+
+    const onMouseUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      this.splitResizer.classList.remove("dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      if (this.editor) {
+        this.editor.layout();
+      }
+      if (this.diffEditorPrimary) {
+        this.diffEditorPrimary.layout();
+      }
+    };
+
+    this.splitResizer.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }
+
+  handlePreviewFixError(prompt, errorData) {
+    this.appendLog("ANTIGRAVITY", `🛠️ Preview Error Fix Triggered: "${errorData.message}" in ${errorData.source || this.activeFile}`);
+
+    // If Copilot panel is collapsed, open it
+    if (this.copilotPanel && this.copilotPanel.classList.contains("collapsed")) {
+      this.copilotPanel.classList.remove("collapsed");
+    }
+
+    if (this.promptBar) {
+      this.promptBar.setInputText(prompt);
+      this.handlePromptBarSend(prompt, { model: "qwen2.5-coder", effort: "High" });
+    } else if (this.copilotPromptInput) {
+      this.copilotPromptInput.value = prompt;
+      this.sendCurrentCopilotPrompt();
+    } else {
+      const currentCode = this.editor ? this.editor.getValue() : "";
+      this.sendTaraStreamPrompt(prompt, this.activeFile, currentCode, null, "edit");
+    }
   }
 
   sendCurrentCopilotPrompt() {
@@ -1753,6 +1891,11 @@ class TaraIDE {
     if (snapshot.audit_summary) {
       this.renderAuditReport(snapshot.audit_summary, snapshot.security_findings);
     }
+
+    // Sync Live App Preview files
+    if (this.previewFrame) {
+      this.previewFrame.setFiles(finalFiles, this.activeFile);
+    }
   }
 
   selectFile(filename, content) {
@@ -1774,6 +1917,16 @@ class TaraIDE {
     } else {
       const fallback = document.getElementById("fallback-code-content");
       if (fallback) fallback.textContent = content || "";
+    }
+
+    // Sync Live App Preview
+    if (this.previewFrame) {
+      this.previewFrame.activeFile = filename;
+      if (content !== undefined) {
+        this.previewFrame.updateFile(filename, content);
+      } else {
+        this.previewFrame.hotReload();
+      }
     }
   }
 

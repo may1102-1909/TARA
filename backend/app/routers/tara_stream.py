@@ -299,6 +299,16 @@ async def tara_stream_websocket(websocket: WebSocket):
                 "summary": f"Applied changes for '{user_prompt}'",
             })
 
+            # Broadcast hot-reload to live preview clients
+            try:
+                from app.routers.preview import preview_manager
+                await preview_manager.broadcast_reload(
+                    target_file=file_path,
+                    trigger="tara_stream",
+                )
+            except Exception as prev_err:
+                logger.debug("Preview broadcast error: %s", prev_err)
+
             # Send a companion Copilot message so chat stream is interactive
             reply_msg = (
                 f"✅ I have edited `{file_path}` based on your instruction: **{user_prompt}**.\n\n"
