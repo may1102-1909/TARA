@@ -431,3 +431,31 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Provides developers and agents with instantaneous visual feedback of code changes as they are streamed or edited, closing the feedback loop with automated error detection and one-click bug fixing.
 
+---
+
+### Step 26: Real Sandbox Execution, Dynamic Reverse Proxy, and Runtime OpenAPI Route Discovery
+- **What was done:**
+  - **Real Execution in Sandbox (No Static Mocks):**
+    - Upgraded `LocalEphemeralSandbox` in `backend/app/sandbox/runner.py` with `start_server()`, `stop_server()`, and `is_server_alive()`.
+    - When the developer agent or security agent produces code, TARA writes the files into the isolated sandbox environment and actually boots the application with `uvicorn main:app --host 127.0.0.1 --port {ephemeral_port}`.
+    - If the project is a static frontend with `index.html`, it boots an isolated Python `http.server`.
+  - **Live Reverse Proxy Engine (`/api/preview/proxy/{session_id}/...`):**
+    - Added an asynchronous reverse proxy in `backend/app/routers/preview.py` that forwards all HTTP methods (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`, `HEAD`) directly to the running sandbox process on `127.0.0.1:{port}` using `httpx.AsyncClient`.
+    - Rewrote relative documentation URLs in Swagger UI (`/docs`) so that the interactive API explorer requests `/api/preview/proxy/{session_id}/openapi.json` and functions seamlessly inside the sandboxed iframe.
+  - **Runtime OpenAPI Route Discovery & Dynamic Quick-Test Bar:**
+    - Querying `/api/preview/routes/{session_id}` dynamically fetches `/openapi.json` directly from the live running server process.
+    - In the UI header (`preview-frame.js` and `PreviewFrame.jsx`), dynamically rendered quick-test route chips (`GET /health`, `POST /cache/set`, `GET /cache/get/{key}`, `POST /auth/token`, etc.) allow developers to trigger real requests against the sandbox with a single click.
+    - Output from these real requests streams directly into the Preview Console drawer.
+  - **Active Code Revision Badge:**
+    - Added `#pv-version-pill` in the preview header tracking active code versions in real time: `Build v1 (Dev Scaffold)`, `Build v2 (QA Refactored)`, `Build v3 (Security Hardened)`.
+  - **Strict Sandbox Process Lifecycle & Resource Cleanup:**
+    - When developers download their release package (`/api/sessions/{session_id}/download`), or when a session is deleted, `cleanup_session_sandbox()` immediately terminates the background server process and deletes all temporary workspace files.
+  - **Comprehensive Automated Verification (`backend/tests/test_live_sandbox_preview.py`):**
+    - Added 3 automated tests (all passing):
+      1. Cache PRD: boots real Uvicorn server, discovers cache routes, executes real proxied `GET /health`, `POST /cache/set`, and `GET /cache/get/user:101`, and validates Swagger UI `/docs` proxy rewriting.
+      2. Auth PRD (Back-to-back): proves differentiation by confirming genuinely distinct routes (`/auth/token`, `/auth/verify`, `/rate-limit`), issuing real JWT tokens, and verifying them.
+      3. Download Package Cleanup: verifies that exporting release `.zip` kills the Uvicorn process and removes it from the active registry.
+- **Why we built it:**
+  - Developers need to see their actual generated backend code running live—not a hardcoded, static mock. Real execution, reverse proxying, runtime route discovery, and Swagger UI integration turn TARA's Live Preview into a fully interactive testing environment.
+
+

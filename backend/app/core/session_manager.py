@@ -22,7 +22,12 @@ class SessionManager:
 
     def __init__(self):
         db_path = settings.storage_dir / "tara_sessions.db"
-        self.db_conn = sqlite3.connect(str(db_path), check_same_thread=False)
+        self.db_conn = sqlite3.connect(str(db_path), check_same_thread=False, timeout=30.0)
+        try:
+            self.db_conn.execute("PRAGMA journal_mode=WAL;")
+            self.db_conn.execute("PRAGMA busy_timeout=10000;")
+        except Exception:
+            pass
         self._init_metadata_table()
         self.checkpointer = SqliteSaver(self.db_conn)
         self.checkpointer.setup()
@@ -59,8 +64,14 @@ class SessionManager:
         return meta
 
     def delete_session(self, session_id: str) -> bool:
-        """Removes a session's checkpoints, writes, and metadata."""
+        """Removes a session's checkpoints, writes, metadata, and cleans up sandbox processes."""
         try:
+            try:
+                from app.sandbox.runner import cleanup_session_sandbox
+                cleanup_session_sandbox(session_id)
+            except Exception as sb_e:
+                logger.warning("Sandbox cleanup error on session delete %s: %s", session_id, sb_e)
+
             with self.db_conn:
                 self.db_conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (session_id,))
                 self.db_conn.execute("DELETE FROM writes WHERE thread_id = ?", (session_id,))
@@ -167,7 +178,7 @@ class SessionManager:
         action: str,
         notes: str = ""
     ) -> Dict[str, Any]:
-        """Resumes workflow from interrupt with the human decision."""
+        """Resumes workflow from interrupt with the human decision and launches live sandbox server."""
         config = self.get_config(session_id)
         resume_payload = {"action": action, "notes": notes}
         cmd = Command(resume=resume_payload)
@@ -181,6 +192,45 @@ class SessionManager:
                         "node": node_name,
                         "snapshot": current_snap,
                     })
+
+                    # If code was generated or refactored/hardened, sync into live sandbox
+                    if node_name in ("dev_qa_node", "security_node"):
+                        try:
+                            from app.sandbox.runner import get_or_create_session_sandbox
+                            from app.routers.preview import broadcast_preview_reload_sync
+
+                            stage_files = (
+                                current_snap.get("security_patches")
+                                or current_snap.get("qa_refactored_files")
+                                or current_snap.get("dev_code_files")
+                                or {}
+                            )
+                            if stage_files:
+                                sb = get_or_create_session_sandbox(session_id, stage_files)
+                                if sb.is_server_alive():
+                                    sb.restart_server()
+                                else:
+                                    sb.start_server()
+
+                                routes = sb.discover_openapi_routes()
+                                version_tag = (
+                                    "Build v2 (Security Patched)" if node_name == "security_node"
+                                    else "Build v1 (Dev/QA)"
+                                )
+                                proxy_url = f"/api/preview/proxy/{session_id}"
+                                target_f = "index.html" if "index.html" in stage_files else "main.py"
+                                broadcast_preview_reload_sync(
+                                    files=stage_files,
+                                    target_file=target_f,
+                                    trigger=node_name,
+                                    url=proxy_url,
+                                    session_id=session_id,
+                                    version_tag=version_tag,
+                                    routes=routes,
+                                    proxy_url=proxy_url,
+                                )
+                        except Exception as sandbox_err:
+                            logger.warning("Sandbox startup error during %s: %s", node_name, sandbox_err)
             
         snapshot = self.get_state_snapshot(session_id)
         now = time.time()
@@ -210,13 +260,28 @@ class SessionManager:
         })
 
         try:
+            from app.sandbox.runner import get_or_create_session_sandbox
             from app.routers.preview import broadcast_preview_reload_sync
             final_files = snapshot.get("security_patches") or snapshot.get("qa_refactored_files") or snapshot.get("dev_code_files", {})
             if final_files:
+                sb = get_or_create_session_sandbox(session_id, final_files)
+                if not sb.is_server_alive():
+                    sb.start_server()
+                routes = sb.discover_openapi_routes()
+                version_tag = (
+                    "Build v2 (Security Hardened)" if snapshot.get("security_patches")
+                    else "Build v1 (Dev/QA)"
+                )
+                proxy_url = f"/api/preview/proxy/{session_id}"
                 broadcast_preview_reload_sync(
                     files=final_files,
                     target_file="index.html" if "index.html" in final_files else "main.py",
                     trigger="pipeline_complete",
+                    url=proxy_url,
+                    session_id=session_id,
+                    version_tag=version_tag,
+                    routes=routes,
+                    proxy_url=proxy_url,
                 )
         except Exception as err:
             logger.debug("Preview reload broadcast on pipeline completion error: %s", err)

@@ -177,7 +177,8 @@ class TaraIDE {
     this.previewFrame = null;
     if (window.PreviewFrameComponent) {
       this.previewFrame = new window.PreviewFrameComponent("#tara-preview-root", {
-        defaultUrl: "http://localhost:3000",
+        sessionId: this.sessionId,
+        defaultUrl: `/api/preview/proxy/${this.sessionId}/docs`,
         defaultDevice: "desktop",
         onFixError: (prompt, errorData) => {
           this.handlePreviewFixError(prompt, errorData);
@@ -1894,6 +1895,10 @@ class TaraIDE {
 
     // Sync Live App Preview files
     if (this.previewFrame) {
+      const versionTag = snapshot.security_patches
+        ? "Build v2 (Security Hardened)"
+        : (snapshot.qa_refactored_files ? "Build v1 (Dev/QA)" : "Live Sandbox");
+      this.previewFrame.setSession(this.sessionId, versionTag);
       this.previewFrame.setFiles(finalFiles, this.activeFile);
     }
   }

@@ -16,7 +16,9 @@ import './PreviewFrame.css';
 export default function PreviewFrame({
   url = 'http://localhost:3000',
   files = {},
-  activeFile = 'index.html',
+  activeFile = 'main.py',
+  sessionId = null,
+  versionTag: initialVersionTag = 'Live Sandbox',
   onFixError = () => {},
   status: initialStatus = 'ready',
   wsUrl = null,
@@ -24,6 +26,8 @@ export default function PreviewFrame({
   const [device, setDevice] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
   const [currentUrl, setCurrentUrl] = useState(url);
   const [status, setStatus] = useState(initialStatus);
+  const [versionTag, setVersionTag] = useState(initialVersionTag);
+  const [routes, setRoutes] = useState([]);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [logs, setLogs] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -31,11 +35,20 @@ export default function PreviewFrame({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [workspaceFiles, setWorkspaceFiles] = useState(files);
   const [currentActiveFile, setCurrentActiveFile] = useState(activeFile);
+  const [currentSessionId, setCurrentSessionId] = useState(sessionId);
 
   const iframeRef = useRef(null);
   const lastScrollY = useRef(0);
   const socketRef = useRef(null);
   const consoleStreamRef = useRef(null);
+
+  useEffect(() => {
+    if (sessionId) setCurrentSessionId(sessionId);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (initialVersionTag) setVersionTag(initialVersionTag);
+  }, [initialVersionTag]);
 
   // Sync props to state if provided
   useEffect(() => {
@@ -81,6 +94,9 @@ export default function PreviewFrame({
           const data = JSON.parse(event.data);
           if (data.type === 'HOT_RELOAD') {
             setStatus('syncing');
+            if (data.session_id) setCurrentSessionId(data.session_id);
+            if (data.version_tag) setVersionTag(data.version_tag);
+            if (data.routes && data.routes.length) setRoutes(data.routes);
             if (data.files) setWorkspaceFiles(data.files);
             if (data.target_file) setCurrentActiveFile(data.target_file);
             if (data.url) setCurrentUrl(data.url);
@@ -330,10 +346,101 @@ export default function PreviewFrame({
       `;
     }
 
-    // 3. Inject into iframe
-    iframeRef.current.srcdoc = html;
+  const fetchDiscoveredRoutes = useCallback(async (sid) => {
+    if (!sid) return;
+    try {
+      const res = await fetch(`/api/preview/routes/${sid}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.version_tag) setVersionTag(data.version_tag);
+      if (data.routes) setRoutes(data.routes);
+    } catch (e) {
+      console.debug('Route discovery error:', e);
+    }
+  }, []);
 
-    // 4. Restore scroll after load
+  const executeQuickTest = async (method, rawPath) => {
+    if (!currentSessionId) return;
+    setStatus('executing');
+    let targetPath = rawPath.replace('{key}', 'test-key').replace('{item_id}', '1');
+    const targetUrl = `/api/preview/proxy/${currentSessionId}${targetPath}`;
+
+    let body = null;
+    const headers = {};
+    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      headers['Content-Type'] = 'application/json';
+      if (rawPath.includes('cache/set')) {
+        body = JSON.stringify({ key: 'test-key', value: 'hello from TARA quick test', ttl: 60 });
+      } else if (rawPath.includes('auth/token')) {
+        body = JSON.stringify({ username: 'developer', password: 'tara_secure_pass', role: 'admin' });
+      } else if (rawPath.includes('auth/verify')) {
+        body = JSON.stringify({ token: 'test_token' });
+      } else if (rawPath.includes('items')) {
+        body = JSON.stringify({ name: 'Quick Test Item', description: 'Created via quick test button', payload: { active: true } });
+      } else {
+        body = JSON.stringify({ test: true });
+      }
+    }
+
+    addLog('info', `⚡ Quick Test: Sending ${method} ${targetPath}...`);
+    setConsoleOpen(true);
+
+    try {
+      const res = await fetch(targetUrl, { method, headers, body });
+      const statusText = `${res.status} ${res.statusText}`;
+      let dataText = '';
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('json')) {
+        const json = await res.json();
+        dataText = JSON.stringify(json, null, 2);
+      } else {
+        dataText = await res.text();
+      }
+
+      const logLvl = res.ok ? 'info' : 'warn';
+      addLog(logLvl, `[${statusText}] ${method} ${targetPath}\n${dataText.slice(0, 400)}`);
+      setStatus('ready');
+    } catch (err) {
+      addLog('error', `Quick Test Failed (${method} ${targetPath}): ${err.message}`);
+      setStatus('ready');
+    }
+  };
+
+  const synthesizeAndReload = useCallback(() => {
+    if (!iframeRef.current) return;
+
+    if (iframeRef.current?.contentWindow) {
+      lastScrollY.current = iframeRef.current.contentWindow.scrollY || 0;
+    }
+
+    if (!currentSessionId) {
+      iframeRef.current.removeAttribute('src');
+      iframeRef.current.srcdoc = `
+        <!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #09090B; color: #71717A; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+        .box { width: 44px; height: 44px; border-radius: 12px; background: #121215; border: 1px solid #27272A; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; color: #A1A1AA; }
+        h2 { font-size: 1rem; color: #E4E4E7; margin-bottom: 4px; }
+        p { font-size: 0.8rem; max-width: 320px; line-height: 1.5; }
+        .pill { background: #18181B; border: 1px solid #27272A; color: #A1A1AA; font-size: 0.7rem; padding: 3px 8px; border-radius: 9999px; margin-top: 8px; }
+        </style></head><body><div class="box">⚡</div><h2>Live Sandbox Preview</h2><p>Launch a pipeline to generate microservice code. TARA executes the app in an isolated sandbox.</p><div class="pill">○ Awaiting Build Decision</div></body></html>
+      `;
+      return;
+    }
+
+    const proxyBase = `/api/preview/proxy/${currentSessionId}`;
+    const timestamp = Date.now();
+    const hasUi = !!(workspaceFiles && workspaceFiles['index.html']);
+
+    const targetUrl = hasUi
+      ? `${proxyBase}/?t=${timestamp}`
+      : `${proxyBase}/docs?t=${timestamp}`;
+
+    const cleanDisplayUrl = hasUi ? `${proxyBase}/` : `${proxyBase}/docs`;
+    setCurrentUrl(cleanDisplayUrl);
+
+    iframeRef.current.removeAttribute('srcdoc');
+    iframeRef.current.src = targetUrl;
+
     iframeRef.current.onload = () => {
       try {
         if (iframeRef.current?.contentWindow && lastScrollY.current > 0) {
@@ -341,7 +448,9 @@ export default function PreviewFrame({
         }
       } catch (e) {}
     };
-  }, [workspaceFiles, currentActiveFile]);
+
+    fetchDiscoveredRoutes(currentSessionId);
+  }, [currentSessionId, workspaceFiles, fetchDiscoveredRoutes]);
 
   // Re-render when files or activeFile changes
   useEffect(() => {
@@ -359,10 +468,13 @@ export default function PreviewFrame({
   };
 
   const handleOpenNewTab = () => {
-    if (!iframeRef.current?.srcdoc) return;
-    const blob = new Blob([iframeRef.current.srcdoc], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, '_blank');
+    if (currentUrl && !currentUrl.startsWith('http://localhost:3000')) {
+      window.open(currentUrl, '_blank');
+    } else if (iframeRef.current?.srcdoc) {
+      const blob = new Blob([iframeRef.current.srcdoc], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    }
   };
 
   const handleAskFix = () => {
@@ -398,7 +510,7 @@ export default function PreviewFrame({
         <div className="preview-header-left">
           <div className="preview-url-box">
             <span className="preview-url-icon">
-              <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none">
+              <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" strokeWidth="2" fill="none">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
@@ -420,6 +532,7 @@ export default function PreviewFrame({
             <span className="preview-status-dot" />
             <span>{getStatusLabel()}</span>
           </div>
+          <div className="preview-version-pill" title="Active Code Version">{versionTag}</div>
         </div>
 
         <div className="preview-header-right">
@@ -499,6 +612,31 @@ export default function PreviewFrame({
             </svg>
             {errorCount > 0 && <span className="console-badge-count visible">{errorCount}</span>}
           </button>
+        </div>
+      </div>
+
+      {/* ── Quick Route Tester Bar (Discovered dynamically from runtime OpenAPI) ── */}
+      <div className="preview-route-bar" id="pv-route-bar">
+        <div className="preview-route-label">
+          <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" strokeWidth="2" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+          <span>Quick Test:</span>
+        </div>
+        <div className="preview-route-chips">
+          {routes && routes.length > 0 ? (
+            routes.map((r, i) => (
+              <button
+                key={i}
+                className={`route-test-chip ${r.method.toLowerCase()}`}
+                onClick={() => executeQuickTest(r.method, r.path)}
+                title={`Quick Test ${r.method} ${r.path}`}
+              >
+                <span className="chip-method">{r.method}</span>
+                <span className="chip-path">{r.path}</span>
+              </button>
+            ))
+          ) : (
+            <span className="preview-route-empty">Awaiting microservice build...</span>
+          )}
         </div>
       </div>
 

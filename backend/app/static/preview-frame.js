@@ -27,11 +27,16 @@
       this.options = Object.assign({
         defaultUrl: "http://localhost:3000",
         defaultDevice: "desktop",
+        sessionId: null,
+        versionTag: "Live Sandbox",
         onFixError: null,
         onStatusChange: null,
         onLog: null,
       }, options);
 
+      this.sessionId = this.options.sessionId || null;
+      this.versionTag = this.options.versionTag || "Live Sandbox";
+      this.routes = [];
       this.currentDevice = this.options.defaultDevice;
       this.currentUrl = this.options.defaultUrl;
       this.status = "ready"; // 'ready' | 'syncing' | 'executing'
@@ -39,7 +44,7 @@
       this.activeLogFilter = "all";
       this.lastScrollY = 0;
       this.currentFiles = {};
-      this.activeFile = "index.html";
+      this.activeFile = "main.py";
       this.currentError = null;
       this.socket = null;
 
@@ -66,6 +71,7 @@
                 <span class="preview-status-dot"></span>
                 <span id="pv-status-text">● Ready</span>
               </div>
+              <div class="preview-version-pill" id="pv-version-pill" title="Active Code Version">${this.versionTag}</div>
             </div>
 
             <div class="preview-header-right">
@@ -96,6 +102,17 @@
                 <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
                 <span class="console-badge-count" id="pv-console-badge">0</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Quick Route Tester Bar (Discovered dynamically from runtime OpenAPI) -->
+          <div class="preview-route-bar" id="pv-route-bar">
+            <div class="preview-route-label">
+              <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>Quick Test:</span>
+            </div>
+            <div class="preview-route-chips" id="pv-route-chips">
+              <span class="preview-route-empty">Awaiting microservice build...</span>
             </div>
           </div>
 
@@ -170,6 +187,9 @@
       this.urlInput = document.getElementById("pv-url-input");
       this.statusBadge = document.getElementById("pv-status-badge");
       this.statusText = document.getElementById("pv-status-text");
+      this.versionPill = document.getElementById("pv-version-pill");
+      this.routeBar = document.getElementById("pv-route-bar");
+      this.routeChips = document.getElementById("pv-route-chips");
       this.btnDesktop = document.getElementById("pv-btn-desktop");
       this.btnTablet = document.getElementById("pv-btn-tablet");
       this.btnMobile = document.getElementById("pv-btn-mobile");
@@ -433,8 +453,11 @@
             const data = JSON.parse(event.data);
             if (data.type === "HOT_RELOAD") {
               this.setStatus("syncing", "Syncing");
+              if (data.session_id) this.sessionId = data.session_id;
+              if (data.version_tag) this.setVersion(data.version_tag);
               if (data.files) this.currentFiles = data.files;
               if (data.target_file) this.activeFile = data.target_file;
+              if (data.routes && data.routes.length) this.renderRouteChips(data.routes);
               this.hotReload();
               setTimeout(() => this.setStatus("ready", "Ready"), 350);
             }
@@ -451,6 +474,21 @@
       }
     }
 
+    setSession(sessionId, versionTag = null) {
+      this.sessionId = sessionId;
+      if (versionTag) {
+        this.setVersion(versionTag);
+      }
+      this.hotReload();
+    }
+
+    setVersion(tag) {
+      this.versionTag = tag;
+      if (this.versionPill) {
+        this.versionPill.textContent = tag;
+      }
+    }
+
     setFiles(files, activeFile = null) {
       if (files) this.currentFiles = files;
       if (activeFile) this.activeFile = activeFile;
@@ -464,7 +502,7 @@
     }
 
     /**
-     * Virtual Hot Reload Engine with scroll preservation and injected bridge
+     * Real Sandboxed Live Preview with Reverse-Proxy Execution
      */
     hotReload() {
       if (!this.iframe) return;
@@ -478,11 +516,30 @@
         this.lastScrollY = 0;
       }
 
-      // 2. Synthesize complete sandboxed document
-      const htmlContent = this.synthesizeBundle();
+      // 2. If no session exists, display awaiting build placeholder
+      if (!this.sessionId) {
+        this.iframe.removeAttribute("src");
+        this.iframe.srcdoc = this.renderEmptyPlaceholder();
+        return;
+      }
 
-      // 3. Inject into iframe
-      this.iframe.srcdoc = htmlContent;
+      // 3. Reverse-proxy live sandbox routing
+      const timestamp = Date.now();
+      const proxyBase = `/api/preview/proxy/${this.sessionId}`;
+      const hasUi = !!(this.currentFiles && this.currentFiles["index.html"]);
+
+      // For pure APIs default to Swagger /docs; for web apps default to root /
+      const targetUrl = hasUi
+        ? `${proxyBase}/?t=${timestamp}`
+        : `${proxyBase}/docs?t=${timestamp}`;
+
+      this.currentUrl = hasUi ? `${proxyBase}/` : `${proxyBase}/docs`;
+      if (this.urlInput) {
+        this.urlInput.value = this.currentUrl;
+      }
+
+      this.iframe.removeAttribute("srcdoc");
+      this.iframe.src = targetUrl;
 
       // 4. Restore scroll after load
       this.iframe.onload = () => {
@@ -492,231 +549,157 @@
           }
         } catch (e) {}
       };
+
+      // 5. Query runtime OpenAPI route discovery
+      this.fetchDiscoveredRoutes();
     }
 
-    synthesizeBundle() {
-      const files = this.currentFiles || {};
-      const activeContent = files[this.activeFile] || "";
-
-      // Injected bridge script for console interception & error boundary
-      const bridgeScript = `
-        <script>
-          (function() {
-            const _log = console.log, _warn = console.warn, _error = console.error, _info = console.info;
-            function send(level, args) {
-              try {
-                const formatted = Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-                window.parent.postMessage({ type: 'PREVIEW_CONSOLE_LOG', level, message: formatted, time: new Date().toLocaleTimeString([], { hour12: false }) }, '*');
-              } catch(e) {}
-            }
-            console.log = function(...a) { _log(...a); send('info', a); };
-            console.info = function(...a) { _info(...a); send('info', a); };
-            console.warn = function(...a) { _warn(...a); send('warn', a); };
-            console.error = function(...a) { _error(...a); send('error', a); };
-            window.onerror = function(message, source, lineno, colno, error) {
-              window.parent.postMessage({
-                type: 'PREVIEW_RUNTIME_ERROR',
-                message: String(message),
-                source: String(source || ''),
-                lineno: lineno || 1,
-                colno: colno || 1,
-                stack: error && error.stack ? String(error.stack) : ''
-              }, '*');
-              return false;
-            };
-            window.onunhandledrejection = function(event) {
-              window.parent.postMessage({
-                type: 'PREVIEW_RUNTIME_ERROR',
-                message: 'Unhandled Rejection: ' + (event.reason ? (event.reason.message || String(event.reason)) : 'Promise rejected'),
-                stack: event.reason && event.reason.stack ? String(event.reason.stack) : ''
-              }, '*');
-            };
-          })();
-        <\/script>
-      `;
-
-      // Check if user project provides an index.html or web files
-      if (files["index.html"]) {
-        let html = files["index.html"];
-        // Inject CSS if style.css exists
-        if (files["style.css"] && !html.includes("<style>")) {
-          html = html.replace("</head>", `<style>${files["style.css"]}</style></head>`);
+    async fetchDiscoveredRoutes() {
+      if (!this.sessionId) return;
+      try {
+        const res = await fetch(`/api/preview/routes/${this.sessionId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.version_tag) {
+          this.setVersion(data.version_tag);
         }
-        // Inject JS if script.js or app.js exists
-        if (files["script.js"] && !html.includes(files["script.js"])) {
-          html = html.replace("</body>", `<script>${files["script.js"]}<\/script></body>`);
+        if (data.routes) {
+          this.renderRouteChips(data.routes);
         }
-        if (html.includes("<head>")) {
-          return html.replace("<head>", `<head>${bridgeScript}`);
-        }
-        return `${bridgeScript}${html}`;
+      } catch (e) {
+        console.debug("Failed fetching discovered routes:", e);
       }
-
-      // Check if viewing an HTML file directly
-      if (this.activeFile.endsWith(".html") && activeContent) {
-        if (activeContent.includes("<head>")) {
-          return activeContent.replace("<head>", `<head>${bridgeScript}`);
-        }
-        return `${bridgeScript}${activeContent}`;
-      }
-
-      // If project has Python / FastAPI or backend microservice: Render interactive Live API Runner Page
-      return this.renderMockApiRunner(files, bridgeScript);
     }
 
-    renderMockApiRunner(files, bridgeScript) {
-      const activeFile = this.activeFile || "main.py";
-      const code = files[activeFile] || "";
-      const isPython = activeFile.endsWith(".py");
+    renderRouteChips(routes) {
+      if (!this.routeChips) return;
+      this.routes = routes || [];
+      if (!this.routes.length) {
+        this.routeChips.innerHTML = '<span class="preview-route-empty">Auto-discovering live endpoints...</span>';
+        return;
+      }
 
+      this.routeChips.innerHTML = this.routes.map(r => `
+        <button class="route-test-chip ${r.method.toLowerCase()}" data-method="${r.method}" data-path="${r.path}" title="Quick Test ${r.method} ${r.path}">
+          <span class="chip-method">${r.method}</span>
+          <span class="chip-path">${this.escapeHtml(r.path)}</span>
+        </button>
+      `).join('');
+
+      this.routeChips.querySelectorAll('.route-test-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const method = btn.dataset.method;
+          const path = btn.dataset.path;
+          this.executeQuickRouteTest(method, path);
+        });
+      });
+    }
+
+    async executeQuickRouteTest(method, rawPath) {
+      if (!this.sessionId) return;
+      this.setStatus("executing", "Testing");
+      let targetPath = rawPath.replace('{key}', 'test-key').replace('{item_id}', '1');
+      const url = `/api/preview/proxy/${this.sessionId}${targetPath}`;
+
+      let body = null;
+      const headers = {};
+      if (["POST", "PUT", "PATCH"].includes(method)) {
+        headers["Content-Type"] = "application/json";
+        if (rawPath.includes("cache/set")) {
+          body = JSON.stringify({ key: "test-key", value: "hello from TARA quick test", ttl: 60 });
+        } else if (rawPath.includes("auth/token")) {
+          body = JSON.stringify({ username: "developer", password: "tara_secure_pass", role: "admin" });
+        } else if (rawPath.includes("auth/verify")) {
+          body = JSON.stringify({ token: "test_token" });
+        } else if (rawPath.includes("items")) {
+          body = JSON.stringify({ name: "Quick Test Item", description: "Created via quick test button", payload: { active: true } });
+        } else {
+          body = JSON.stringify({ test: true });
+        }
+      }
+
+      this.appendLog("info", `⚡ Quick Test: Sending ${method} ${targetPath}...`);
+      if (this.consoleDrawer && this.consoleDrawer.classList.contains("collapsed")) {
+        this.consoleDrawer.classList.remove("collapsed");
+      }
+
+      try {
+        const res = await fetch(url, { method, headers, body });
+        const statusText = `${res.status} ${res.statusText}`;
+        let dataText = "";
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("json")) {
+          const json = await res.json();
+          dataText = JSON.stringify(json, null, 2);
+        } else {
+          dataText = await res.text();
+        }
+
+        const logLvl = res.ok ? "info" : "warn";
+        this.appendLog(logLvl, `[${statusText}] ${method} ${targetPath}\n${dataText.slice(0, 400)}`);
+        this.setStatus("ready", "Ready");
+      } catch (err) {
+        this.appendLog("error", `Quick Test Failed (${method} ${targetPath}): ${err.message}`);
+        this.setStatus("ready", "Error");
+      }
+    }
+
+    renderEmptyPlaceholder() {
       return `
         <!DOCTYPE html>
-        <html lang="en">
+        <html>
         <head>
           <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>TARA Live App Preview</title>
-          ${bridgeScript}
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
               background: #09090B;
-              color: #F4F4F5;
-              padding: 24px;
-              min-height: 100vh;
+              color: #71717A;
+              height: 100vh;
               display: flex;
               flex-direction: column;
-              gap: 16px;
+              align-items: center;
+              justify-content: center;
+              text-align: center;
+              padding: 24px;
+              gap: 12px;
             }
-            .hero-card {
+            .icon-box {
+              width: 44px;
+              height: 44px;
+              border-radius: 12px;
               background: #121215;
               border: 1px solid #27272A;
-              border-radius: 12px;
-              padding: 20px;
               display: flex;
-              flex-direction: column;
-              gap: 8px;
+              align-items: center;
+              justify-content: center;
+              color: #A1A1AA;
+              margin-bottom: 4px;
             }
-            .hero-badge {
+            h2 { font-size: 1.05rem; font-weight: 600; color: #E4E4E7; }
+            p { font-size: 0.8rem; color: #71717A; max-width: 320px; line-height: 1.5; }
+            .badge {
               display: inline-flex;
               align-items: center;
               gap: 6px;
-              background: rgba(34, 197, 94, 0.1);
-              color: #22C55E;
-              border: 1px solid rgba(34, 197, 94, 0.2);
-              font-size: 0.72rem;
-              font-weight: 600;
-              padding: 3px 8px;
-              border-radius: 9999px;
-              width: fit-content;
-            }
-            h1 { font-size: 1.25rem; font-weight: 600; color: #FFFFFF; }
-            p { font-size: 0.82rem; color: #A1A1AA; line-height: 1.5; }
-            .endpoint-grid {
-              display: flex;
-              flex-direction: column;
-              gap: 10px;
-            }
-            .endpoint-row {
               background: #18181B;
               border: 1px solid #27272A;
-              border-radius: 8px;
-              padding: 12px 14px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 10px;
-            }
-            .ep-method {
-              font-family: monospace;
-              font-size: 0.75rem;
-              font-weight: 700;
-              color: #22C55E;
-              background: rgba(34, 197, 94, 0.1);
-              padding: 2px 6px;
-              border-radius: 4px;
-            }
-            .ep-path {
-              font-family: monospace;
-              font-size: 0.8rem;
-              color: #FFFFFF;
-              flex: 1;
-            }
-            .btn-test {
-              background: #FFFFFF;
-              color: #09090B;
-              border: none;
-              font-size: 0.72rem;
-              font-weight: 600;
+              color: #A1A1AA;
+              font-size: 0.7rem;
               padding: 4px 10px;
-              border-radius: 6px;
-              cursor: pointer;
-              transition: opacity 150ms ease;
-            }
-            .btn-test:hover { opacity: 0.9; }
-            .response-box {
-              background: #09090B;
-              border: 1px solid #27272A;
-              border-radius: 8px;
-              padding: 12px;
-              font-family: monospace;
-              font-size: 0.75rem;
-              color: #22C55E;
-              min-height: 70px;
-              max-height: 180px;
-              overflow-y: auto;
-              white-space: pre-wrap;
+              border-radius: 9999px;
+              margin-top: 6px;
             }
           </style>
         </head>
         <body>
-          <div class="hero-card">
-            <span class="hero-badge">● SERVICE ACTIVE</span>
-            <h1>TARA Microservice Preview</h1>
-            <p>Live interactive test harness for <strong>${this.escapeHtml(activeFile)}</strong>. Requests dispatched directly to local runtime on <code>http://127.0.0.1:8000</code>.</p>
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="1.8" fill="none"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
-
-          <div class="endpoint-grid">
-            <div class="endpoint-row">
-              <span class="ep-method">GET</span>
-              <span class="ep-path">/health</span>
-              <button class="btn-test" onclick="testEndpoint('/health')">Execute</button>
-            </div>
-            <div class="endpoint-row">
-              <span class="ep-method">GET</span>
-              <span class="ep-path">/api/preview/status</span>
-              <button class="btn-test" onclick="testEndpoint('/api/preview/status')">Execute</button>
-            </div>
-            <div class="endpoint-row">
-              <span class="ep-method">POST</span>
-              <span class="ep-path">/api/tara/edit (Mock Test)</span>
-              <button class="btn-test" onclick="testEndpoint('/api/tara/status')">Execute</button>
-            </div>
-          </div>
-
-          <div style="margin-top:4px;">
-            <span style="font-size:0.68rem; text-transform:uppercase; color:#71717A; font-weight:600; letter-spacing:0.04em;">Live Response Output</span>
-            <div class="response-box" id="resp-output">// Click 'Execute' above to test local endpoints...</div>
-          </div>
-
-          <script>
-            console.log("Interactive Live Preview initialized for " + ${JSON.stringify(activeFile)});
-            async function testEndpoint(endpoint) {
-              const out = document.getElementById('resp-output');
-              out.textContent = "Dispatching request to " + endpoint + "...";
-              console.log("Testing endpoint: " + endpoint);
-              try {
-                const res = await fetch(endpoint);
-                const data = await res.json();
-                out.textContent = JSON.stringify(data, null, 2);
-                console.log("Response received from " + endpoint + ":", data);
-              } catch(err) {
-                out.textContent = "Error: " + err.message;
-                console.error("Endpoint request failed: " + err.message);
-              }
-            }
-          <\/script>
+          <h2>Live Sandbox Preview</h2>
+          <p>Launch a pipeline to generate microservice code. TARA will execute the app in an isolated sandbox and stream interactive endpoints here.</p>
+          <div class="badge">○ Awaiting Build Decision</div>
         </body>
         </html>
       `;
@@ -727,10 +710,14 @@
     }
 
     openInNewTab() {
-      const html = this.synthesizeBundle();
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      if (this.currentUrl && !this.currentUrl.startsWith("http://localhost:3000")) {
+        window.open(this.currentUrl, "_blank");
+      } else {
+        const placeholder = this.renderEmptyPlaceholder();
+        const blob = new Blob([placeholder], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+      }
     }
 
     escapeHtml(str) {

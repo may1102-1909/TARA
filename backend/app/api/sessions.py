@@ -234,6 +234,13 @@ async def download_package_endpoint(session_id: str):
     except Exception:
         pass
 
+    # Teardown sandbox background process and release port upon release export
+    try:
+        from app.sandbox.runner import cleanup_session_sandbox
+        cleanup_session_sandbox(session_id)
+    except Exception as e:
+        logger.warning("Sandbox cleanup on download package error for %s: %s", session_id, e)
+
     return Response(
         content=zip_bytes,
         media_type="application/zip",

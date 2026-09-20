@@ -11,10 +11,12 @@ import json
 import logging
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -58,6 +60,37 @@ class BaseSandbox(abc.ABC):
         """Executes a command inside the sandbox."""
         pass
 
+    def start_server(self, entrypoint: Optional[str] = None, port: Optional[int] = None) -> int:
+        """Starts a background server process inside the sandbox and returns allocated port."""
+        raise NotImplementedError
+
+    def stop_server(self) -> None:
+        """Stops the running background server process."""
+        pass
+
+    def restart_server(self, entrypoint: Optional[str] = None) -> int:
+        """Restarts the running background server process."""
+        self.stop_server()
+        return self.start_server(entrypoint=entrypoint)
+
+    def get_server_port(self) -> Optional[int]:
+        return getattr(self, "server_port", None)
+
+    def is_server_alive(self) -> bool:
+        port = self.get_server_port()
+        if not port:
+            return False
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.4)
+                return s.connect_ex(('127.0.0.1', port)) == 0
+        except Exception:
+            return False
+
+    def discover_openapi_routes(self) -> List[Dict[str, Any]]:
+        """Queries the running server for live OpenAPI paths or extracts decorators."""
+        return []
+
     @abc.abstractmethod
     def cleanup(self) -> None:
         """Destroys and cleans up the sandbox resources."""
@@ -70,6 +103,13 @@ class BaseSandbox(abc.ABC):
         self.cleanup()
 
 
+def get_free_port() -> int:
+    """Finds an unused localhost port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
+
+
 class LocalEphemeralSandbox(BaseSandbox):
     """Tier 3: Local isolated temporary directory with timeout guards and env sanitization."""
 
@@ -78,6 +118,9 @@ class LocalEphemeralSandbox(BaseSandbox):
         self.tier_name = "LocalEphemeralSandbox"
         self.temp_dir = tempfile.mkdtemp(prefix=f"tara_sandbox_{session_id[:8]}_")
         self.root_path = Path(self.temp_dir).resolve()
+        self.server_proc: Optional[subprocess.Popen] = None
+        self.server_port: Optional[int] = None
+        self.active_entrypoint: Optional[str] = None
 
     def write_files(self, files: Dict[str, str]) -> None:
         for rel_path, content in files.items():
@@ -184,7 +227,149 @@ class LocalEphemeralSandbox(BaseSandbox):
                 sandbox_tier=self.tier_name
             )
 
+    def start_server(self, entrypoint: Optional[str] = None, port: Optional[int] = None) -> int:
+        """Launches the generated app inside the sandbox on an isolated port and waits until responsive."""
+        if self.is_server_alive() and self.server_port:
+            return self.server_port
+
+        self.stop_server()
+        alloc_port = port or get_free_port()
+        self.server_port = alloc_port
+
+        files = self.read_files()
+        
+        # Determine entrypoint
+        target_ep = entrypoint
+        if not target_ep or target_ep not in files:
+            candidates = [k for k in files.keys() if k.endswith("main.py") or k.endswith("app.py")]
+            if candidates:
+                target_ep = candidates[0]
+            else:
+                py_files = [k for k in files.keys() if k.endswith(".py")]
+                target_ep = py_files[0] if py_files else "main.py"
+        self.active_entrypoint = target_ep
+
+        ep_content = files.get(target_ep, "")
+        
+        # Check if project is static web app (index.html present and no FastAPI/Flask)
+        has_index_html = "index.html" in files
+        is_fastapi = "FastAPI" in ep_content or any("FastAPI" in c for c in files.values())
+        is_flask = "Flask" in ep_content or any("Flask" in c for c in files.values())
+
+        clean_env = {
+            "PATH": os.environ.get("PATH", ""),
+            "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""),
+            "PYTHONPATH": str(self.root_path),
+            "PORT": str(alloc_port),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONUNBUFFERED": "1",
+        }
+        for k in ("TEMP", "TMP", "LOCALAPPDATA", "APPDATA", "COMSPEC", "PATHEXT"):
+            if k in os.environ:
+                clean_env[k] = os.environ[k]
+
+        if has_index_html and not is_fastapi and not is_flask:
+            cmd = [sys.executable, "-m", "http.server", str(alloc_port), "--bind", "127.0.0.1"]
+        elif is_fastapi:
+            mod_name = Path(target_ep).stem
+            cmd = [
+                sys.executable, "-m", "uvicorn", f"{mod_name}:app",
+                "--host", "127.0.0.1",
+                "--port", str(alloc_port),
+                "--log-level", "warning"
+            ]
+        else:
+            cmd = [sys.executable, str(self.root_path / target_ep)]
+
+        logger.info("Starting sandbox app server on port %d: %s", alloc_port, cmd)
+        try:
+            self.server_proc = subprocess.Popen(
+                cmd,
+                cwd=str(self.root_path),
+                env=clean_env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+        except Exception as e:
+            logger.error("Failed to spawn sandbox server process: %s", e)
+            raise
+
+        # Poll until port is alive
+        for _ in range(40):
+            if self.is_server_alive():
+                logger.info("Sandbox app server is responsive on port %d", alloc_port)
+                return alloc_port
+            if self.server_proc.poll() is not None:
+                _, stderr = self.server_proc.communicate()
+                logger.error("Sandbox app server crashed on boot: %s", stderr)
+                raise RuntimeError(f"Server exited unexpectedly: {stderr}")
+            time.sleep(0.1)
+
+        return alloc_port
+
+    def stop_server(self) -> None:
+        """Gracefully terminates the background server process."""
+        if self.server_proc:
+            try:
+                self.server_proc.terminate()
+                self.server_proc.wait(timeout=2)
+            except Exception:
+                try:
+                    self.server_proc.kill()
+                except Exception:
+                    pass
+            self.server_proc = None
+        self.server_port = None
+
+    def discover_openapi_routes(self) -> List[Dict[str, Any]]:
+        """Queries the running server for live OpenAPI paths or extracts decorators via regex."""
+        if not self.is_server_alive() or not self.server_port:
+            return self._discover_routes_from_ast()
+
+        try:
+            url = f"http://127.0.0.1:{self.server_port}/openapi.json"
+            req = urllib.request.Request(url, headers={"User-Agent": "TARA-Preview-Probe"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                paths = data.get("paths", {})
+                routes = []
+                for p, methods in paths.items():
+                    for m, spec in methods.items():
+                        if m.lower() in ("get", "post", "put", "delete", "patch"):
+                            routes.append({
+                                "method": m.upper(),
+                                "path": p,
+                                "summary": spec.get("summary") or f"{m.upper()} {p}",
+                                "tags": spec.get("tags", []),
+                                "params": [param.get("name") for param in spec.get("parameters", []) if "name" in param],
+                            })
+                return routes
+        except Exception as e:
+            logger.debug("Failed to fetch live openapi.json from sandbox (falling back to AST): %s", e)
+            return self._discover_routes_from_ast()
+
+    def _discover_routes_from_ast(self) -> List[Dict[str, Any]]:
+        """Fallback route extractor via regex decorator inspection."""
+        routes = []
+        files = self.read_files()
+        for fpath, code in files.items():
+            if not fpath.endswith(".py"):
+                continue
+            import re
+            matches = re.findall(r'@(?:app|router)\.(get|post|put|delete|patch)\(\s*["\']([^"\']+)["\']', code, re.IGNORECASE)
+            for method, path in matches:
+                routes.append({
+                    "method": method.upper(),
+                    "path": path,
+                    "summary": f"{method.upper()} {path}",
+                    "tags": [Path(fpath).stem],
+                    "params": re.findall(r'\{([^}]+)\}', path),
+                })
+        return routes
+
     def cleanup(self) -> None:
+        self.stop_server()
         if Path(self.temp_dir).exists():
             try:
                 shutil.rmtree(self.temp_dir, ignore_errors=True)
@@ -453,3 +638,37 @@ def get_sandbox(session_id: str, envs: Optional[Dict[str, str]] = None) -> BaseS
 
     logger.info("Initializing Tier 3: LocalEphemeralSandbox for session %s", session_id)
     return LocalEphemeralSandbox(session_id)
+
+
+# Global registry of persistent session sandboxes
+active_session_sandboxes: Dict[str, BaseSandbox] = {}
+
+
+def get_or_create_session_sandbox(session_id: str, files: Optional[Dict[str, str]] = None) -> BaseSandbox:
+    """Retrieves or creates a long-lived session sandbox instance, writing files if provided.
+    
+    Session sandboxes require local loopback connectivity (127.0.0.1) for reverse-proxying
+    the live interactive preview to the running app process.
+    """
+    if session_id in active_session_sandboxes:
+        sb = active_session_sandboxes[session_id]
+        if files:
+            sb.write_files(files)
+        return sb
+
+    sb = LocalEphemeralSandbox(session_id)
+    if files:
+        sb.write_files(files)
+    active_session_sandboxes[session_id] = sb
+    return sb
+
+
+def cleanup_session_sandbox(session_id: str) -> None:
+    """Terminates any running server processes and deletes the sandbox for the given session."""
+    sb = active_session_sandboxes.pop(session_id, None)
+    if sb:
+        try:
+            sb.cleanup()
+        except Exception as e:
+            logger.warning("Error cleaning up session sandbox %s: %s", session_id, e)
+

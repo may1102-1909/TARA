@@ -105,9 +105,9 @@ def patch_codebase_with_chat_google(
     if not api_key or not findings:
         patched_map = deterministic_patch_fallback(files, findings)
     else:
-        model_name = settings.default_model or "gemini-2.5-flash"
+        model_name = getattr(settings, "default_model", None) or "gemini-2.0-flash"
         if "flash" in model_name:
-            model_name = "gemini-2.5-flash"
+            model_name = "gemini-2.0-flash"
 
         try:
             if LANGCHAIN_GENAI_AVAILABLE and ChatGoogleGenerativeAI is not None:
