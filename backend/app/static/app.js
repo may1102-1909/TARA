@@ -488,6 +488,13 @@ class TaraIDE {
         this.toggleEditorAiBar(false);
         this.hideEditorReviewBar();
 
+        // Clear stream queue & animation frame
+        if (this._streamRafId) {
+          cancelAnimationFrame(this._streamRafId);
+          this._streamRafId = null;
+        }
+        this._streamQueue = [];
+
         // Prepare editor buffer for clean incoming stream
         if (this.editor) {
           this.editor.setValue("");
@@ -496,26 +503,60 @@ class TaraIDE {
 
       case "CODE_DELTA":
         if (this.editor && window.monaco && data.delta) {
-          const model = this.editor.getModel();
-          if (model) {
-            const lineCount = model.getLineCount();
-            const maxCol = model.getLineMaxColumn(lineCount);
-            const range = new monaco.Range(lineCount, maxCol, lineCount, maxCol);
+          if (!this._streamQueue) this._streamQueue = [];
+          this._streamQueue.push(data.delta);
 
-            // Apply live character edits directly into the buffer
-            this.editor.executeEdits("tara-stream", [{
-              range: range,
-              text: data.delta,
-              forceMoveMarkers: true,
-            }]);
+          // Flush on next animation frame (60fps batching)
+          if (!this._streamRafId) {
+            this._streamRafId = requestAnimationFrame(() => {
+              this._streamRafId = null;
+              if (!this._streamQueue || !this._streamQueue.length || !this.editor) return;
+              const pendingText = this._streamQueue.join("");
+              this._streamQueue = [];
 
-            // Auto-scroll the Monaco viewport to track TARA's live cursor
-            this.editor.revealLine(model.getLineCount());
+              const model = this.editor.getModel();
+              if (model) {
+                const lineCount = model.getLineCount();
+                const maxCol = model.getLineMaxColumn(lineCount);
+                const range = new monaco.Range(lineCount, maxCol, lineCount, maxCol);
+
+                // Apply batch edits directly into the buffer
+                this.editor.executeEdits("tara-stream", [{
+                  range: range,
+                  text: pendingText,
+                  forceMoveMarkers: true,
+                }]);
+
+                // Auto-scroll the Monaco viewport to track TARA's live cursor
+                this.editor.revealLine(model.getLineCount());
+              }
+            });
           }
         }
         break;
 
       case "STREAM_END":
+        // Immediately flush any remaining buffered text
+        if (this._streamRafId) {
+          cancelAnimationFrame(this._streamRafId);
+          this._streamRafId = null;
+        }
+        if (this._streamQueue && this._streamQueue.length && this.editor) {
+          const remainingText = this._streamQueue.join("");
+          this._streamQueue = [];
+          const model = this.editor.getModel();
+          if (model) {
+            const lineCount = model.getLineCount();
+            const maxCol = model.getLineMaxColumn(lineCount);
+            this.editor.executeEdits("tara-stream", [{
+              range: new monaco.Range(lineCount, maxCol, lineCount, maxCol),
+              text: remainingText,
+              forceMoveMarkers: true,
+            }]);
+            this.editor.revealLine(model.getLineCount());
+          }
+        }
+
         this.appendLog("ANTIGRAVITY", `✅ ${data.is_edit ? "Edit applied" : "Streaming completed"} for ${data.file_path || "main.py"}`);
         if (this.stageStatusText) {
           this.stageStatusText.textContent = data.is_edit ? "Edit Applied ✓" : "Live Stream Finished";
