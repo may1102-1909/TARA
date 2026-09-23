@@ -126,6 +126,51 @@ body.dark-theme {
 
 .brand-tagline { font-size: 0.6rem; color: var(--text-muted); }
 
+/* Agent Pipeline Architecture Indicator */
+.agent-pipeline-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+.pipeline-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pipeline-tag.active {
+  color: #a78bfa;
+  font-weight: 500;
+}
+.dot-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-indicator.cloud { background: #60a5fa; }
+.dot-indicator.local { background: #a78bfa; box-shadow: 0 0 6px rgba(167, 139, 250, 0.6); }
+.dot-indicator.sec { background: #34d399; }
+.pipeline-arrow {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+.pipeline-sdk {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 /* Stepper */
 .stepper-container {
   display: flex; align-items: center; gap: 4px;

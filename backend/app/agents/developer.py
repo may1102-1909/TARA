@@ -56,9 +56,9 @@ class DeveloperCodeOutput(BaseModel):
 
 
 def call_ollama_qwen_coder(prd_content: str, human_notes: str = "") -> Optional[DeveloperCodeOutput]:
-    """Queries local model `qwen2.5-coder:7b` at `http://localhost:11434/v1` to generate code."""
+    """Queries local model `qwen2.5:7b` / `qwen2.5-coder:7b` at `http://localhost:11434/v1` to generate code."""
     url = "http://localhost:11434/v1/chat/completions"
-    model_name = "qwen2.5-coder:7b"
+    model_name = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 
     system_prompt = (
         "You are an expert Senior Developer. Read the following PRD and generate a complete single-file FastAPI service with WebSockets.\n"
@@ -83,17 +83,17 @@ def call_ollama_qwen_coder(prd_content: str, human_notes: str = "") -> Optional[
             "response_format": {"type": "json_object"},
             "temperature": 0.2,
         }
-        with httpx.Client(timeout=4.0) as client_http:
+        with httpx.Client(timeout=45.0) as client_http:
             resp = client_http.post(url, json=payload)
             if resp.status_code == 200:
                 data = resp.json()
                 content_str = data["choices"][0]["message"]["content"]
                 parsed = DeveloperCodeOutput.model_validate_json(content_str)
                 if parsed.files:
-                    logger.info("Successfully generated code using local qwen2.5-coder:7b")
+                    logger.info("Successfully generated code using local model %s", model_name)
                     return parsed
     except Exception as exc:
-        logger.info("Local qwen2.5-coder:7b notice (%s). Proceeding with fallback.", exc)
+        logger.info("Local %s notice (%s). Proceeding with fallback.", model_name, exc)
     return None
 
 

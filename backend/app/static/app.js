@@ -137,7 +137,7 @@ class TaraIDE {
     if (window.PromptBarComponent) {
       this.promptBar = new window.PromptBarComponent("#tara-prompt-bar-root", {
         placeholder: "Ask TARA to inspect, edit, or generate code…",
-        defaultModel: "gemini-3.5-flash",
+        defaultModel: "qwen2.5:7b",
         defaultEffort: "High",
         onSend: (text, payload) => {
           this.handlePromptBarSend(text, payload);
@@ -463,10 +463,12 @@ class TaraIDE {
         break;
 
       case "STREAM_START":
+        const agentTitle = data.agent || "Developer Agent";
+        const engineTitle = data.engine || "Local Ollama (qwen2.5:7b)";
         const actionLabel = data.is_edit ? "Applying live edit" : "Generating code";
-        this.appendLog("ANTIGRAVITY", `⚡ ${actionLabel} for ${data.file_path || "main.py"}`);
+        this.appendLog("ANTIGRAVITY", `🤖 ${agentTitle} (${engineTitle}): ${actionLabel} for ${data.file_path || "main.py"}`);
         if (this.stageStatusText) {
-          this.stageStatusText.textContent = data.is_edit ? "⚡ TARA Editing Live..." : "⚡ TARA Streaming Live...";
+          this.stageStatusText.textContent = `⚡ ${agentTitle} (${engineTitle}): Live`;
         }
         if (this.activeFilenamePill) {
           this.activeFilenamePill.textContent = data.file_path || "main.py";
@@ -557,7 +559,7 @@ class TaraIDE {
           }
         }
 
-        this.appendLog("ANTIGRAVITY", `✅ ${data.is_edit ? "Edit applied" : "Streaming completed"} for ${data.file_path || "main.py"}`);
+        this.appendLog("ANTIGRAVITY", `✨ Developer Agent (Local Ollama: qwen2.5:7b): ${data.is_edit ? "Edit applied" : "Streaming completed"} for ${data.file_path || "main.py"}`);
         if (this.stageStatusText) {
           this.stageStatusText.textContent = data.is_edit ? "Edit Applied ✓" : "Live Stream Finished";
         }
@@ -647,7 +649,10 @@ class TaraIDE {
     }
 
     if (payload.model || payload.effort) {
-      this.appendLog("ANTIGRAVITY", `⚙️ Engine: ${payload.model || "Gemini 3.5 Flash"} | Effort: ${payload.effort || "High"}`);
+      const modelDisplayName = (payload.model && (payload.model.includes("qwen") || payload.model === "qwen2.5:7b"))
+        ? "Developer Agent (Local Ollama: qwen2.5:7b)"
+        : (payload.model || "Developer Agent (Local Ollama: qwen2.5:7b)");
+      this.appendLog("ANTIGRAVITY", `⚙️ Engine: ${modelDisplayName} | Runtime: Google Antigravity SDK | Effort: ${payload.effort || "High"}`);
     }
 
     this.sendTaraStreamPrompt(

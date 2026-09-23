@@ -508,6 +508,28 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Running code generation through local Ollama (`qwen2.5-coder:7b`) avoids external cloud API rate limits, socket aborts, and network latency, providing developers with reliable, instantaneous, and fully local code generation.
 
+---
+
+### Step 29: Multi-Agent Architecture Realignment: Developer Agent via Local Ollama (qwen2.5:7b)
+- **What was done:**
+  - **Clarified Architecture & Flow:**
+    * **CEO Agent (PRD Review):** Powered by Google Gemini API (Cloud) for assessing market viability, user specs, and feature gaps.
+    * **Developer Agent (Code Writing & Interactive Editing):** Powered by Local Ollama (`qwen2.5:7b` / `qwen2.5-coder:7b`) at `http://localhost:11434/v1` for generating code, performing refactoring, and handling interactive Monaco editor edits.
+    * **Security Agent (SAST & Hardening):** Powered by Gemini API + Strix MCP, Bandit, and Flake8 for vulnerability discovery and automated code hardening.
+    * **Google Antigravity SDK (Agent Loop & Live Stream):** The unifying runtime that coordinates the agent loop, wraps token streams in `StreamChunk`, and streams live updates into the Monaco Editor over WebSockets (`/ws/tara/stream`).
+  - **Live Code Stream Routing (`backend/app/routers/tara_stream.py`):**
+    * Replaced cloud API fallbacks with direct asynchronous streaming from Local Ollama (`qwen2.5:7b`) over `http://localhost:11434/v1/chat/completions`.
+    * Implemented `MarkdownCodeFilter` to strip any markdown code fences on the fly so pure executable Python code enters the Monaco editor buffer.
+    * Upgraded `generate_smart_code` fallback to perform direct regex and string replacements instead of generic `def execute_task()` stubs.
+  - **UI & Telemetry Alignment (`backend/app/static/`):**
+    * Updated `PromptBar` component in `prompt-bar.js` and `PromptBar.jsx` to list `Developer Agent (Local Ollama: qwen2.5:7b)` as the default active engine.
+    * Added an interactive agent pipeline status pill in the top header (`index.html` & `style.css`): `CEO: Gemini → Dev: Ollama qwen2.5:7b → Sec: Strix+Gemini ❖ Antigravity SDK`.
+    * Synchronized terminal logging in `app.js` to clearly display: `⚙️ Engine: Developer Agent (Local Ollama: qwen2.5:7b) | Runtime: Google Antigravity SDK`.
+  - **Verification:**
+    * Created `backend/tests/test_ws_tara_stream.py` which connected to `/ws/tara/stream`, sent an edit directive on `app/database.py`, and verified that the real code was updated by Local Ollama without placeholder stubs.
+- **Why we built it:**
+  - Directs code writing strictly to the Developer Agent running locally on Ollama (`qwen2.5:7b`), eliminating network socket aborts on external cloud endpoints, preventing dummy placeholder stubs, and delivering fast, private, and contextual code edits streamed live into the editor.
+
 
 
 

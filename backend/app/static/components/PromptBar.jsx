@@ -46,9 +46,9 @@ const DEFAULT_COMMANDS = [
   { key: 'tasks', name: '/tasks', description: 'Turn this into a to-do list' }
 ];
 const DEFAULT_MODELS = [
-  { key: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', tag: 'Flagship' },
-  { key: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Lite', tag: 'Fast' },
-  { key: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', tag: 'Preview' }
+  { key: 'qwen2.5:7b', name: 'Developer Agent (Local Ollama: qwen2.5:7b)', tag: 'Recommended' },
+  { key: 'gemini-3.5-flash', name: 'CEO Agent (Cloud Gemini 3.5)', tag: 'PRD Review' },
+  { key: 'strix-security', name: 'Security Agent (Gemini + Strix MCP)', tag: 'SAST Audit' }
 ];
 const DEFAULT_EFFORTS = ['Low', 'Medium', 'High', 'Extra', 'Max'];
 

@@ -51,9 +51,9 @@
   ];
 
   const DEFAULT_MODELS = [
-    { key: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', tag: 'Recommended' },
-    { key: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Lite', tag: 'Fast' },
-    { key: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', tag: 'Preview' },
+    { key: 'qwen2.5:7b', name: 'Developer Agent (Local Ollama: qwen2.5:7b)', tag: 'Recommended' },
+    { key: 'gemini-3.5-flash', name: 'CEO Agent (Cloud Gemini 3.5)', tag: 'PRD Review' },
+    { key: 'strix-security', name: 'Security Agent (Gemini + Strix MCP)', tag: 'SAST Audit' },
   ];
 
   const DEFAULT_EFFORTS = ['Low', 'Medium', 'High', 'Extra', 'Max'];
@@ -69,7 +69,7 @@
         commands: DEFAULT_COMMANDS,
         models: DEFAULT_MODELS,
         efforts: DEFAULT_EFFORTS,
-        defaultModel: 'gemini-3.5-flash',
+        defaultModel: 'qwen2.5:7b',
         defaultEffort: 'High',
         sparkColor: '#b39dff',
         morphDuration: 240,
@@ -130,7 +130,7 @@
               </button>
 
               <button type="button" class="prompt-bar__pick" id="pb-btn-model" title="Choose AI model">
-                <span id="pb-model-name">Gemini 3.5 Flash</span>
+                <span id="pb-model-name">Developer Agent (Local Ollama: qwen2.5:7b)</span>
                 ${ICONS.arrowDown}
               </button>
 
