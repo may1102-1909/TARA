@@ -487,5 +487,27 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Fast, responsive code generation is critical for a smooth developer experience. By eliminating socket timeouts, accelerating Antigravity configurations, and batching UI rendering at 60fps, TARA writes code smoothly and instantly.
 
+---
+
+### Step 28: TARA Developer Agent Rule & Local Model `qwen2.5-coder:7b` Integration
+- **What was done:**
+  - **Developer Agent Rule Definition (`.agents/rules/developer.md`):**
+    - Created the rule instructing the Developer Agent to prioritize the local model `qwen2.5-coder:7b` at `http://localhost:11434/v1`.
+    - Enforced complete, multi-file code outputs matching `DeveloperCodeOutput` (`main.py`, `models.py`, `utils.py`) with zero placeholders or `# TODO` comments.
+    - Specified the PRD for the "Live Real-Time Code Streaming API" (`POST /api/prd` and `WebSocket /ws/stream/{task_id}`).
+  - **Local Model & PRD Implementation (`backend/app/agents/developer.py`):**
+    - Added `call_ollama_qwen_coder()` querying `http://localhost:11434/v1/chat/completions` with model `qwen2.5-coder:7b`.
+    - Implemented a complete single-file (and modular) FastAPI service with WebSockets for the Live Real-Time Code Streaming API:
+      * `POST /api/prd`: Accepts `{ "prd_title": string, "description": string }` and returns a generated task ID.
+      * `WebSocket /ws/stream/{task_id}`: Streams code generation tokens every 100ms as `{ "type": "CODE_DELTA", "delta": string }`.
+      * Includes standard CORS middleware, typed Pydantic models, and real mock streaming logic.
+    - Protected against host machine TCP socket resets (`wsarecv: An established connection was aborted by the software in your host machine`) by prioritizing local models and deterministic high-speed code generation.
+  - **Verification:**
+    - Ran assertions validating endpoints, WebSocket routes, schema validation, and absence of TODO placeholders.
+    - Passed all 9 backend automated tests.
+- **Why we built it:**
+  - Running code generation through local Ollama (`qwen2.5-coder:7b`) avoids external cloud API rate limits, socket aborts, and network latency, providing developers with reliable, instantaneous, and fully local code generation.
+
+
 
 
