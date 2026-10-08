@@ -22,10 +22,10 @@ def call_gemini_with_fallback(
 
     candidates = [
         preferred_model,
-        getattr(settings, "default_model", "gemini-3.6-flash"),
+        getattr(settings, "default_model", "gemini-3.8-flash"),
+        "gemini-3.8-flash",
         "gemini-3.6-flash",
         "gemini-flash-latest",
-        "gemini-2.5-flash",
         "gemini-flash-lite-latest",
     ]
 

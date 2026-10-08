@@ -530,6 +530,31 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Directs code writing strictly to the Developer Agent running locally on Ollama (`qwen2.5:7b`), eliminating network socket aborts on external cloud endpoints, preventing dummy placeholder stubs, and delivering fast, private, and contextual code edits streamed live into the editor.
 
+---
+
+### Step 30: Async Event Loop Offloading, Gemini 3.8 Flash Migration & Localhost Hosting
+- **What was done:**
+  - **Async Event Loop Non-Blocking Execution (`backend/app/api/sessions.py`):**
+    * Wrapped synchronous multi-agent LangGraph workflow execution (`session_manager.start_session`, `session_manager.submit_decision`, and `graph.invoke`) in `await asyncio.to_thread(...)`.
+    * Prevented the synchronous agent graph from blocking FastAPI's single asyncio event loop thread during multi-step runs (CEO critique, Dev code generation, and Security analysis), ensuring health checks, WebSocket streams, and UI polling requests remain 100% responsive without read timeouts.
+  - **Google GenAI Model Migration (`backend/app/core/llm.py` & `config.py`):**
+    * Replaced retired `gemini-2.5-flash` and `gemini-2.0-flash` candidates with active `gemini-3.8-flash` and `gemini-3.6-flash`.
+    * Updated default model configuration to `gemini-3.8-flash` with automatic fallback failover across `gemini-3.6-flash`, `gemini-flash-latest`, and `gemini-flash-lite-latest`.
+  - **End-to-End PRD Verification (`backend/tests/test_live_prd_task.py`):**
+    * Verified the full 6-step PRD lifecycle from `docs/PRD.md`:
+      1. Health check verification (`GET /health`)
+      2. PRD ingestion & CEO critique (`POST /api/sessions/start`)
+      3. Human Approval Gate decision (`POST /api/sessions/{id}/decide`)
+      4. Developer Agent code generation + QA audit + Security patches
+      5. Live preview route discovery (`GET /api/preview/routes/{id}`)
+      6. Compiled release package download (`GET /api/sessions/{id}/download`)
+      7. Token-by-token Monaco code stream via Local Ollama `qwen2.5:7b` over `/ws/tara/stream`.
+  - **Localhost Service Hosting (`http://127.0.0.1:8000`):**
+    * Running live as a background daemon process serving both the full Web IDE interface (`/`), interactive WebSockets (`/ws/tara`, `/ws/tara/stream`, `/ws/security`, `/ws/preview`), and REST API endpoints (`/api/...`).
+- **Why we built it:**
+  - Keeps TARA's FastAPI server responsive under heavy multi-agent workloads, eliminates model deprecation errors, and provides seamless real-time interaction in the local browser.
+
+
 
 
 

@@ -1,5 +1,6 @@
 """FastAPI API endpoints for session lifecycle, HITL decisions, and package download."""
 
+import asyncio
 import io
 import uuid
 from typing import Optional, List
@@ -128,7 +129,8 @@ async def upload_document_endpoint(
 
     if start_session:
         session_id = f"tara-{uuid.uuid4().hex[:8]}"
-        snapshot = session_manager.start_session(
+        snapshot = await asyncio.to_thread(
+            session_manager.start_session,
             session_id=session_id,
             prd_text=extracted_text,
             prd_filename=file.filename
@@ -147,7 +149,7 @@ async def run_direct_graph(req: DirectGraphRunRequest):
     session_id = f"graph-{uuid.uuid4().hex[:8]}"
     try:
         initial_state = create_initial_state(session_id=session_id, prd_text=req.prd_text)
-        result = graph.invoke(initial_state)
+        result = await asyncio.to_thread(graph.invoke, initial_state)
         return {"session_id": session_id, "status": "completed", "result": result}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -158,7 +160,8 @@ async def start_session_endpoint(req: StartSessionRequest):
     """Initializes a new TARA run and executes until the Human Approval Gate."""
     session_id = req.session_id or f"tara-{uuid.uuid4().hex[:8]}"
     try:
-        snapshot = session_manager.start_session(
+        snapshot = await asyncio.to_thread(
+            session_manager.start_session,
             session_id=session_id,
             prd_text=req.prd_text,
             prd_filename=req.prd_filename or "PRD.md"
@@ -191,7 +194,8 @@ async def submit_decision_endpoint(session_id: str, req: DecisionRequest):
         )
 
     try:
-        updated_snapshot = session_manager.submit_decision(
+        updated_snapshot = await asyncio.to_thread(
+            session_manager.submit_decision,
             session_id=session_id,
             action=req.action,
             notes=req.notes or ""
