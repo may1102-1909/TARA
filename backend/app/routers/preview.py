@@ -251,8 +251,8 @@ async def get_session_routes(session_id: str) -> Dict[str, Any]:
     }
 
 
-@router.api_route("/proxy/{session_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-@router.api_route("/proxy/{session_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+@router.api_route("/proxy/{session_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"], operation_id="proxy_preview_root")
+@router.api_route("/proxy/{session_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"], operation_id="proxy_preview_path")
 async def proxy_preview_request(session_id: str, request: Request, path: str = ""):
     """Reverse-proxies requests directly to the session's live sandboxed microservice process."""
     from app.sandbox.runner import get_or_create_session_sandbox, active_session_sandboxes

@@ -551,6 +551,7 @@ Here is the journey of your project requirements document (PRD) from start to fi
       7. Token-by-token Monaco code stream via Local Ollama `qwen2.5:7b` over `/ws/tara/stream`.
   - **Localhost Service Hosting (`http://127.0.0.1:8000`):**
     * Running live as a background daemon process serving both the full Web IDE interface (`/`), interactive WebSockets (`/ws/tara`, `/ws/tara/stream`, `/ws/security`, `/ws/preview`), and REST API endpoints (`/api/...`).
+    * Configured explicit unique `operation_id` attributes on reverse-proxy preview routes (`backend/app/routers/preview.py`) to eliminate OpenAPI duplicate route warnings and ensure clean Swagger schema generation.
 - **Why we built it:**
   - Keeps TARA's FastAPI server responsive under heavy multi-agent workloads, eliminates model deprecation errors, and provides seamless real-time interaction in the local browser.
 
