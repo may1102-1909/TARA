@@ -251,10 +251,20 @@ async def get_session_routes(session_id: str) -> Dict[str, Any]:
     }
 
 
-@router.api_route("/proxy/{session_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"], operation_id="proxy_preview_root")
-@router.api_route("/proxy/{session_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"], operation_id="proxy_preview_path")
-async def proxy_preview_request(session_id: str, request: Request, path: str = ""):
-    """Reverse-proxies requests directly to the session's live sandboxed microservice process."""
+@router.api_route("/proxy/{session_id}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+async def proxy_preview_root(session_id: str, request: Request):
+    """Reverse-proxies requests directly to the session's live sandboxed microservice root."""
+    return await _forward_preview_request(session_id=session_id, request=request, path="")
+
+
+@router.api_route("/proxy/{session_id}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+async def proxy_preview_path(session_id: str, request: Request, path: str = ""):
+    """Reverse-proxies sub-resource requests to the session's live sandboxed microservice process."""
+    return await _forward_preview_request(session_id=session_id, request=request, path=path)
+
+
+async def _forward_preview_request(session_id: str, request: Request, path: str = ""):
+    """Internal handler that forwards requests directly to the session's live sandboxed microservice process."""
     from app.sandbox.runner import get_or_create_session_sandbox, active_session_sandboxes
     from app.core.session_manager import session_manager
 
