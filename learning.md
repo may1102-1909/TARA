@@ -570,3 +570,31 @@ Here is the journey of your project requirements document (PRD) from start to fi
     * Registered the custom `tara-office` Monaco light theme with paper background, ink text, and blue keyword tokens.
 - **Why we built it:**
   - Provides the visual and structural design foundation for the paper company office floor aesthetic without touching or breaking underlying agent logic.
+
+---
+
+### Step 32: "The Office Floor" UI Redesign (Phase 2: Layout Shell)
+- **What was done:**
+  - **Company Letterhead Top Bar (`index.html` & `style.css`):**
+    * Updated the main header into a bold Times-serif paper-company letterhead with the "TARA" wordmark and "Tech-Architecture & Review Agency | Est. 2026" tagline.
+    * Added the wall sign for sandbox status (`#sandbox-wall-sign`: "Sandbox: sealed"), the paper jam tally counter (`#jam-counter-badge`: "Jams: 0/3"), and session badge with online status indicator.
+  - **Manila Filing Cabinet (Left Sidebar):**
+    * Reframed the file tree sidebar into a manila filing cabinet metaphor with manila folder tabs ("Filing Cabinet") and document items.
+    * Selected files now illuminate with `--sky` background fill and a crisp 3px solid ink border.
+  - **Triplicate Form-Copy Stage Tabs:**
+    * Converted the main editor tabs into the office paper-trail triplicate system:
+      - `White copy (Developer)` (`#tab-editor-view`)
+      - `Yellow copy (QA)` (`#tab-diff-view`)
+      - `Pink copy (Security)` (`#tab-audit-view`)
+    * Retained all existing tab attributes and click events for code editing, Monaco diffs, and security audit viewing.
+  - **Office Floor Strip Placement:**
+    * Positioned the `#office-floor-strip` hero container at the very top of the center stage, directly above the editor canvas.
+  - **Department Dispatch Intercom Console:**
+    * Redesigned the console drawer with a distinct `📢 Intercom:` dispatch label and customized color-coded speaker tabs per department:
+      - Regional Manager (CEO): Company blue (`--blue`)
+      - Production (Developer): Ink on crisp white (`--paper`)
+      - Quality Control (QA): Canary yellow (`--canary`)
+      - Accounting & Audit (Security): Carbon pink (`--pink`)
+      - Autonomous Agent & Terminal options.
+- **Why we built it:**
+  - Translates the multi-agent software pipeline into an intuitive, grounded working office floor layout while preserving 100% of the underlying DOM element IDs, WebSocket streams, and testing assertions.

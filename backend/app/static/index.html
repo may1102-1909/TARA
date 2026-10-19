@@ -17,24 +17,35 @@
 <body class="office-theme">
   <div id="app" class="ide-container">
 
-    <!-- ─── Top Header ─── -->
+    <!-- ─── Top Header: Company Letterhead ─── -->
     <header class="ide-header">
       <div class="header-left">
         <div class="brand-section">
           <div class="logo-wrapper">
-            <img src="/assets/logo.png" alt="TARA" class="brand-logo" id="brand-logo-img">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M4 4h16v16H4z" fill="#ffe866" stroke="#111111"/>
+              <path d="M8 8h8M8 12h8M8 16h5" stroke="#111111"/>
+            </svg>
           </div>
           <div class="brand-text">
             <div class="title-row">
               <h1 class="brand-title">TARA</h1>
-              <span class="version-badge">v2.0</span>
+              <span class="version-badge">The Office Floor</span>
             </div>
-            <span class="brand-tagline">Autonomous AI Developer Environment</span>
+            <span class="brand-tagline">Tech-Architecture & Review Agency | Est. 2026</span>
           </div>
         </div>
       </div>
 
       <div class="header-center">
+        <div class="sandbox-wall-sign sealed" id="sandbox-wall-sign" title="Sandbox status wall sign">
+          <span class="sign-bullet">●</span>
+          <span id="sandbox-wall-sign-text">Sandbox: sealed</span>
+        </div>
+        <div class="jam-counter-badge" id="jam-counter-badge" title="Paper jam / retry tally">
+          <span>📄</span>
+          <span id="jam-counter-text">Jams: 0 of 3</span>
+        </div>
         <div class="stepper-container" id="workflow-stepper">
           <div class="step-item active" data-step="spec"><div class="step-bullet">1</div><span class="step-label">Spec</span></div>
           <div class="step-divider"></div>
@@ -55,9 +66,9 @@
           <span class="status-dot online"></span>
           <span id="session-id-text">Session: —</span>
         </div>
-        <button id="btn-download-zip" class="btn btn-outline btn-sm" disabled>
-          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Export</span>
+        <button id="btn-download-zip" class="btn btn-primary btn-sm" disabled title="Download final release package">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Release Package</span>
         </button>
       </div>
     </header>
@@ -109,7 +120,7 @@
             <span>Specification</span>
           </button>
           <button class="sidebar-tab" data-panel="files-panel" id="tab-btn-files">
-            <span>Files</span>
+            <span>Filing Cabinet</span>
             <span class="badge" id="files-count-badge">0</span>
           </button>
         </div>
@@ -149,7 +160,7 @@
 
         <div class="sidebar-content" id="files-panel">
           <div class="file-tree-header">
-            <span class="section-label">Workspace</span>
+            <span class="section-label">Filing Cabinet (Manila Folders)</span>
             <span class="files-tag" id="files-tag-total">0 files</span>
           </div>
           <div class="file-tree-view" id="file-tree-container">
@@ -163,6 +174,9 @@
 
       <!-- Center Stage -->
       <main class="center-stage" id="center-stage">
+        <!-- Office Floor Strip (Pipeline Desks) -->
+        <div class="office-floor-strip" id="office-floor-strip"></div>
+
         <div class="canvas-top-bar">
           <div class="canvas-nav-left">
             <div class="breadcrumbs-row">
@@ -171,9 +185,9 @@
               <span class="breadcrumb-item active" id="active-filename-pill">main.py</span>
             </div>
             <div class="nav-tabs">
-              <button class="stage-tab active" data-view="editor-view" id="tab-editor-view">Code</button>
-              <button class="stage-tab" data-view="diff-view" id="tab-diff-view">Diff</button>
-              <button class="stage-tab" data-view="audit-view" id="tab-audit-view">Audit</button>
+              <button class="stage-tab active" data-view="editor-view" id="tab-editor-view">White copy (Developer)</button>
+              <button class="stage-tab" data-view="diff-view" id="tab-diff-view">Yellow copy (QA)</button>
+              <button class="stage-tab" data-view="audit-view" id="tab-audit-view">Pink copy (Security)</button>
             </div>
           </div>
           <div class="canvas-nav-right">
@@ -296,12 +310,16 @@
         <!-- Console Drawer -->
         <section class="console-drawer" id="console-drawer">
           <div class="console-bar">
+            <div class="console-intercom-badge">
+              <span class="intercom-icon">📢</span>
+              <span class="intercom-title">Intercom:</span>
+            </div>
             <div class="console-tabs">
               <button class="console-tab active" data-agent="all">All</button>
-              <button class="console-tab" data-agent="CEO">CEO</button>
-              <button class="console-tab" data-agent="Developer">Dev</button>
-              <button class="console-tab" data-agent="QA">QA</button>
-              <button class="console-tab" data-agent="Security">Sec</button>
+              <button class="console-tab" data-agent="CEO" title="Regional Manager (CEO)">Manager</button>
+              <button class="console-tab" data-agent="Developer" title="Production (Dev)">Production</button>
+              <button class="console-tab" data-agent="QA" title="Quality Control (QA)">QC</button>
+              <button class="console-tab" data-agent="Security" title="Accounting & Audit (Security)">Audit</button>
               <button class="console-tab" data-agent="ANTIGRAVITY">Agent</button>
               <button class="console-tab" data-agent="terminal" id="tab-terminal">Terminal</button>
             </div>
