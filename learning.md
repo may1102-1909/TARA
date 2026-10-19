@@ -598,3 +598,24 @@ Here is the journey of your project requirements document (PRD) from start to fi
       - Autonomous Agent & Terminal options.
 - **Why we built it:**
   - Translates the multi-agent software pipeline into an intuitive, grounded working office floor layout while preserving 100% of the underlying DOM element IDs, WebSocket streams, and testing assertions.
+
+---
+
+### Step 33: "The Office Floor" UI Redesign (Phase 3: Office Floor Strip & Desk Status)
+- **What was done:**
+  - **Hero Office Floor Strip (`#office-floor-strip`):**
+    * Placed four neobrutalist desk workstation cards across the top of the IDE:
+      1. **Regional Manager (`#desk-ceo`):** Glass office metaphor with manager desk & executive chair SVG illustration. Responsible for PRD appraisal.
+      2. **Production Desk (`#desk-dev`):** Workstation monitor with code lines and keyboard SVG illustration. Responsible for code drafting.
+      3. **Quality Control (`#desk-qa`):** Checklist clipboard and verification checkmarks SVG illustration. Responsible for test audits and linting.
+      4. **Accounting & Audit (`#desk-sec`):** Security shield and calculator/audit ledger SVG illustration. Responsible for SAST hardening.
+  - **Live Dynamic Status Badges & Activity Lines:**
+    * Each desk displays a bold neobrutalist badge (`Idle`, `Waiting for you`, `Working`, `Done`, `Jammed`) reflecting pipeline progress.
+    * Live activity lines truncate the most recent message emitted by that specific agent.
+  - **Active Desk Focus Pulse:**
+    * When an agent is actively working, its desk monitor flickers with an ambient blue aura and its workstation card receives a deeper 6px offset ink shadow.
+  - **Paper Jam & Retry Loop Animation:**
+    * When a revision cycle occurs (e.g., feedback or re-auditing), the UI plays an animated paper slip sliding back to the developer desk and increments the "Jams: X of 3" tally.
+- **Why we built it:**
+  - Gives users instant, delightful visibility into which department is handling their code at any moment of the pipeline run.
+

@@ -971,6 +971,11 @@ textarea {
   color: var(--ink);
 }
 
+.desk-status-badge.idle {
+  background: var(--ceiling);
+  color: #666666;
+}
+
 .desk-status-badge.working {
   background: var(--canary);
   color: var(--ink);
@@ -984,6 +989,11 @@ textarea {
 .desk-status-badge.waiting {
   background: var(--pink);
   color: var(--stamp-red);
+}
+
+.desk-status-badge.jammed {
+  background: var(--stamp-red);
+  color: var(--paper);
 }
 
 .desk-activity-line {
@@ -1010,6 +1020,26 @@ textarea {
 @keyframes monitorFlicker {
   0%, 100% { opacity: 1; filter: drop-shadow(0 0 1px var(--blue)); }
   50% { opacity: 0.75; }
+}
+
+/* Paper Sheet Slide (Retry loop animation) */
+.paper-sheet-slide {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 24px;
+  height: 32px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  z-index: 50;
+  pointer-events: none;
+  animation: paperSlideLeft 0.8s ease-in-out forwards;
+}
+
+@keyframes paperSlideLeft {
+  0% { transform: translate(0, -50%) rotate(4deg); opacity: 1; }
+  100% { transform: translate(-180px, -50%) rotate(-6deg); opacity: 0; }
 }
 
 /* ── Canvas Top Bar & Triplicate Tabs ── */

@@ -175,7 +175,99 @@
       <!-- Center Stage -->
       <main class="center-stage" id="center-stage">
         <!-- Office Floor Strip (Pipeline Desks) -->
-        <div class="office-floor-strip" id="office-floor-strip"></div>
+        <div class="office-floor-strip" id="office-floor-strip">
+          <!-- Desk 1: Regional Manager (CEO Agent) -->
+          <div class="desk-card" id="desk-ceo" data-desk="ceo">
+            <div class="desk-header">
+              <div class="desk-title-group">
+                <div class="desk-icon">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
+                    <rect x="2" y="3" width="20" height="14" rx="1"/>
+                    <line x1="2" y1="17" x2="22" y2="17" stroke-width="2.5"/>
+                    <line x1="6" y1="17" x2="6" y2="21" stroke-width="2"/>
+                    <line x1="18" y1="17" x2="18" y2="21" stroke-width="2"/>
+                    <circle cx="12" cy="9" r="3"/>
+                    <path d="M7 16v-1a5 5 0 0 1 10 0v1"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="desk-dept-name">Regional Manager</div>
+                  <div class="desk-role-label">CEO agent • Spec appraisal</div>
+                </div>
+              </div>
+              <span class="desk-status-badge idle" id="desk-ceo-badge">Idle</span>
+            </div>
+            <div class="desk-activity-line" id="desk-ceo-activity">Awaiting specification submission</div>
+          </div>
+
+          <!-- Desk 2: Production Desk (Developer Agent) -->
+          <div class="desk-card" id="desk-dev" data-desk="dev">
+            <div class="desk-header">
+              <div class="desk-title-group">
+                <div class="desk-icon">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
+                    <rect x="3" y="3" width="18" height="12" rx="1"/>
+                    <line x1="7" y1="7" x2="11" y2="7"/>
+                    <line x1="7" y1="10" x2="17" y2="10"/>
+                    <line x1="12" y1="15" x2="12" y2="18"/>
+                    <line x1="8" y1="18" x2="16" y2="18" stroke-width="2"/>
+                    <rect x="4" y="20" width="16" height="2" rx="1"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="desk-dept-name">Production Desk</div>
+                  <div class="desk-role-label">Developer agent • Code drafting</div>
+                </div>
+              </div>
+              <span class="desk-status-badge idle" id="desk-dev-badge">Idle</span>
+            </div>
+            <div class="desk-activity-line" id="desk-dev-activity">Ready for implementation</div>
+          </div>
+
+          <!-- Desk 3: Quality Control (QA Agent) -->
+          <div class="desk-card" id="desk-qa" data-desk="qa">
+            <div class="desk-header">
+              <div class="desk-title-group">
+                <div class="desk-icon">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1"/>
+                    <path d="m9 12 2 2 4-4"/>
+                    <line x1="9" y1="17" x2="15" y2="17"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="desk-dept-name">Quality Control</div>
+                  <div class="desk-role-label">QA agent • Lint & test audit</div>
+                </div>
+              </div>
+              <span class="desk-status-badge idle" id="desk-qa-badge">Idle</span>
+            </div>
+            <div class="desk-activity-line" id="desk-qa-activity">Standing by for build</div>
+          </div>
+
+          <!-- Desk 4: Accounting & Audit (Security Agent) -->
+          <div class="desk-card" id="desk-sec" data-desk="sec">
+            <div class="desk-header">
+              <div class="desk-title-group">
+                <div class="desk-icon">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <line x1="9" y1="9" x2="15" y2="9"/>
+                    <line x1="9" y1="13" x2="15" y2="13"/>
+                    <circle cx="12" cy="17" r="1" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="desk-dept-name">Accounting & Audit</div>
+                  <div class="desk-role-label">Security agent • SAST & hardening</div>
+                </div>
+              </div>
+              <span class="desk-status-badge idle" id="desk-sec-badge">Idle</span>
+            </div>
+            <div class="desk-activity-line" id="desk-sec-activity">Auditing rules primed</div>
+          </div>
+        </div>
 
         <div class="canvas-top-bar">
           <div class="canvas-nav-left">

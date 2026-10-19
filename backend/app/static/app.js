@@ -188,6 +188,78 @@ class TaraIDE {
         },
       });
     }
+
+    // Office Floor Strip Desks & Jam Counter
+    this.desks = {
+      ceo: { card: document.getElementById("desk-ceo"), badge: document.getElementById("desk-ceo-badge"), activity: document.getElementById("desk-ceo-activity") },
+      dev: { card: document.getElementById("desk-dev"), badge: document.getElementById("desk-dev-badge"), activity: document.getElementById("desk-dev-activity") },
+      qa: { card: document.getElementById("desk-qa"), badge: document.getElementById("desk-qa-badge"), activity: document.getElementById("desk-qa-activity") },
+      sec: { card: document.getElementById("desk-sec"), badge: document.getElementById("desk-sec-badge"), activity: document.getElementById("desk-sec-activity") },
+    };
+    this.jamCounterBadge = document.getElementById("jam-counter-badge");
+    this.jamCount = 0;
+    this._lastRevisionCount = 0;
+  }
+
+  setDeskStatus(deskKey, status, activityMessage = null) {
+    const desk = this.desks && this.desks[deskKey];
+    if (!desk) return;
+
+    const statusMap = {
+      idle: "Idle",
+      working: "Working",
+      done: "Done",
+      waiting: "Waiting for you",
+      jammed: "Jammed",
+    };
+
+    if (desk.badge) {
+      desk.badge.className = `desk-status-badge ${status}`;
+      desk.badge.textContent = statusMap[status] || status;
+    }
+
+    if (desk.card) {
+      if (status === "working") {
+        Object.values(this.desks).forEach((d) => d.card && d.card.classList.remove("active-desk"));
+        desk.card.classList.add("active-desk");
+      } else if (status === "done" || status === "idle") {
+        desk.card.classList.remove("active-desk");
+      }
+    }
+
+    if (activityMessage && desk.activity) {
+      desk.activity.textContent = activityMessage;
+    }
+  }
+
+  updateDeskActivity(deskKey, message) {
+    const desk = this.desks && this.desks[deskKey];
+    if (desk && desk.activity && message) {
+      const clean = message.replace(/^[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\s]+/u, "").trim();
+      desk.activity.textContent = clean.length > 55 ? clean.substring(0, 52) + "…" : clean;
+    }
+  }
+
+  triggerRetryLoop(fromDeskKey = "qa", toDeskKey = "dev") {
+    this.jamCount = Math.min(3, this.jamCount + 1);
+    if (this.jamCounterBadge) {
+      this.jamCounterBadge.textContent = `Jams: ${this.jamCount} of 3`;
+      this.jamCounterBadge.classList.add("has-jams");
+    }
+
+    const fromDesk = this.desks && this.desks[fromDeskKey];
+    const toDesk = this.desks && this.desks[toDeskKey];
+
+    if (fromDesk && fromDesk.card && toDesk && toDesk.card) {
+      this.setDeskStatus(fromDeskKey, "jammed", "Paper jam: revisions requested");
+      const sheet = document.createElement("div");
+      sheet.className = "paper-sheet-slide";
+      fromDesk.card.appendChild(sheet);
+      setTimeout(() => {
+        sheet.remove();
+        this.setDeskStatus(toDeskKey, "working", "Re-evaluating code changes");
+      }, 800);
+    }
   }
 
   initMonaco() {
@@ -1632,6 +1704,17 @@ class TaraIDE {
     const ts = timestamp || new Date().toLocaleTimeString();
     this.allLogs.push({ agent, message, timestamp: ts });
     this.renderLogs();
+
+    const ag = (agent || "").toUpperCase();
+    if (ag === "CEO") {
+      this.updateDeskActivity("ceo", message);
+    } else if (ag === "DEVELOPER") {
+      this.updateDeskActivity("dev", message);
+    } else if (ag === "QA") {
+      this.updateDeskActivity("qa", message);
+    } else if (ag === "SECURITY") {
+      this.updateDeskActivity("sec", message);
+    }
   }
 
   renderLogs() {
@@ -1688,6 +1771,12 @@ class TaraIDE {
     this.setStepperStep("ceo");
     this.stageStatusText.textContent = "CEO Evaluating PRD Viability...";
 
+    // Update Office Floor Desks
+    this.setDeskStatus("ceo", "working", "Evaluating PRD Viability...");
+    this.setDeskStatus("dev", "idle", "Standing by for plan sign-off");
+    this.setDeskStatus("qa", "idle", "Standing by for build");
+    this.setDeskStatus("sec", "idle", "Auditing rules primed");
+
     try {
       const payload = {
         session_id: this.sessionId,
@@ -1729,6 +1818,8 @@ class TaraIDE {
     if (snapshot.status === "awaiting_approval" && snapshot.ceo_critique) {
       this.setStepperStep("gate");
       this.stageStatusText.textContent = "Awaiting Human-in-the-Loop Sign-off";
+      this.setDeskStatus("ceo", "done", "Critique rendered: viability evaluated");
+      this.setDeskStatus("dev", "waiting", "Memo awaiting client sign-off");
       this.openApprovalModal(snapshot.ceo_critique, snapshot.revision_count);
     } else if (snapshot.status === "completed") {
       this.closeApprovalModal();
@@ -1738,13 +1829,24 @@ class TaraIDE {
       if (this.btnRunCode) this.btnRunCode.disabled = false;
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Run New Iteration</span>`;
+      this.setDeskStatus("ceo", "done");
+      this.setDeskStatus("dev", "done");
+      this.setDeskStatus("qa", "done");
+      this.setDeskStatus("sec", "done", "Security audit complete. Package ready.");
       this.renderArtifacts(snapshot, true);
     } else if (snapshot.user_action === "reject") {
       this.closeApprovalModal();
       this.stageStatusText.textContent = "Workflow Rejected by Stakeholder";
       this.appendLog("HITL", "Pipeline halted per human decision.");
+      this.setDeskStatus("ceo", "done", "Proposal rejected by client");
+      this.setDeskStatus("dev", "idle", "Implementation halted");
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Restart Pipeline</span>`;
+    }
+
+    if (snapshot.revision_count && snapshot.revision_count > (this._lastRevisionCount || 0)) {
+      this._lastRevisionCount = snapshot.revision_count;
+      this.triggerRetryLoop("qa", "dev");
     }
   }
 
