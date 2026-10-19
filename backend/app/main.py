@@ -98,6 +98,15 @@ def serve_ide():
     }
 
 
+@app.get("/office")
+def serve_office():
+    """Serves the live interactive Pixi.js OfficeFloor simulation."""
+    office_path = STATIC_DIR / "office.html"
+    if office_path.exists():
+        return FileResponse(str(office_path))
+    return {"error": "Office floor simulation not found"}
+
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}

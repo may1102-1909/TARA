@@ -619,3 +619,21 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Gives users instant, delightful visibility into which department is handling their code at any moment of the pipeline run.
 
+---
+
+### Step 34: Pixi.js OfficeFloor Simulation Engine & Localhost Hosting (`/office`)
+- **What was done:**
+  - **Pixi.js OfficeFloor Simulation (`backend/app/static/office.html`):**
+    * Created a complete, self-contained interactive Pixi.js canvas simulation based on the 4-layer architecture (floor, walls, furniture-below, charLayer with Y-sorting `zIndex = py`, and furniture-above).
+    * Implemented 4-direction orthogonal BFS pathfinding with solid wall and desk collision grids and doorway overrides.
+    * Implemented smooth LERP camera controls (`fitToScreen()`, `focusOn(x, y)`, drag-to-pan, scroll-to-zoom).
+    * Built procedural pixel-art characters featuring work glow halos, seated leg-crop masks when sitting at desks facing north, and supersampled thought bubbles.
+    * Implemented parabolic quadratic sine message envelopes flying between agent desks with burst particle rings upon arrival.
+  - **FastAPI Endpoint Routing (`backend/app/main.py`):**
+    * Registered `@app.get("/office")` to serve the live simulation page directly.
+  - **Localhost Hosting Verification:**
+    * Verified `http://127.0.0.1:8000/office` (200 OK), `http://127.0.0.1:8000/health` (200 OK), and `http://127.0.0.1:8000/` (200 OK).
+- **Why we built it:**
+  - Provides a self-contained, interactive 2D graphical office floor that can visualize multi-agent collaboration, state transitions, and inter-agent message routing in real time.
+
+

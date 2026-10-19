@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TARA Autonomous Office Floor — Pixi.js & Agent Simulation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: rgba(24, 24, 27, 0.85);
+      --border: rgba(63, 63, 70, 0.5);
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.25);
+      --text: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --sky: #38bdf8;
+      --lilac: #c084fc;
+      --lemon: #fde047;
+      --mint: #4ade80;
+      --coral: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      height: 54px;
+      background: rgba(18, 18, 22, 0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      color: #fff;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .btn {
+      background: rgba(39, 39, 42, 0.8);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: rgba(63, 63, 70, 0.8);
+      border-color: #71717a;
+      transform: translateY(-1px);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      border-color: #6366f1;
+      color: #fff;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4338ca, #4f46e5);
+      border-color: #818cf8;
+    }
+
+    /* Main Workspace Layout */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: calc(100vh - 54px);
+      position: relative;
+    }
+
+    /* Canvas Viewport */
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #09090b;
+      overflow: hidden;
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    /* Floating Viewport HUD Controls */
+    .viewport-hud {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      z-index: 50;
+    }
+    .hud-stat {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+      padding-right: 8px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hud-stat span {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Right Sidebar Roster & Controls */
+    aside {
+      background: rgba(18, 18, 22, 0.95);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .agent-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .agent-card {
+      background: rgba(24, 24, 27, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .agent-card:hover, .agent-card.selected {
+      border-color: var(--accent);
+      background: rgba(39, 39, 42, 0.85);
+      box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+    }
+    .agent-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .agent-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .agent-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .status-badge {
+      font-size: 0.68rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .status-idle { background: rgba(161, 161, 170, 0.15); color: #a1a1aa; }
+    .status-working { background: rgba(74, 222, 128, 0.15); color: var(--mint); }
+    .status-thinking { background: rgba(192, 132, 252, 0.15); color: var(--lilac); }
+    .status-blocked { background: rgba(248, 113, 113, 0.15); color: var(--coral); }
+
+    .agent-action {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .agent-coords {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.7rem;
+      color: #71717a;
+    }
+
+    /* Control Panel Bottom */
+    .controls-panel {
+      padding: 14px;
+      border-top: 1px solid var(--border);
+      background: rgba(15, 15, 18, 0.95);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .control-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-badge">Engine v1.0</span>
+      <span>TARA Autonomous Office Floor</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="cameraFit()">🎯 Fit View</button>
+      <button class="btn" onclick="cameraFocusCEO()">👑 Focus CEO</button>
+      <button class="btn btn-primary" onclick="triggerHiveEnvelope()">✉️ Route Hive Message</button>
+      <a href="/" class="btn">💻 Open IDE</a>
+    </div>
+  </header>
+
+  <!-- Workspace: Canvas on Left, Controls & Roster on Right -->
+  <div class="workspace">
+    <div id="canvas-container">
+      <div class="viewport-hud">
+        <div class="hud-stat">Camera: <span id="hud-zoom">1.0x</span></div>
+        <div class="hud-stat">Active Agents: <span id="hud-agents">4</span></div>
+        <div class="hud-stat">FPS: <span id="hud-fps">60</span></div>
+        <div class="hud-stat">Selected: <span id="hud-selected">None</span></div>
+      </div>
+    </div>
+
+    <!-- Sidebar Agent Inspector -->
+    <aside>
+      <div class="panel-header">
+        <span>Agent Registry</span>
+        <span style="font-size: 0.7rem; color: var(--accent);">Zustand Store</span>
+      </div>
+      <div class="agent-list" id="agent-list">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="controls-panel">
+        <div class="panel-header" style="padding: 0 0 6px 0; border: none;">Live Simulation Controls</div>
+        <div class="control-row">
+          <button class="btn" onclick="triggerWander()">🚶 Wander Floor</button>
+          <button class="btn" onclick="triggerReturnDesks()">🪑 Return to Desks</button>
+        </div>
+        <div class="control-row">
+          <button class="btn" onclick="triggerCoffeeRun()">☕ Coffee Break</button>
+          <button class="btn" onclick="triggerBurstSprint()">⚡ Build Sprint</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. Core Geometry & Interfaces
+       ========================================================================== */
+    const TILE_SIZE = 32;
+    const MAP_COLS = 26;
+    const MAP_ROWS = 18;
+    const SPEED = 64; // pixels per sec
+    const ARC_LIFT = 42;
+
+    // BFS Pathfinding Walkability Grid: 0 = Walkable, 1 = Solid Furniture/Wall
+    const GRID = Array(MAP_ROWS).fill(0).map(() => Array(MAP_COLS).fill(0));
+
+    // Define Walls around perimeter
+    for (let c = 0; c < MAP_COLS; c++) { GRID[0][c] = 1; GRID[MAP_ROWS - 1][c] = 1; }
+    for (let r = 0; r < MAP_ROWS; r++) { GRID[r][0] = 1; GRID[r][MAP_COLS - 1] = 1; }
+
+    // CEO Office interior wall with doorway at (7, 4)
+    for (let r = 1; r <= 7; r++) GRID[r][8] = 1;
+    for (let c = 1; c <= 8; c++) GRID[7][c] = 1;
+    GRID[7][4] = 0; // Doorway
+
+    // Break Room / Coffee Area interior wall with doorway at (12, 18)
+    for (let r = 1; r <= 6; r++) GRID[r][16] = 1;
+    for (let c = 16; c < MAP_COLS - 1; c++) GRID[6][c] = 1;
+    GRID[6][20] = 0; // Doorway
+
+    // Meeting / War Room interior wall
+    for (let r = 11; r < MAP_ROWS - 1; r++) GRID[r][17] = 1;
+    GRID[14][17] = 0; // Doorway
+
+    // Furniture / Desks placement (solid)
+    const DESKS = [
+      { id: 'desk-ceo', x: 4, y: 3, label: 'Executive Desk' },
+      { id: 'desk-dev', x: 11, y: 5, label: 'Dev Station' },
+      { id: 'desk-qa', x: 11, y: 9, label: 'QA Station' },
+      { id: 'desk-sec', x: 11, y: 13, label: 'Security Station' },
+    ];
+    // Mark desks as solid on the walkability grid
+    DESKS.forEach(d => { GRID[d.y][d.x] = 1; });
+
+    // Seat tiles (directly south of desk, face up looking at screen)
+    const SEATS = {
+      'agent-ceo': { x: 4, y: 4, facing: 'up' },
+      'agent-dev': { x: 11, y: 6, facing: 'up' },
+      'agent-qa':  { x: 11, y: 10, facing: 'up' },
+      'agent-sec': { x: 11, y: 14, facing: 'up' },
+    };
+
+    /* ==========================================================================
+       2. BFS Pathfinding Algorithm (4-Direction Orthogonal)
+       ========================================================================== */
+    function findPath(start, goal) {
+      if (start.x === goal.x && start.y === goal.y) return [];
+      if (goal.x < 0 || goal.x >= MAP_COLS || goal.y < 0 || goal.y >= MAP_ROWS) return null;
+      if (GRID[goal.y][goal.x] === 1) return null;
+
+      const queue = [start];
+      const visited = new Set([`${start.x},${start.y}`]);
+      const parent = new Map();
+      const DIRS = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        if (curr.x === goal.x && curr.y === goal.y) {
+          const path = [];
+          let step = goal;
+          while (step.x !== start.x || step.y !== start.y) {
+            path.unshift(step);
+            step = parent.get(`${step.x},${step.y}`);
+          }
+          return path;
+        }
+
+        for (const dir of DIRS) {
+          const nx = curr.x + dir.x;
+          const ny = curr.y + dir.y;
+          const key = `${nx},${ny}`;
+          if (nx >= 0 && nx < MAP_COLS && ny >= 0 && ny < MAP_ROWS && GRID[ny][nx] === 0 && !visited.has(key)) {
+            visited.add(key);
+            parent.set(key, curr);
+            queue.push({ x: nx, y: ny });
+          }
+        }
+      }
+      return null;
+    }
+
+    /* ==========================================================================
+       3. Agent Store (Sample State Driver)
+       ========================================================================== */
+    const store = {
+      selectedId: 'agent-ceo',
+      agents: [
+        {
+          id: 'agent-ceo',
+          name: 'CEO Evaluator',
+          shirt: 0x6366f1,
+          accent: '#6366f1',
+          status: 'working',
+          action: 'Evaluating PRD market viability & requirements',
+          x: 4 * TILE_SIZE + 16,
+          y: 4 * TILE_SIZE + 28,
+          tileX: 4,
+          tileY: 4,
+          direction: 'up',
+          bubble: 'Ingesting Spec...',
+          bubbleTimer: 4.0,
+          isGod: true
+        },
+        {
+          id: 'agent-dev',
+          name: 'Developer Agent',
+          shirt: 0x38bdf8,
+          accent: '#38bdf8',
+          status: 'working',
+          action: 'qwen2.5:7b live token streaming into Monaco',
+          x: 11 * TILE_SIZE + 16,
+          y: 6 * TILE_SIZE + 28,
+          tileX: 11,
+          tileY: 6,
+          direction: 'up',
+          bubble: 'Writing endpoints in main.py',
+          bubbleTimer: 5.0
+        },
+        {
+          id: 'agent-qa',
+          name: 'QA Inspector',
+          shirt: 0x4ade80,
+          accent: '#4ade80',
+          status: 'idle',
+          action: 'Awaiting build artifacts for test verification',
+          x: 11 * TILE_SIZE + 16,
+          y: 10 * TILE_SIZE + 28,
+          tileX: 11,
+          tileY: 10,
+          direction: 'up',
+          bubble: 'Ready to run test suites',
+          bubbleTimer: 3.5
+        },
+        {
+          id: 'agent-sec',
+          name: 'Security Officer',
+          shirt: 0xf87171,
+          accent: '#f87171',
+          status: 'working',
+          action: 'Strix SAST vulnerability scan & Bandit AST',
+          x: 11 * TILE_SIZE + 16,
+          y: 14 * TILE_SIZE + 28,
+          tileX: 11,
+          tileY: 14,
+          direction: 'up',
+          bubble: 'Running Bandit security audit...',
+          bubbleTimer: 4.5
+        }
+      ],
+      envelopes: [],
+      listeners: new Set(),
+      subscribe(fn) { store.listeners.add(fn); return () => store.listeners.delete(fn); },
+      notify() { store.listeners.forEach(fn => fn(store)); }
+    };
+
+    /* ==========================================================================
+       4. Pixi.js Application & Layer Hierarchy Setup
+       ========================================================================== */
+    const containerEl = document.getElementById('canvas-container');
+    const app = new PIXI.Application({
+      background: 0x0c0c0e,
+      antialias: false,
+      autoDensity: true,
+      resolution: window.devicePixelRatio || 2,
+      resizeTo: containerEl
+    });
+    containerEl.appendChild(app.view);
+
+    // Camera World Root Container
+    const world = new PIXI.Container();
+    app.stage.addChild(world);
+
+    // Map Tile Layers
+    const floorLayer = new PIXI.Graphics();
+    const wallsLayer = new PIXI.Graphics();
+    const furnitureBelowLayer = new PIXI.Graphics();
+    const furnitureAboveLayer = new PIXI.Graphics();
+
+    // Characters & Dynamic Entities Layer (sortableChildren = true for Y-sorting)
+    const charLayer = new PIXI.Container();
+    charLayer.sortableChildren = true;
+
+    world.addChild(floorLayer);
+    world.addChild(wallsLayer);
+    world.addChild(furnitureBelowLayer);
+    world.addChild(charLayer);
+    world.addChild(furnitureAboveLayer);
+
+    /* Render Static Floor, Walls & Furniture */
+    function drawMap() {
+      floorLayer.clear();
+      wallsLayer.clear();
+      furnitureBelowLayer.clear();
+
+      // Floor tiles
+      for (let r = 0; r < MAP_ROWS; r++) {
+        for (let c = 0; c < MAP_COLS; c++) {
+          const isExec = (c < 9 && r < 8);
+          const isBreak = (c > 15 && r < 7);
+          const isMeeting = (c > 16 && r > 10);
+
+          let tileColor = ((c + r) % 2 === 0) ? 0x18181b : 0x1e1e24;
+          if (isExec) tileColor = ((c + r) % 2 === 0) ? 0x1e1b2e : 0x242038;
+          if (isBreak) tileColor = ((c + r) % 2 === 0) ? 0x1b2824 : 0x20302b;
+          if (isMeeting) tileColor = ((c + r) % 2 === 0) ? 0x2a1d1d : 0x332323;
+
+          floorLayer.beginFill(tileColor);
+          floorLayer.drawRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          floorLayer.endFill();
+        }
+      }
+
+      // Walls
+      for (let r = 0; r < MAP_ROWS; r++) {
+        for (let c = 0; c < MAP_COLS; c++) {
+          if (GRID[r][c] === 1 && !DESKS.some(d => d.x === c && d.y === r)) {
+            wallsLayer.beginFill(0x27272a);
+            wallsLayer.lineStyle(1, 0x3f3f46, 0.8);
+            wallsLayer.drawRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            wallsLayer.endFill();
+            // Wall top shadow
+            wallsLayer.beginFill(0x18181b, 0.4);
+            wallsLayer.drawRect(c * TILE_SIZE, r * TILE_SIZE + 24, TILE_SIZE, 8);
+            wallsLayer.endFill();
+          }
+        }
+      }
+
+      // Desks & Computer Screens
+      DESKS.forEach(desk => {
+        const dx = desk.x * TILE_SIZE;
+        const dy = desk.y * TILE_SIZE;
+
+        // Desk wood
+        furnitureBelowLayer.beginFill(0x3f3f46);
+        furnitureBelowLayer.lineStyle(1, 0x52525b);
+        furnitureBelowLayer.drawRoundedRect(dx + 2, dy + 6, TILE_SIZE - 4, TILE_SIZE - 8, 4);
+        furnitureBelowLayer.endFill();
+
+        // Monitor Base
+        furnitureBelowLayer.beginFill(0x18181b);
+        furnitureBelowLayer.drawRect(dx + 12, dy + 18, 8, 4);
+        furnitureBelowLayer.endFill();
+
+        // Monitor Screen (Lit with cyan terminal glow)
+        furnitureBelowLayer.beginFill(0x0284c7);
+        furnitureBelowLayer.drawRoundedRect(dx + 8, dy + 8, 16, 11, 2);
+        furnitureBelowLayer.endFill();
+      });
+
+      // Break Room Coffee Machine
+      const cx = 22 * TILE_SIZE;
+      const cy = 2 * TILE_SIZE;
+      furnitureBelowLayer.beginFill(0xd97706);
+      furnitureBelowLayer.drawRect(cx, cy, 24, 20);
+      furnitureBelowLayer.endFill();
+    }
+    drawMap();
+
+    /* ==========================================================================
+       5. Camera Engine (Pan, Zoom, Bounds & Focus)
+       ========================================================================== */
+    class Camera {
+      constructor(container) {
+        this.container = container;
+        this.currentX = (MAP_COLS * TILE_SIZE) / 2;
+        this.currentY = (MAP_ROWS * TILE_SIZE) / 2;
+        this.currentZoom = 1.0;
+        this.targetX = this.currentX;
+        this.targetY = this.currentY;
+        this.targetZoom = 1.0;
+        this.lerpSpeed = 0.08;
+      }
+
+      fitToScreen() {
+        const vw = containerEl.clientWidth || 800;
+        const vh = containerEl.clientHeight || 600;
+        const mw = MAP_COLS * TILE_SIZE;
+        const mh = MAP_ROWS * TILE_SIZE;
+        this.targetZoom = Math.min((vw - 80) / mw, (vh - 80) / mh, 1.4);
+        this.targetX = mw / 2;
+        this.targetY = mh / 2;
+      }
+
+      focusOn(wx, wy, zoom = 1.35) {
+        this.targetX = wx;
+        this.targetY = wy;
+        this.targetZoom = zoom;
+      }
+
+      update(dt) {
+        this.currentX += (this.targetX - this.currentX) * this.lerpSpeed;
+        this.currentY += (this.targetY - this.currentY) * this.lerpSpeed;
+        this.currentZoom += (this.targetZoom - this.currentZoom) * this.lerpSpeed;
+
+        const vw = containerEl.clientWidth || 800;
+        const vh = containerEl.clientHeight || 600;
+
+        this.container.scale.set(this.currentZoom);
+        this.container.position.set(
+          vw / 2 - this.currentX * this.currentZoom,
+          vh / 2 - this.currentY * this.currentZoom
+        );
+      }
+    }
+    const camera = new Camera(world);
+    camera.fitToScreen();
+
+    // Mouse drag pan & scroll wheel zoom
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    containerEl.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    containerEl.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = (e.clientX - dragStart.x) / camera.currentZoom;
+      const dy = (e.clientY - dragStart.y) / camera.currentZoom;
+      camera.targetX -= dx;
+      camera.targetY -= dy;
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+    containerEl.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      camera.targetZoom = Math.max(0.6, Math.min(camera.targetZoom * zoomFactor, 2.5));
+    });
+
+    /* ==========================================================================
+       6. Character Entity & Sprite Rendering
+       ========================================================================== */
+    class CharacterView {
+      constructor(agent) {
+        this.agent = agent;
+        this.path = [];
+        this.container = new PIXI.Container();
+
+        // 1. Work Glow Halo
+        this.glow = new PIXI.Graphics();
+        this.container.addChild(this.glow);
+
+        // 2. Character Body Sprite (Pixel Art Procedural)
+        this.sprite = new PIXI.Graphics();
+        this.container.addChild(this.sprite);
+
+        // 3. Nameplate Container
+        this.nameTag = new PIXI.Container();
+        const text = new PIXI.Text(agent.name, {
+          fontFamily: 'Inter',
+          fontSize: 9,
+          fontWeight: '600',
+          fill: 0xffffff,
+          align: 'center'
+        });
+        text.anchor.set(0.5, 0.5);
+        const bg = new PIXI.Graphics();
+        bg.beginFill(0x18181b, 0.85);
+        bg.lineStyle(1, 0x3f3f46, 0.8);
+        bg.drawRoundedRect(-text.width / 2 - 4, -8, text.width + 8, 16, 4);
+        bg.endFill();
+        this.nameTag.addChild(bg);
+        this.nameTag.addChild(text);
+        this.nameTag.position.set(0, -38);
+        this.container.addChild(this.nameTag);
+
+        // 4. Thought Bubble Container
+        this.bubbleContainer = new PIXI.Container();
+        this.bubbleBg = new PIXI.Graphics();
+        this.bubbleText = new PIXI.Text('', {
+          fontFamily: 'Inter',
+          fontSize: 10,
+          fontWeight: '500',
+          fill: 0x18181b,
+          wordWrap: true,
+          wordWrapWidth: 150
+        });
+        this.bubbleText.anchor.set(0.5, 0.5);
+        this.bubbleContainer.addChild(this.bubbleBg);
+        this.bubbleContainer.addChild(this.bubbleText);
+        this.bubbleContainer.position.set(0, -60);
+        this.container.addChild(this.bubbleContainer);
+
+        this.renderCharacter();
+        charLayer.addChild(this.container);
+      }
+
+      renderCharacter() {
+        this.sprite.clear();
+        this.glow.clear();
+
+        // Ambient work glow if active
+        if (this.agent.status === 'working') {
+          this.glow.beginFill(this.agent.shirt, 0.25);
+          this.glow.drawCircle(0, -12, 18);
+          this.glow.endFill();
+        }
+
+        // Head
+        this.sprite.beginFill(0xfde047); // Hair/Skin
+        this.sprite.drawCircle(0, -22, 6);
+        this.sprite.endFill();
+
+        // Torso / Shirt
+        this.sprite.beginFill(this.agent.shirt);
+        this.sprite.drawRoundedRect(-6, -16, 12, 12, 2);
+        this.sprite.endFill();
+
+        // Legs (seated crop logic)
+        const isSeated = this.agent.direction === 'up' && this.path.length === 0;
+        if (!isSeated) {
+          this.sprite.beginFill(0x3f3f46); // Pants
+          this.sprite.drawRect(-5, -4, 4, 6);
+          this.sprite.drawRect(1, -4, 4, 6);
+          this.sprite.endFill();
+        }
+      }
+
+      updateBubble(dt) {
+        if (this.agent.bubbleTimer > 0) {
+          this.agent.bubbleTimer -= dt;
+          this.bubbleContainer.visible = true;
+          this.bubbleText.text = this.agent.bubble;
+
+          const bw = Math.max(this.bubbleText.width + 16, 40);
+          const bh = this.bubbleText.height + 10;
+          this.bubbleBg.clear();
+          this.bubbleBg.beginFill(0xf4f4f5);
+          this.bubbleBg.lineStyle(1, 0xd4d4d8);
+          this.bubbleBg.drawRoundedRect(-bw / 2, -bh / 2, bw, bh, 5);
+          // Tail
+          this.bubbleBg.moveTo(-4, bh / 2);
+          this.bubbleBg.lineTo(0, bh / 2 + 5);
+          this.bubbleBg.lineTo(4, bh / 2);
+          this.bubbleBg.endFill();
+        } else {
+          this.bubbleContainer.visible = false;
+        }
+      }
+
+      update(dt) {
+        // Step pathfinding movement
+        if (this.path.length > 0) {
+          const target = this.path[0];
+          const targetX = target.x * TILE_SIZE + 16;
+          const targetY = target.y * TILE_SIZE + 28;
+
+          const dx = targetX - this.agent.x;
+          const dy = targetY - this.agent.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist > 0.1) {
+            this.agent.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+          }
+
+          const step = Math.min(SPEED * dt, dist);
+          if (dist <= step) {
+            this.agent.x = targetX;
+            this.agent.y = targetY;
+            this.agent.tileX = target.x;
+            this.agent.tileY = target.y;
+            this.path.shift();
+            if (this.path.length === 0) {
+              this.renderCharacter(); // Recalculate seated crop
+            }
+          } else {
+            this.agent.x += (dx / dist) * step;
+            this.agent.y += (dy / dist) * step;
+          }
+        }
+
+        // Set World Container Position & Z-Index Y-Sorting
+        this.container.position.set(this.agent.x, this.agent.y);
+        this.container.zIndex = this.agent.y;
+
+        this.updateBubble(dt);
+      }
+    }
+
+    /* Instantiate Characters */
+    const characterViews = new Map();
+    store.agents.forEach(a => {
+      characterViews.set(a.id, new CharacterView(a));
+    });
+
+    /* ==========================================================================
+       7. Message Envelopes (Quadratic Sine Projectile Arcs)
+       ========================================================================== */
+    class EnvelopeProjectile {
+      constructor(sender, recipient, act = 'request') {
+        this.sender = sender;
+        this.recipient = recipient;
+        this.sx = sender.x;
+        this.sy = sender.y - 18;
+        this.ex = recipient.x;
+        this.ey = recipient.y - 18;
+        this.t = 0;
+        this.duration = 1.2;
+        this.burstTimer = 0;
+
+        const colors = {
+          request: 0x38bdf8,
+          inform:  0xfef08a,
+          propose: 0xfacc15,
+          agree:   0x4ade80,
+          refuse:  0xf87171,
+        };
+        this.color = colors[act] || 0x38bdf8;
+
+        this.container = new PIXI.Container();
+        this.body = new PIXI.Graphics();
+        this.burst = new PIXI.Graphics();
+        this.container.addChild(this.body);
+        this.container.addChild(this.burst);
+        charLayer.addChild(this.container);
+
+        this.drawEnvelope();
+      }
+
+      drawEnvelope() {
+        this.body.clear();
+        this.body.beginFill(this.color);
+        this.body.lineStyle(1, 0x09090b);
+        this.body.drawRect(-7, -5, 14, 10);
+        this.body.moveTo(-7, -5);
+        this.body.lineTo(0, 1);
+        this.body.lineTo(7, -5);
+        this.body.endFill();
+      }
+
+      update(dt) {
+        if (this.t < 1.0) {
+          this.t += dt / this.duration;
+          const ease = this.t < 0.5 ? 2 * this.t * this.t : 1 - Math.pow(-2 * this.t + 2, 2) / 2;
+          const x = this.sx + (this.ex - this.sx) * ease;
+          const y = this.sy + (this.ey - this.sy) * ease - ARC_LIFT * Math.sin(Math.PI * ease);
+          this.container.position.set(x, y);
+          this.container.zIndex = 100000;
+        } else if (this.burstTimer < 0.3) {
+          this.body.visible = false;
+          this.burstTimer += dt;
+          const progress = this.burstTimer / 0.3;
+          this.burst.clear();
+          this.burst.lineStyle(2, this.color, 1 - progress);
+          this.burst.drawCircle(0, 0, progress * 24);
+        } else {
+          charLayer.removeChild(this.container);
+          return true; // Finished
+        }
+        return false;
+      }
+    }
+    let activeEnvelopes = [];
+
+    /* ==========================================================================
+       8. Simulation Actions & Event Triggers
+       ========================================================================== */
+    function triggerHiveEnvelope() {
+      const dev = store.agents.find(a => a.id === 'agent-dev');
+      const ceo = store.agents.find(a => a.id === 'agent-ceo');
+      const sec = store.agents.find(a => a.id === 'agent-sec');
+
+      activeEnvelopes.push(new EnvelopeProjectile(dev, sec, 'request'));
+      dev.bubble = "Sending patches for Bandit SAST review!";
+      dev.bubbleTimer = 3.0;
+
+      setTimeout(() => {
+        activeEnvelopes.push(new EnvelopeProjectile(sec, ceo, 'agree'));
+        sec.bubble = "Zero high severity CVEs detected. Approved!";
+        sec.bubbleTimer = 3.5;
+      }, 1400);
+    }
+
+    function triggerWander() {
+      store.agents.forEach(agent => {
+        const view = characterViews.get(agent.id);
+        const rx = 8 + Math.floor(Math.random() * 8);
+        const ry = 4 + Math.floor(Math.random() * 8);
+        const path = findPath({ x: agent.tileX, y: agent.tileY }, { x: rx, y: ry });
+        if (path) {
+          view.path = path;
+          agent.status = 'idle';
+          agent.bubble = "Stretching legs...";
+          agent.bubbleTimer = 2.5;
+        }
+      });
+      renderRoster();
+    }
+
+    function triggerReturnDesks() {
+      store.agents.forEach(agent => {
+        const view = characterViews.get(agent.id);
+        const seat = SEATS[agent.id];
+        if (seat) {
+          const path = findPath({ x: agent.tileX, y: agent.tileY }, { x: seat.x, y: seat.y });
+          if (path) {
+            view.path = path;
+            agent.status = 'working';
+            agent.bubble = "Heading back to work station.";
+            agent.bubbleTimer = 3.0;
+          }
+        }
+      });
+      renderRoster();
+    }
+
+    function triggerCoffeeRun() {
+      const dev = store.agents.find(a => a.id === 'agent-dev');
+      const view = characterViews.get(dev.id);
+      const path = findPath({ x: dev.tileX, y: dev.tileY }, { x: 21, y: 3 });
+      if (path) {
+        view.path = path;
+        dev.bubble = "Need fresh coffee for 10x velocity!";
+        dev.bubbleTimer = 4.0;
+      }
+      renderRoster();
+    }
+
+    function triggerBurstSprint() {
+      store.agents.forEach(agent => {
+        agent.status = 'working';
+        agent.bubble = "Sprint cycle engaged! 🚀";
+        agent.bubbleTimer = 3.5;
+        const view = characterViews.get(agent.id);
+        view.renderCharacter();
+      });
+      renderRoster();
+    }
+
+    function cameraFit() { camera.fitToScreen(); }
+    function cameraFocusCEO() {
+      const ceo = store.agents.find(a => a.id === 'agent-ceo');
+      camera.focusOn(ceo.x, ceo.y, 1.8);
+      document.getElementById('hud-selected').innerText = ceo.name;
+    }
+
+    /* ==========================================================================
+       9. Main Animation Loop (app.ticker.add)
+       ========================================================================== */
+    app.ticker.add((delta) => {
+      const dt = delta / 60; // seconds
+
+      // 1. Step Camera
+      camera.update(dt);
+
+      // 2. Step Characters
+      characterViews.forEach(view => view.update(dt));
+
+      // 3. Step Envelopes
+      activeEnvelopes = activeEnvelopes.filter(env => !env.update(dt));
+
+      // 4. Update HUD
+      document.getElementById('hud-zoom').innerText = `${camera.currentZoom.toFixed(1)}x`;
+      document.getElementById('hud-fps').innerText = Math.round(app.ticker.FPS);
+    });
+
+    /* ==========================================================================
+       10. UI Roster Rendering
+       ========================================================================== */
+    function renderRoster() {
+      const listEl = document.getElementById('agent-list');
+      listEl.innerHTML = '';
+
+      store.agents.forEach(agent => {
+        const card = document.createElement('div');
+        card.className = `agent-card ${store.selectedId === agent.id ? 'selected' : ''}`;
+        card.onclick = () => {
+          store.selectedId = agent.id;
+          camera.focusOn(agent.x, agent.y, 1.8);
+          document.getElementById('hud-selected').innerText = agent.name;
+          renderRoster();
+        };
+
+        card.innerHTML = `
+          <div class="agent-card-header">
+            <div class="agent-name">
+              <div class="agent-dot" style="background: ${agent.accent};"></div>
+              <span>${agent.name}</span>
+            </div>
+            <span class="status-badge status-${agent.status}">${agent.status}</span>
+          </div>
+          <div class="agent-action">${agent.action}</div>
+          <div class="agent-coords">Tile: [${agent.tileX}, ${agent.tileY}] · Direction: ${agent.direction}</div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+    renderRoster();
+  </script>
+</body>
+</html>
