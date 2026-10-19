@@ -552,9 +552,21 @@ Here is the journey of your project requirements document (PRD) from start to fi
   - **Localhost Service Hosting (`http://127.0.0.1:8000`):**
     * Refactored reverse-proxy preview routes (`backend/app/routers/preview.py`) into distinct root (`proxy_preview_root`) and sub-path (`proxy_preview_path`) handler functions, completely eliminating FastAPI duplicate operation ID warnings and ensuring clean OpenAPI/Swagger schema generation.
 - **Why we built it:**
-  - Keeps TARA's FastAPI server responsive under heavy multi-agent workloads, eliminates model deprecation errors, and provides seamless real-time interaction in the local browser.
+---
 
-
-
-
-
+### Step 31: "The Office Floor" UI Redesign (Phase 1: Inventory & Neobrutalism Tokens)
+- **What was done:**
+  - **Front-End Inventory:**
+    * Mapped all UI files (`index.html`, `style.css`, `app.js`, `theme.js`, `preview-frame.js`, `prompt-bar.js`, and components).
+    * Cataloged all DOM element IDs, class hooks, event listeners, and WebSocket routes (`/ws/tara`, `/ws/tara/stream`, `/ws/security`, `/ws/preview`) ensuring 100% preservation of existing functionality.
+  - **Design System Tokens (`backend/app/static/style.css`):**
+    * Established the paper company x neobrutalism palette: `--blue: #1d4f91` (company blue), `--sky: #9ec5f4` (active states), `--paper: #ffffff` (white copy), `--canary: #ffe866` (yellow copy), `--pink: #ffb3c1` (pink copy), `--manila: #e6d59f` (folders/memos), `--ceiling: #e4e7ea` (drop-ceiling canvas), `--carpet: #4b5563` (floor view), `--ink: #111111` (chunky borders & text), `--stamp-red: #e03131` (reject stamp), and `--stamp-green: #2f9e44` (approve stamp).
+    * Configured typography: Times-style serif letterhead for headings/wordmark, Space Grotesk for clean UI readability, and IBM Plex Mono for code/console.
+  - **Base Neobrutalist Components:**
+    * Created thick 3px solid ink borders and hard 4px/5px offset ink shadows with zero blur across buttons, cards, chips, and inputs.
+    * Added tactile pressed states (`transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink)`).
+    * Added accessible focus rings (`outline: 4px solid var(--blue); outline-offset: 2px`) and `prefers-reduced-motion` compliance.
+  - **Monaco Theme (`theme.js`):**
+    * Registered the custom `tara-office` Monaco light theme with paper background, ink text, and blue keyword tokens.
+- **Why we built it:**
+  - Provides the visual and structural design foundation for the paper company office floor aesthetic without touching or breaking underlying agent logic.
