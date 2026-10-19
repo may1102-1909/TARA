@@ -3,363 +3,1408 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TARA Autonomous Office Floor — Pixi.js & Agent Simulation</title>
+  <title>TARA — Autonomous Office Floor & Command Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"></script>
   <style>
     :root {
-      --bg: #09090b;
-      --card-bg: rgba(24, 24, 27, 0.85);
-      --border: rgba(63, 63, 70, 0.5);
-      --accent: #6366f1;
-      --accent-glow: rgba(99, 102, 241, 0.25);
-      --text: #f4f4f5;
-      --text-muted: #a1a1aa;
-      --sky: #38bdf8;
-      --lilac: #c084fc;
-      --lemon: #fde047;
-      --mint: #4ade80;
-      --coral: #f87171;
+      /* Neobrutalism Design Tokens */
+      --bg: #fcf9ee;
+      --bg-panel: #faf6eb;
+      --bg-white: #ffffff;
+      --ink: #000000;
+      --border-thick: 3px solid var(--ink);
+      --border-med: 2.5px solid var(--ink);
+      --border-thin: 1.5px solid var(--ink);
+      --shadow-hard-lg: 4px 4px 0px var(--ink);
+      --shadow-hard-med: 3px 3px 0px var(--ink);
+      --shadow-hard-sm: 2px 2px 0px var(--ink);
+      
+      /* Neobrutalist Agent & Theme Colors */
+      --yellow: #ffd60a;
+      --yellow-light: #fff8cc;
+      --orange: #ff9f1c;
+      --blue: #70d6ff;
+      --blue-dark: #3a86ff;
+      --powder-blue: #a0c4ff;
+      --coral: #ff758f;
+      --red: #e63946;
+      --mint: #b7e4c7;
+      --mint-dark: #52b788;
+      --sage: #83c5be;
+      --text: #000000;
+      --text-muted: #4b5563;
+      --text-dim: #6b7280;
+      --dock-height: 92px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       height: 100vh;
+      width: 100vw;
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      user-select: none;
     }
 
-    /* Top Navigation Bar */
+    /* ─── Top Header Bar (Neobrutalist Paper Letterhead) ─────────────── */
     header {
-      height: 54px;
-      background: rgba(18, 18, 22, 0.95);
-      border-bottom: 1px solid var(--border);
+      height: 52px;
+      min-height: 52px;
+      background: var(--bg-panel);
+      border-bottom: var(--border-thick);
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 1.25rem;
-      backdrop-filter: blur(12px);
       z-index: 100;
     }
-    .brand {
+    .brand-wrap {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      font-weight: 700;
-      font-size: 0.95rem;
-      letter-spacing: -0.01em;
+      gap: 0.85rem;
     }
-    .brand-badge {
-      background: linear-gradient(135deg, #6366f1, #a855f7);
-      color: #fff;
-      font-size: 0.7rem;
-      padding: 2px 8px;
+    .brand-box {
+      background: var(--yellow);
+      color: var(--ink);
+      font-size: 1.05rem;
+      font-weight: 900;
+      padding: 4px 12px;
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-sm);
       border-radius: 4px;
-      font-weight: 600;
-      text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.12rem;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-engine {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--bg-white);
+      color: var(--ink);
+      padding: 3px 8px;
+      border: 2px solid var(--ink);
+      box-shadow: var(--shadow-hard-sm);
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 8px;
     }
-    .btn {
-      background: rgba(39, 39, 42, 0.8);
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      border-radius: 6px;
+    .btn-neo {
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-med);
+      padding: 6px 14px;
+      border-radius: 5px;
       font-size: 0.78rem;
-      font-weight: 500;
+      font-weight: 700;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.15s ease;
+      transition: all 0.12s ease;
+      text-decoration: none;
+      color: var(--ink);
     }
-    .btn:hover {
-      background: rgba(63, 63, 70, 0.8);
-      border-color: #71717a;
-      transform: translateY(-1px);
+    .btn-neo:hover {
+      transform: translate(-1.5px, -1.5px);
+      box-shadow: 4.5px 4.5px 0px var(--ink);
     }
-    .btn-primary {
-      background: linear-gradient(135deg, #4f46e5, #6366f1);
-      border-color: #6366f1;
-      color: #fff;
-      box-shadow: 0 2px 10px var(--accent-glow);
+    .btn-neo:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 1.5px 1.5px 0px var(--ink);
     }
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #4338ca, #4f46e5);
-      border-color: #818cf8;
-    }
+    .btn-fit { background: var(--bg-white); }
+    .btn-focus { background: var(--yellow-light); }
+    .btn-route { background: #d84a38; color: #ffffff !important; }
+    .btn-ide { background: #8fd3f4; }
 
-    /* Main Workspace Layout */
+    /* ─── Main 2-Column Workspace ────────────────────────────────────── */
     .workspace {
       flex: 1;
       display: grid;
-      grid-template-columns: 1fr 340px;
-      height: calc(100vh - 54px);
+      grid-template-columns: 1fr 390px;
+      height: calc(100vh - 52px - var(--dock-height));
       position: relative;
+      overflow: hidden;
+      background: var(--bg);
     }
 
-    /* Canvas Viewport */
+    /* Left Column: Pixel Canvas Viewport */
     #canvas-container {
-      width: 100%;
-      height: 100%;
+      width: calc(100% - 20px);
+      height: calc(100% - 20px);
+      margin: 10px;
       position: relative;
-      background: #09090b;
+      background: #dfdacd;
+      border: var(--border-thick);
+      box-shadow: var(--shadow-hard-lg);
       overflow: hidden;
       cursor: grab;
     }
-    #canvas-container:active {
-      cursor: grabbing;
-    }
+    #canvas-container:active { cursor: grabbing; }
 
-    /* Floating Viewport HUD Controls */
+    /* Canvas Top-Left HUD Badge */
     .viewport-hud {
       position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      padding: 8px 12px;
-      border-radius: 8px;
+      top: 14px;
+      left: 14px;
+      background: var(--bg-white);
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-sm);
+      padding: 6px 14px;
+      border-radius: 4px;
       display: flex;
-      gap: 8px;
+      gap: 14px;
       align-items: center;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
       z-index: 50;
-    }
-    .hud-stat {
-      font-size: 0.75rem;
-      color: var(--text-muted);
+      pointer-events: none;
       font-family: 'Fira Code', monospace;
-      padding-right: 8px;
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--ink);
     }
-    .hud-stat span {
-      color: #fff;
-      font-weight: 600;
-    }
+    .hud-stat span { color: var(--ink); font-weight: 800; }
 
-    /* Right Sidebar Roster & Controls */
-    aside {
-      background: rgba(18, 18, 22, 0.95);
-      border-left: 1px solid var(--border);
+    /* Right Column: The Neobrutalist Command Center Sidebar */
+    aside.command-center {
+      background: var(--bg-panel);
+      border-left: var(--border-thick);
       display: flex;
       flex-direction: column;
+      height: 100%;
       overflow: hidden;
-      backdrop-filter: blur(12px);
     }
-    .panel-header {
+
+    /* Command Center Top Vibrant Orange Banner */
+    .cc-banner {
+      background: var(--orange);
+      color: var(--ink);
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.82rem;
-      font-weight: 600;
+      border-bottom: var(--border-thick);
+      text-transform: uppercase;
+    }
+
+    /* Command Center Tabs */
+    .cc-tabs {
+      display: flex;
+      background: var(--bg-white);
+      border-bottom: var(--border-med);
+    }
+    .cc-tab {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.12s ease;
+    }
+    .cc-tab:hover { color: var(--ink); background: rgba(0, 0, 0, 0.03); }
+    .cc-tab.active {
+      color: var(--ink);
+      border-bottom-color: var(--ink);
+      background: #fff;
+    }
+
+    /* Terminal Console Stream */
+    .terminal-wrapper {
+      padding: 10px 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .terminal-container {
+      flex: 1;
+      background: var(--bg-white);
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-sm);
+      border-radius: 4px;
+      padding: 10px 12px;
+      overflow-y: auto;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.74rem;
+      line-height: 1.55;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--ink);
+    }
+    .term-line {
+      display: flex;
+      gap: 8px;
+      word-break: break-word;
+    }
+    .term-ts { color: var(--text-dim); flex-shrink: 0; }
+    .term-badge {
+      font-weight: 800;
+      font-size: 0.65rem;
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid var(--ink);
+      flex-shrink: 0;
+    }
+    .term-badge.pass { background: #b7e4c7; color: #1b4332; }
+    .term-badge.hive { background: #e0aaff; color: #240046; }
+    .term-badge.sast { background: #ffccd5; color: #590d22; }
+    .term-badge.eval { background: #ffd60a; color: #3d0066; }
+    .term-badge.init { background: #70d6ff; color: #002966; }
+    .term-text { color: var(--ink); font-weight: 500; }
+
+    /* Action Triggers Box */
+    .triggers-section {
+      padding: 4px 12px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .triggers-label {
+      font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--text-muted);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      color: var(--ink);
+      font-weight: 800;
+      margin-bottom: 2px;
     }
-    .agent-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .agent-card {
-      background: rgba(24, 24, 27, 0.7);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .agent-card:hover, .agent-card.selected {
-      border-color: var(--accent);
-      background: rgba(39, 39, 42, 0.85);
-      box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
-    }
-    .agent-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .agent-name {
-      font-weight: 600;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
+    .triggers-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
-    .agent-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    .btn-trigger-neo {
+      padding: 8px 10px;
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-med);
+      color: var(--ink);
+      font-size: 0.74rem;
+      font-weight: 800;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      transition: all 0.12s ease;
     }
-    .status-badge {
-      font-size: 0.68rem;
-      padding: 2px 6px;
+    .btn-trigger-neo:hover {
+      transform: translate(-1.5px, -1.5px);
+      box-shadow: 4.5px 4.5px 0px var(--ink);
+    }
+    .btn-trigger-neo:active {
+      transform: translate(1.5px, 1.5px);
+      box-shadow: 1.5px 1.5px 0px var(--ink);
+    }
+    .btn-t-eval { background: var(--yellow); }
+    .btn-t-tests { background: var(--blue); }
+    .btn-t-sec { background: var(--blue-dark); color: #fff !important; }
+    .btn-t-coffee { background: var(--orange); }
+    .btn-t-wander { background: var(--mint); }
+    .btn-t-desks { background: var(--sage); }
+
+    /* Command Prompt Input */
+    .prompt-box {
+      padding: 10px 12px;
+      background: var(--bg-panel);
+      border-top: var(--border-med);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .prompt-input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: var(--bg-white);
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-sm);
       border-radius: 4px;
+      padding: 0 10px;
+      gap: 8px;
+    }
+    .prompt-symbol {
+      color: var(--ink);
       font-family: 'Fira Code', monospace;
-      text-transform: uppercase;
+      font-weight: 800;
+      font-size: 0.9rem;
+    }
+    .prompt-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--ink);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.76rem;
+      padding: 8px 0;
       font-weight: 600;
     }
-    .status-idle { background: rgba(161, 161, 170, 0.15); color: #a1a1aa; }
-    .status-working { background: rgba(74, 222, 128, 0.15); color: var(--mint); }
-    .status-thinking { background: rgba(192, 132, 252, 0.15); color: var(--lilac); }
-    .status-blocked { background: rgba(248, 113, 113, 0.15); color: var(--coral); }
+    .prompt-input::placeholder { color: var(--text-dim); }
+    .btn-send {
+      background: var(--ink);
+      color: #ffffff;
+      border: var(--border-med);
+      box-shadow: var(--shadow-hard-sm);
+      padding: 8px 14px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .btn-send:hover {
+      background: #222222;
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0px var(--ink);
+    }
+    .btn-send:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0px var(--ink);
+    }
 
-    .agent-action {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-bottom: 6px;
+    /* ─── Bottom Dock: AgentStrip ────────────────────────────────────── */
+    footer.bottom-dock {
+      height: var(--dock-height);
+      min-height: var(--dock-height);
+      background: var(--bg-panel);
+      border-top: var(--border-thick);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      z-index: 100;
+    }
+    footer.bottom-dock::-webkit-scrollbar { height: 5px; }
+    footer.bottom-dock::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 2px; }
+
+    .dock-card-neo {
+      height: 68px;
+      flex: 1;
+      min-width: 210px;
+      border: var(--border-med);
+      border-radius: 6px;
+      box-shadow: var(--shadow-hard-med);
+      padding: 7px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    .dock-card-neo:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0px var(--ink);
+    }
+    .dock-card-neo.selected {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px var(--ink);
+      outline: 3px solid #000;
+      outline-offset: 1px;
+    }
+
+    /* 5 Distinct Neobrutalist Agent Card Themes */
+    .card-theme-ceo { background: var(--yellow); }
+    .card-theme-dev { background: var(--blue); }
+    .card-theme-qa  { background: var(--powder-blue); }
+    .card-theme-sec { background: var(--coral); }
+    .card-theme-sup { background: var(--mint); }
+
+    .dock-portrait-neo {
+      width: 36px;
+      height: 48px;
+      background: #ffffff;
+      border: var(--border-med);
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 1.5px 1.5px 0px var(--ink);
+    }
+    .dock-portrait-neo canvas {
+      image-rendering: pixelated;
+    }
+    .dock-card-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .dock-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .dock-name {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--ink);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .agent-coords {
+    .dock-role {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.7);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dock-badge-neo {
+      font-size: 0.62rem;
       font-family: 'Fira Code', monospace;
-      font-size: 0.7rem;
-      color: #71717a;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 800;
+      text-transform: lowercase;
+      border: var(--border-thin);
+      flex-shrink: 0;
     }
+    .dock-badge-neo.badge-working    { background: #ffe600; color: #000; }
+    .dock-badge-neo.badge-coding     { background: #ff9f1c; color: #000; }
+    .dock-badge-neo.badge-testing    { background: #c77dff; color: #000; }
+    .dock-badge-neo.badge-alert      { background: #e63946; color: #fff; }
+    .dock-badge-neo.badge-patrolling { background: #52b788; color: #fff; }
 
-    /* Control Panel Bottom */
-    .controls-panel {
-      padding: 14px;
-      border-top: 1px solid var(--border);
-      background: rgba(15, 15, 18, 0.95);
+    .dock-card-actions {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
     }
-    .control-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
+    .btn-talk-neo {
+      background: #ffffff;
+      border: var(--border-thin);
+      box-shadow: 1.5px 1.5px 0px var(--ink);
+      color: var(--ink);
+      font-size: 0.66rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.12s ease;
+    }
+    .btn-talk-neo:hover {
+      background: #f4f4f4;
+      transform: translate(-0.5px, -0.5px);
+      box-shadow: 2px 2px 0px var(--ink);
+    }
+    .btn-talk-neo:active {
+      transform: translate(1px, 1px);
+      box-shadow: 0px 0px 0px var(--ink);
     }
   </style>
 </head>
 <body>
 
-  <!-- Navigation Header -->
+  <!-- Top Title & Navigation Bar (Neobrutalist Letterhead) -->
   <header>
-    <div class="brand">
-      <span class="brand-badge">Engine v1.0</span>
-      <span>TARA Autonomous Office Floor</span>
+    <div class="brand-wrap">
+      <div class="brand-box">TARA</div>
+      <div class="brand-title">
+        <span>Autonomous Office Floor</span>
+        <span class="badge-engine">ENGINE V2.0</span>
+      </div>
     </div>
     <div class="header-actions">
-      <button class="btn" onclick="cameraFit()">🎯 Fit View</button>
-      <button class="btn" onclick="cameraFocusCEO()">👑 Focus CEO</button>
-      <button class="btn btn-primary" onclick="triggerHiveEnvelope()">✉️ Route Hive Message</button>
-      <a href="/" class="btn">💻 Open IDE</a>
+      <button class="btn-neo btn-fit" onclick="cameraFit()">🎯 Fit Map</button>
+      <button class="btn-neo btn-focus" onclick="cameraFocusCEO()">👑 Focus CEO</button>
+      <button class="btn-neo btn-route" onclick="triggerHiveEnvelope()">✉️ Route Message</button>
+      <a href="/" class="btn-neo btn-ide">💻 Open Web IDE</a>
     </div>
   </header>
 
-  <!-- Workspace: Canvas on Left, Controls & Roster on Right -->
+  <!-- 2-Column Workspace: 2D Pixel Canvas + Neobrutalist Command Center -->
   <div class="workspace">
+    <!-- Left Column: The 2D Pixel Canvas -->
     <div id="canvas-container">
       <div class="viewport-hud">
-        <div class="hud-stat">Camera: <span id="hud-zoom">1.0x</span></div>
-        <div class="hud-stat">Active Agents: <span id="hud-agents">4</span></div>
-        <div class="hud-stat">FPS: <span id="hud-fps">60</span></div>
-        <div class="hud-stat">Selected: <span id="hud-selected">None</span></div>
+        <div class="hud-stat">Camera: <span id="hud-zoom">1.7x</span></div>
+        <div class="hud-stat">Agents: <span id="hud-agents">5</span></div>
+        <div class="hud-stat">FPS: <span id="hud-fps">61</span></div>
       </div>
     </div>
 
-    <!-- Sidebar Agent Inspector -->
-    <aside>
-      <div class="panel-header">
-        <span>Agent Registry</span>
-        <span style="font-size: 0.7rem; color: var(--accent);">Zustand Store</span>
-      </div>
-      <div class="agent-list" id="agent-list">
-        <!-- Rendered dynamically -->
+    <!-- Right Column: The Command Center / Terminal Sidebar -->
+    <aside class="command-center">
+      <!-- Vibrant Orange Command Center Banner -->
+      <div class="cc-banner">COMMAND CENTER</div>
+
+      <!-- Command Center Tabs -->
+      <div class="cc-tabs">
+        <div class="cc-tab active" onclick="switchCcTab('terminal')">Terminal Logs</div>
+        <div class="cc-tab" onclick="switchCcTab('triggers')">Hive Triggers</div>
       </div>
 
-      <div class="controls-panel">
-        <div class="panel-header" style="padding: 0 0 6px 0; border: none;">Live Simulation Controls</div>
-        <div class="control-row">
-          <button class="btn" onclick="triggerWander()">🚶 Wander Floor</button>
-          <button class="btn" onclick="triggerReturnDesks()">🪑 Return to Desks</button>
+      <!-- Terminal Output Stream -->
+      <div class="terminal-wrapper">
+        <div class="terminal-container" id="terminal-stream">
+          <div class="term-line">
+            <span class="term-ts">[27:48:25]</span>
+            <span class="term-badge pass">[PASS]</span>
+            <span class="term-text">Office map rendered: 34×22 tiles @ 16px. Pixel canvas initialized.</span>
+          </div>
+          <div class="term-line">
+            <span class="term-ts">[23:24:05]</span>
+            <span class="term-badge hive">[HIVE]</span>
+            <span class="term-text">Staff stretching legs and wandering the floor.</span>
+          </div>
+          <div class="term-line">
+            <span class="term-ts">[23:25:05]</span>
+            <span class="term-badge hive">[HIVE]</span>
+            <span class="term-text">All agents returned to assigned PC desks.</span>
+          </div>
+          <div class="term-line">
+            <span class="term-ts">[23:25:34]</span>
+            <span class="term-badge sast">[SAST]</span>
+            <span class="term-text">Security running Bandit AST security scan: 0 vulnerabilities found.</span>
+          </div>
+          <div class="term-line">
+            <span class="term-ts">[23:25:59]</span>
+            <span class="term-badge eval">[EVAL]</span>
+            <span class="term-text">Michael Scott evaluating PRD acceptance criteria & requirements.</span>
+          </div>
+          <div class="term-line">
+            <span class="term-ts">[23:25:59]</span>
+            <span class="term-badge eval">[EVAL]</span>
+            <span class="term-text">Routed Live packet from Dev to Security.</span>
+          </div>
         </div>
-        <div class="control-row">
-          <button class="btn" onclick="triggerCoffeeRun()">☕ Coffee Break</button>
-          <button class="btn" onclick="triggerBurstSprint()">⚡ Build Sprint</button>
+      </div>
+
+      <!-- Quick Action Triggers Box -->
+      <div class="triggers-section">
+        <div class="triggers-label">AGENT ACTION TRIGGERS</div>
+        <div class="triggers-grid">
+          <button class="btn-trigger-neo btn-t-eval" onclick="triggerEvaluatePRD()">⚡ Evaluate Spec</button>
+          <button class="btn-trigger-neo btn-t-tests" onclick="triggerRunTests()">🧪 Run Test Suites</button>
+          <button class="btn-trigger-neo btn-t-sec" onclick="triggerSecurityAudit()">🛡️ Security Scan</button>
+          <button class="btn-trigger-neo btn-t-coffee" onclick="triggerCoffeeBreak()">☕ Coffee Break</button>
+          <button class="btn-trigger-neo btn-t-wander" onclick="triggerWander()">🚶 Wander Floor</button>
+          <button class="btn-trigger-neo btn-t-desks" onclick="triggerReturnDesks()">🪑 Return to Desks</button>
         </div>
+      </div>
+
+      <!-- Interactive Command Input -->
+      <div class="prompt-box">
+        <div class="prompt-input-wrap">
+          <span class="prompt-symbol">$</span>
+          <input type="text" id="prompt-input" class="prompt-input" placeholder="Give prompt or task to selected agent..." onkeydown="handlePromptKey(event)" />
+        </div>
+        <button class="btn-send" onclick="submitPrompt()">Send ➔</button>
       </div>
     </aside>
   </div>
 
+  <!-- Bottom Dock: Horizontal 5-Agent Status Bar (AgentStrip) -->
+  <footer class="bottom-dock" id="bottom-dock">
+    <!-- Populated dynamically via renderBottomDock() -->
+  </footer>
+
   <script>
     /* ==========================================================================
-       1. Core Geometry & Interfaces
+       1. Procedural Pixel-Art Generator
        ========================================================================== */
-    const TILE_SIZE = 32;
-    const MAP_COLS = 26;
-    const MAP_ROWS = 18;
-    const SPEED = 64; // pixels per sec
-    const ARC_LIFT = 42;
+    const PORTRAIT_W = 18;
+    const PORTRAIT_H = 28;
+    const SCENE_W = 18;
+    const SCENE_H = 32;
+    const OUTLINE = [0, 0, 0];
+    const HX0 = 4, HX1 = 13;
 
-    // BFS Pathfinding Walkability Grid: 0 = Walkable, 1 = Solid Furniture/Wall
-    const GRID = Array(MAP_ROWS).fill(0).map(() => Array(MAP_COLS).fill(0));
+    let CUR_W = PORTRAIT_W, CUR_H = PORTRAIT_H;
 
-    // Define Walls around perimeter
-    for (let c = 0; c < MAP_COLS; c++) { GRID[0][c] = 1; GRID[MAP_ROWS - 1][c] = 1; }
-    for (let r = 0; r < MAP_ROWS; r++) { GRID[r][0] = 1; GRID[r][MAP_COLS - 1] = 1; }
+    const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : Math.round(v));
+    function shades(rgb, dl = 1.22, dd = 0.68) {
+      return [
+        [clamp(rgb[0] * dl), clamp(rgb[1] * dl), clamp(rgb[2] * dl)],
+        [rgb[0], rgb[1], rgb[2]],
+        [clamp(rgb[0] * dd), clamp(rgb[1] * dd), clamp(rgb[2] * dd)]
+      ];
+    }
+    function setPixel(buf, x, y, c, a = 255) {
+      if (x < 0 || x >= CUR_W || y < 0 || y >= CUR_H) return;
+      const i = (y * CUR_W + x) * 4;
+      buf[i] = c[0]; buf[i + 1] = c[1]; buf[i + 2] = c[2]; buf[i + 3] = a;
+    }
+    function getAlpha(buf, x, y) {
+      if (x < 0 || x >= CUR_W || y < 0 || y >= CUR_H) return 0;
+      return buf[(y * CUR_W + x) * 4 + 3];
+    }
+    function fillRect(buf, x0, y0, x1, y1, c) {
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) setPixel(buf, x, y, c);
+    }
 
-    // CEO Office interior wall with doorway at (7, 4)
-    for (let r = 1; r <= 7; r++) GRID[r][8] = 1;
-    for (let c = 1; c <= 8; c++) GRID[7][c] = 1;
-    GRID[7][4] = 0; // Doorway
-
-    // Break Room / Coffee Area interior wall with doorway at (12, 18)
-    for (let r = 1; r <= 6; r++) GRID[r][16] = 1;
-    for (let c = 16; c < MAP_COLS - 1; c++) GRID[6][c] = 1;
-    GRID[6][20] = 0; // Doorway
-
-    // Meeting / War Room interior wall
-    for (let r = 11; r < MAP_ROWS - 1; r++) GRID[r][17] = 1;
-    GRID[14][17] = 0; // Doorway
-
-    // Furniture / Desks placement (solid)
-    const DESKS = [
-      { id: 'desk-ceo', x: 4, y: 3, label: 'Executive Desk' },
-      { id: 'desk-dev', x: 11, y: 5, label: 'Dev Station' },
-      { id: 'desk-qa', x: 11, y: 9, label: 'QA Station' },
-      { id: 'desk-sec', x: 11, y: 13, label: 'Security Station' },
-    ];
-    // Mark desks as solid on the walkability grid
-    DESKS.forEach(d => { GRID[d.y][d.x] = 1; });
-
-    // Seat tiles (directly south of desk, face up looking at screen)
-    const SEATS = {
-      'agent-ceo': { x: 4, y: 4, facing: 'up' },
-      'agent-dev': { x: 11, y: 6, facing: 'up' },
-      'agent-qa':  { x: 11, y: 10, facing: 'up' },
-      'agent-sec': { x: 11, y: 14, facing: 'up' },
+    const SKIN_PALETTES = {
+      light: { hi: [255, 221, 189], base: [247, 201, 170], sh: [212, 158, 126], line: [168, 112, 82] },
+      tan:   { hi: [232, 182, 136], base: [214, 162, 116], sh: [176, 126, 86],  line: [138, 92, 60] }
     };
 
+    function drawHead(buf, skin) {
+      const s = SKIN_PALETTES[skin] || SKIN_PALETTES.light;
+      for (let y = 4; y <= 16; y++) {
+        for (let x = HX0; x <= HX1; x++) {
+          if (((x === HX0 || x === HX1) && (y === 4 || y === 5 || y === 16)) || ((x === 5 || x === 12) && y === 4)) continue;
+          setPixel(buf, x, y, s.base);
+        }
+      }
+      for (let y = 6; y < 12; y++) setPixel(buf, 5, y, s.hi);
+      setPixel(buf, 6, 5, s.hi); setPixel(buf, 7, 5, s.hi);
+      for (let y = 6; y < 15; y++) setPixel(buf, 12, y, s.sh);
+      for (const x of [7, 8, 9, 10, 11]) setPixel(buf, x, 16, s.sh);
+      for (const ex of [HX0 - 1, HX1 + 1]) {
+        setPixel(buf, ex, 9, s.base); setPixel(buf, ex, 10, s.base); setPixel(buf, ex, 11, s.sh);
+      }
+      fillRect(buf, 7, 17, 10, 18, s.sh); fillRect(buf, 7, 17, 9, 17, s.base);
+    }
+
+    function drawFace(buf, skin, brow, mouth, blush, lashes) {
+      const s = SKIN_PALETTES[skin] || SKIN_PALETTES.light;
+      const white = [250, 248, 244], pup = [0, 0, 0];
+      for (const [a, b, p] of [[5, 6, 6], [10, 11, 10]]) {
+        setPixel(buf, a, 9, white); setPixel(buf, b, 9, white); setPixel(buf, p, 9, pup);
+      }
+      if (lashes) {
+        const lash = [0, 0, 0], glint = [255, 255, 255];
+        for (const x of [5, 6, 10, 11]) setPixel(buf, x, 8, lash);
+        setPixel(buf, 4, 8, lash); setPixel(buf, 12, 8, lash);
+        setPixel(buf, 5, 9, glint); setPixel(buf, 10, 9, glint);
+      }
+      for (const x of [5, 6, 10, 11]) setPixel(buf, x, brow === 'angry' ? 8 : 7, s.line);
+      setPixel(buf, 8, 11, s.sh); setPixel(buf, 8, 12, s.sh);
+      const mc = [158, 86, 80];
+      for (const x of [7, 8, 9, 10]) setPixel(buf, x, 14, mc);
+      if (mouth === 'smile') { setPixel(buf, 6, 13, mc); setPixel(buf, 11, 13, mc); }
+      if (blush) { setPixel(buf, 5, 12, [245, 150, 140], 180); setPixel(buf, 12, 12, [245, 150, 140], 180); }
+    }
+
+    function drawHair(buf, hairStyle, color, skinBase) {
+      const [hi, base, sh] = shades(color);
+      if (hairStyle === 'styleShort') {
+        fillRect(buf, HX0, 2, HX1, 4, base);
+        for (let x = HX0 - 1; x <= HX1 + 1; x++) setPixel(buf, x, 3, base);
+        fillRect(buf, HX0 - 1, 4, HX1 + 1, 5, base);
+        for (let y = 6; y < 9; y++) {
+          setPixel(buf, HX0 - 1, y, base); setPixel(buf, HX0, y, base);
+          setPixel(buf, HX1, y, base); setPixel(buf, HX1 + 1, y, base);
+        }
+        for (let x = HX0; x <= HX1; x++) if (getAlpha(buf, x, 2)) setPixel(buf, x, 2, hi);
+      } else if (hairStyle === 'styleFloppy') {
+        fillRect(buf, HX0, 2, HX1, 4, base);
+        fillRect(buf, HX0 - 1, 4, HX1 + 1, 5, base);
+        for (let x = 6; x <= 12; x++) setPixel(buf, x, 6, base);
+        for (let y = 6; y < 9; y++) {
+          setPixel(buf, HX0 - 1, y, base); setPixel(buf, HX1 + 1, y, base);
+        }
+        for (const x of [7, 8, 9]) setPixel(buf, x, 6, hi);
+      } else if (hairStyle === 'styleFrame') {
+        fillRect(buf, HX0 - 1, 2, HX1 + 1, 5, base);
+        for (let y = 6; y <= 18; y++) {
+          setPixel(buf, HX0 - 1, y, base); setPixel(buf, HX1 + 1, y, base);
+        }
+        for (let x = HX0; x < 9; x++) if (getAlpha(buf, x, 2)) setPixel(buf, x, 2, hi);
+      } else if (hairStyle === 'styleBald') {
+        const [shi, sbase] = shades(skinBase, 1.1, 0.85);
+        for (let x = 6; x <= 11; x++) setPixel(buf, x, 2, sbase);
+        for (let x = 5; x <= 12; x++) setPixel(buf, x, 3, sbase);
+        for (const x of [7, 8, 9]) setPixel(buf, x, 2, shi);
+        for (let y = 7; y <= 10; y++) {
+          setPixel(buf, HX0 - 1, y, base); setPixel(buf, HX1 + 1, y, base);
+        }
+      }
+    }
+
+    function drawClothing(buf, cloth, c1, tie) {
+      const [, base, sh] = shades(c1);
+      const rows = [[19, 6, 11], [20, 4, 13], [21, 3, 14], [22, 2, 15], [23, 2, 15], [24, 1, 16], [25, 1, 16], [26, 1, 16], [27, 1, 16]];
+      for (const [y, a, b] of rows) fillRect(buf, a, y, b, y, base);
+      for (let y = 22; y < 28; y++) { setPixel(buf, 2, y, sh); setPixel(buf, 15, y, sh); }
+
+      if (cloth === 'suit') {
+        const white = [245, 245, 245];
+        for (const [x, y] of [[8, 19], [9, 19], [7, 20], [8, 20], [9, 20], [10, 20]]) setPixel(buf, x, y, white);
+        if (tie) {
+          for (let y = 20; y < 26; y++) { setPixel(buf, 8, y, tie); setPixel(buf, 9, y, tie); }
+        }
+      } else if (cloth === 'dressshirt') {
+        if (tie) {
+          for (let y = 19; y < 26; y++) { setPixel(buf, 8, y, tie); setPixel(buf, 9, y, tie); }
+        }
+      }
+    }
+
+    function outlinePass(buf) {
+      const pts = [];
+      for (let y = 0; y < CUR_H; y++) {
+        for (let x = 0; x < CUR_W; x++) {
+          if (getAlpha(buf, x, y) !== 0) continue;
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            if (getAlpha(buf, x + dx, y + dy) === 255) { pts.push([x, y]); break; }
+          }
+        }
+      }
+      for (const [x, y] of pts) setPixel(buf, x, y, OUTLINE);
+    }
+
+    /* ─── 5 Character Recipes (CEO, Dev, QA, Security, Supervisor) ──── */
+    const CHARACTER_RECIPES = {
+      ceo: {
+        skin: 'light',
+        hairc: [58, 42, 28],
+        hair: 'styleShort',
+        cloth: 'suit',
+        c1: [48, 52, 64],
+        tie: [180, 48, 48],
+        brow: 'flat',
+        mouth: 'smile'
+      },
+      dev: {
+        skin: 'light',
+        hairc: [85, 55, 30],
+        hair: 'styleFloppy',
+        cloth: 'dressshirt',
+        c1: [235, 185, 35], // Gold / Yellow shirt matching target design
+        tie: null,
+        brow: 'flat',
+        mouth: 'smile'
+      },
+      qa: {
+        skin: 'light',
+        hairc: [110, 70, 38],
+        hair: 'styleFrame',
+        cloth: 'cardigan',
+        c1: [235, 140, 175], // Pink / Salmon cardigan matching target design
+        brow: 'soft',
+        mouth: 'smile',
+        blush: true,
+        lashes: true
+      },
+      security: {
+        skin: 'tan',
+        hairc: [35, 35, 45],
+        hair: 'styleShort',
+        cloth: 'suit',
+        c1: [32, 64, 140], // Deep Blue uniform matching target design
+        tie: [20, 20, 30],
+        brow: 'angry',
+        mouth: 'neutral'
+      },
+      supervisor: {
+        skin: 'light',
+        hairc: [130, 95, 60],
+        hair: 'styleBald',
+        cloth: 'polo',
+        c1: [145, 115, 85], // Khaki / Tan attire matching target design
+        brow: 'flat',
+        mouth: 'neutral'
+      }
+    };
+
+    function renderPortraitBuffer(recipe) {
+      CUR_W = PORTRAIT_W; CUR_H = PORTRAIT_H;
+      const buf = new Uint8ClampedArray(PORTRAIT_W * PORTRAIT_H * 4);
+      drawClothing(buf, recipe.cloth, recipe.c1, recipe.tie);
+      drawHead(buf, recipe.skin);
+      drawFace(buf, recipe.skin, recipe.brow, recipe.mouth, recipe.blush, recipe.lashes);
+      const skinBase = (SKIN_PALETTES[recipe.skin] || SKIN_PALETTES.light).base;
+      drawHair(buf, recipe.hair, recipe.hairc, skinBase);
+      outlinePass(buf);
+      return buf;
+    }
+
+    function renderSceneFrameBuffer(recipe, phase, back) {
+      CUR_W = SCENE_W; CUR_H = SCENE_H;
+      const buf = new Uint8ClampedArray(SCENE_W * SCENE_H * 4);
+      const [, base, sh] = shades(recipe.c1);
+
+      // Torso
+      fillRect(buf, 4, 18, 13, 24, base);
+      for (let y = 20; y <= 24; y++) { setPixel(buf, 3, y, sh); setPixel(buf, 14, y, sh); }
+
+      // Legs
+      const pantsColor = recipe.cloth === 'suit' ? shades(recipe.c1)[2] : [54, 56, 70];
+      const [, pBase, pSh] = shades(pantsColor);
+      for (const [lx0, lx1] of [[5, 7], [10, 12]]) {
+        fillRect(buf, lx0, 25, lx1, 30, pBase);
+        for (let y = 25; y <= 30; y++) setPixel(buf, lx1, y, pSh);
+      }
+      // Feet
+      const shoe = [20, 20, 20];
+      const leftLow = phase !== 1, rightLow = phase !== 2;
+      fillRect(buf, 5, leftLow ? 31 : 30, 7, leftLow ? 31 : 30, shoe);
+      fillRect(buf, 10, rightLow ? 31 : 30, 12, rightLow ? 31 : 30, shoe);
+
+      if (back) {
+        const [, hBase, hSh] = shades(recipe.hairc);
+        fillRect(buf, 5, 3, 12, 14, hBase);
+        for (let y = 4; y <= 13; y++) { setPixel(buf, 4, y, hSh); setPixel(buf, 13, y, hSh); }
+      } else {
+        drawHead(buf, recipe.skin);
+        drawFace(buf, recipe.skin, recipe.brow, recipe.mouth, recipe.blush, recipe.lashes);
+        const skinBase = (SKIN_PALETTES[recipe.skin] || SKIN_PALETTES.light).base;
+        drawHair(buf, recipe.hair, recipe.hairc, skinBase);
+      }
+      outlinePass(buf);
+      return buf;
+    }
+
+    function paintBufferToCanvas(canvas, buf, w, h) {
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      const img = ctx.createImageData(w, h);
+      img.data.set(buf);
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function createPixiTextureFromBuf(buf, w, h) {
+      const c = document.createElement('canvas');
+      paintBufferToCanvas(c, buf, w, h);
+      const tex = PIXI.Texture.from(c);
+      tex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+      return tex;
+    }
+
     /* ==========================================================================
-       2. BFS Pathfinding Algorithm (4-Direction Orthogonal)
+       2. Exact 5 Agents Registry
        ========================================================================== */
-    function findPath(start, goal) {
+    const AGENTS = [
+      {
+        id: 'ceo',
+        name: 'Michael Scott',
+        tag: 'CEO',
+        role: 'CEO',
+        model: 'GPT-4o',
+        character: 'ceo',
+        themeClass: 'card-theme-ceo',
+        status: 'working',
+        statusLabel: 'working',
+        statusBadgeClass: 'badge-working',
+        action: 'Evaluating PRD acceptance criteria & requirements',
+        seatName: 'desk-ceo',
+        seatTile: { x: 3, y: 4 },
+        deskTile: { x: 3, y: 3 },
+        isGod: true
+      },
+      {
+        id: 'dev',
+        name: 'Dev',
+        tag: 'Dev',
+        role: 'Full-Stack Developer',
+        model: 'Claude 3.7',
+        character: 'dev',
+        themeClass: 'card-theme-dev',
+        status: 'working',
+        statusLabel: 'coding',
+        statusBadgeClass: 'badge-coding',
+        action: 'Writing high-velocity FastAPI microservice code',
+        seatName: 'pc-1',
+        seatTile: { x: 6, y: 14 },
+        deskTile: { x: 6, y: 13 }
+      },
+      {
+        id: 'qa',
+        name: 'QA',
+        tag: 'QA',
+        role: 'QA Lead',
+        model: 'Claude 3.7',
+        character: 'qa',
+        themeClass: 'card-theme-qa',
+        status: 'working',
+        statusLabel: 'testing',
+        statusBadgeClass: 'badge-testing',
+        action: 'Executing Pytest suites & schema edge-case audits',
+        seatName: 'pc-2',
+        seatTile: { x: 10, y: 14 },
+        deskTile: { x: 10, y: 13 }
+      },
+      {
+        id: 'security',
+        name: 'Security',
+        tag: 'Security',
+        role: 'AppSec Officer',
+        model: 'Claude 3.7',
+        character: 'security',
+        themeClass: 'card-theme-sec',
+        status: 'working',
+        statusLabel: 'alert',
+        statusBadgeClass: 'badge-alert',
+        action: 'Running Bandit AST & Strix SAST vulnerability scan',
+        seatName: 'pc-3',
+        seatTile: { x: 14, y: 14 },
+        deskTile: { x: 14, y: 13 }
+      },
+      {
+        id: 'supervisor',
+        name: 'Supervisor',
+        tag: 'Supervisor',
+        role: 'Workflow Supervisor',
+        model: 'qwen2.5:7b',
+        character: 'supervisor',
+        themeClass: 'card-theme-sup',
+        status: 'working',
+        statusLabel: 'patrolling',
+        statusBadgeClass: 'badge-patrolling',
+        action: 'Monitoring inter-agent message arcs & queue latency',
+        seatName: 'pc-4',
+        seatTile: { x: 18, y: 14 },
+        deskTile: { x: 18, y: 13 }
+      }
+    ];
+
+    let selectedAgentId = 'ceo';
+
+    /* ==========================================================================
+       3. Pixi.js Canvas Engine Setup
+       ========================================================================== */
+    const canvasContainer = document.getElementById('canvas-container');
+    const app = new PIXI.Application({
+      background: 0xdedad0,
+      antialias: false,
+      autoDensity: true,
+      roundPixels: true,
+      resolution: window.devicePixelRatio || 2,
+      resizeTo: canvasContainer
+    });
+    canvasContainer.appendChild(app.view);
+
+    const world = new PIXI.Container();
+    app.stage.addChild(world);
+
+    // Camera Object
+    class Camera {
+      constructor(container) {
+        this.container = container;
+        this.currentX = 272;
+        this.currentY = 176;
+        this.currentZoom = 1.7;
+        this.targetX = 272;
+        this.targetY = 176;
+        this.targetZoom = 1.7;
+        this.lerpSpeed = 0.08;
+      }
+
+      fitToScreen() {
+        const vw = canvasContainer.clientWidth || 800;
+        const vh = canvasContainer.clientHeight || 600;
+        const mw = 34 * 16;
+        const mh = 22 * 16;
+        this.targetZoom = Math.min((vw - 40) / mw, (vh - 40) / mh, 2.2);
+        this.targetX = mw / 2;
+        this.targetY = mh / 2;
+      }
+
+      focusOn(wx, wy, zoom = 2.0) {
+        this.targetX = wx;
+        this.targetY = wy;
+        this.targetZoom = zoom;
+      }
+
+      update(dt) {
+        this.currentX += (this.targetX - this.currentX) * this.lerpSpeed;
+        this.currentY += (this.targetY - this.currentY) * this.lerpSpeed;
+        this.currentZoom += (this.targetZoom - this.currentZoom) * this.lerpSpeed;
+
+        const vw = canvasContainer.clientWidth || 800;
+        const vh = canvasContainer.clientHeight || 600;
+
+        this.container.scale.set(this.currentZoom);
+        this.container.position.set(
+          vw / 2 - this.currentX * this.currentZoom,
+          vh / 2 - this.currentY * this.currentZoom
+        );
+      }
+    }
+    const camera = new Camera(world);
+
+    // Canvas Pan & Zoom Handlers
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    canvasContainer.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    canvasContainer.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = (e.clientX - dragStart.x) / camera.currentZoom;
+      const dy = (e.clientY - dragStart.y) / camera.currentZoom;
+      camera.targetX -= dx;
+      camera.targetY -= dy;
+      dragStart = { x: e.clientX, y: e.clientY };
+    });
+    canvasContainer.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      camera.targetZoom = Math.max(0.8, Math.min(camera.targetZoom * zoomFactor, 3.5));
+    });
+
+    /* ==========================================================================
+       4. Tiled Map & Texture Loader
+       ========================================================================== */
+    let mapData = null;
+    let tilesetTextures = [];
+    let walkabilityGrid = [];
+    let charLayer = null;
+    let envelopes = [];
+    const characterEntities = new Map();
+    const deskScreens = [];
+
+    const TILE_ID_MASK = 0x1fffffff;
+
+    async function loadOfficeScene() {
+      // 1. Fetch office.tmj
+      try {
+        const res = await fetch('/static/assets/maps/office.tmj');
+        mapData = await res.json();
+      } catch (err) {
+        console.warn('Failed to fetch map from /static/assets/maps/office.tmj, using local schema', err);
+        return;
+      }
+
+      // 2. Load the 3 tileset textures
+      const tilesetUrls = [
+        '/static/assets/tilesets/office-tileset.png',
+        '/static/assets/tilesets/a5-office-floors-walls.png',
+        '/static/assets/tilesets/interiors.png'
+      ];
+
+      tilesetTextures = await Promise.all(tilesetUrls.map(url => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            const baseTex = new PIXI.BaseTexture(img, { scaleMode: PIXI.SCALE_MODES.NEAREST });
+            resolve(new PIXI.Texture(baseTex));
+          };
+          img.onerror = () => reject(new Error('Failed loading ' + url));
+          img.src = url;
+        });
+      }));
+
+      // 3. Parse collision layer
+      const colLayer = mapData.layers.find(l => l.name === 'collision');
+      walkabilityGrid = Array.from({ length: mapData.height }, () => Array(mapData.width).fill(true));
+      if (colLayer && colLayer.data) {
+        for (let y = 0; y < mapData.height; y++) {
+          for (let x = 0; x < mapData.width; x++) {
+            const raw = colLayer.data[y * mapData.width + x];
+            if ((raw & TILE_ID_MASK) !== 0) walkabilityGrid[y][x] = false;
+          }
+        }
+      }
+
+      // Force desk seats walkable
+      const spawnLayer = mapData.layers.find(l => l.name === 'spawn-points');
+      if (spawnLayer && spawnLayer.objects) {
+        for (const obj of spawnLayer.objects) {
+          const tx = Math.floor(obj.x / 16);
+          const ty = Math.floor(obj.y / 16);
+          if (tx >= 0 && tx < mapData.width && ty >= 0 && ty < mapData.height) {
+            walkabilityGrid[ty][tx] = true;
+          }
+        }
+      }
+
+      // 4. Build Tile Layers
+      const tilesetMeta = [
+        { firstgid: 1, columns: 16, tilewidth: 16, tileheight: 16, texture: tilesetTextures[0] },
+        { firstgid: 513, columns: 16, tilewidth: 16, tileheight: 16, texture: tilesetTextures[1] },
+        { firstgid: 1025, columns: 16, tilewidth: 16, tileheight: 16, texture: tilesetTextures[2] }
+      ];
+
+      function resolveTile(tileId) {
+        for (let i = tilesetMeta.length - 1; i >= 0; i--) {
+          if (tileId >= tilesetMeta[i].firstgid) return tilesetMeta[i];
+        }
+        return null;
+      }
+
+      const layerNames = ['floor', 'walls', 'furniture-below', 'furniture-above'];
+      for (const name of layerNames) {
+        const layer = mapData.layers.find(l => l.name === name);
+        if (!layer || !layer.data) continue;
+
+        const layerContainer = new PIXI.Container();
+        layerContainer.name = name;
+
+        for (let y = 0; y < mapData.height; y++) {
+          for (let x = 0; x < mapData.width; x++) {
+            const raw = layer.data[y * mapData.width + x];
+            if (raw === 0) continue;
+
+            const tileId = raw & TILE_ID_MASK;
+            const meta = resolveTile(tileId);
+            if (!meta) continue;
+
+            const localId = tileId - meta.firstgid;
+            const srcX = (localId % meta.columns) * meta.tilewidth;
+            const srcY = Math.floor(localId / meta.columns) * meta.tileheight;
+
+            const frame = new PIXI.Rectangle(srcX, srcY, meta.tilewidth, meta.tileheight);
+            const subTex = new PIXI.Texture(meta.texture.baseTexture, frame);
+            const sprite = new PIXI.Sprite(subTex);
+            sprite.x = x * 16;
+            sprite.y = y * 16;
+
+            layerContainer.addChild(sprite);
+          }
+        }
+
+        world.addChild(layerContainer);
+
+        // Mount Character dynamic layer immediately above furniture-below
+        if (name === 'furniture-below') {
+          charLayer = new PIXI.Container();
+          charLayer.sortableChildren = true;
+          world.addChild(charLayer);
+        }
+      }
+
+      // 5. Mount Desk Screens (Lit Monitors on Seated Desks)
+      mountDeskMonitors();
+
+      // 6. Spawn the 5 Characters
+      spawnCharacters();
+
+      // Fit map initially to view full floor
+      camera.fitToScreen();
+    }
+
+    function mountDeskMonitors() {
+      AGENTS.forEach(agent => {
+        const screen = new PIXI.Graphics();
+        const mx = agent.deskTile.x * 16 + 5;
+        const my = agent.deskTile.y * 16 + 6;
+
+        screen.beginFill(0x00d4ff, 0.85);
+        screen.drawRect(0, 0, 6, 4);
+        screen.endFill();
+        screen.position.set(mx, my);
+        screen.zIndex = (agent.deskTile.y + 1) * 16;
+        charLayer.addChild(screen);
+        deskScreens.push(screen);
+      });
+    }
+
+    /* ==========================================================================
+       5. Character View Class (Pixi Sprite + Nameplate + Thought Bubble)
+       ========================================================================== */
+    class CharacterView {
+      constructor(agent) {
+        this.agent = agent;
+        const recipe = CHARACTER_RECIPES[agent.character];
+
+        // Generate pixel textures
+        this.textures = {
+          stand: createPixiTextureFromBuf(renderSceneFrameBuffer(recipe, 0, false), SCENE_W, SCENE_H),
+          stepL: createPixiTextureFromBuf(renderSceneFrameBuffer(recipe, 1, false), SCENE_W, SCENE_H),
+          stepR: createPixiTextureFromBuf(renderSceneFrameBuffer(recipe, 2, false), SCENE_W, SCENE_H),
+          back:  createPixiTextureFromBuf(renderSceneFrameBuffer(recipe, 0, true), SCENE_W, SCENE_H)
+        };
+
+        this.container = new PIXI.Container();
+
+        // 1. Halo Glow
+        this.glow = new PIXI.Graphics();
+        this.container.addChild(this.glow);
+
+        // 2. Sprite with Anchor (0.5, 1)
+        this.sprite = new PIXI.Sprite(this.textures.stand);
+        this.sprite.anchor.set(0.5, 1);
+        this.container.addChild(this.sprite);
+
+        // 3. Neobrutalist Nameplate (Black background with white text)
+        this.nameTag = new PIXI.Container();
+        const text = new PIXI.Text(agent.tag || agent.name, {
+          fontFamily: 'Fira Code',
+          fontSize: 8,
+          fontWeight: 'bold',
+          fill: 0xffffff
+        });
+        text.anchor.set(0.5, 0);
+        const plate = new PIXI.Graphics();
+        const pw = text.width + 6, ph = text.height + 2;
+        plate.beginFill(0x000000, 1.0);
+        plate.drawRoundedRect(-pw / 2, -1, pw, ph, 2);
+        plate.endFill();
+        this.nameTag.addChild(plate);
+        this.nameTag.addChild(text);
+        this.nameTag.y = -2;
+        this.container.addChild(this.nameTag);
+
+        // 4. Comic Thought Cloud
+        this.thoughtBubble = new PIXI.Container();
+        this.bubbleBg = new PIXI.Graphics();
+        this.bubbleText = new PIXI.Text('', {
+          fontFamily: 'Inter',
+          fontSize: 9,
+          fontWeight: '700',
+          fill: 0x000000,
+          wordWrap: true,
+          wordWrapWidth: 130
+        });
+        this.bubbleText.anchor.set(0.5, 0.5);
+        this.thoughtBubble.addChild(this.bubbleBg);
+        this.thoughtBubble.addChild(this.bubbleText);
+        this.thoughtBubble.position.set(0, -38);
+        this.thoughtBubble.visible = false;
+        this.container.addChild(this.thoughtBubble);
+
+        // Physics & Path
+        this.px = agent.seatTile.x * 16 + 8;
+        this.py = agent.seatTile.y * 16 + 16;
+        this.container.position.set(this.px, this.py);
+        this.container.zIndex = this.py;
+
+        this.path = [];
+        this.walkTimer = 0;
+        this.walkPhase = 0;
+        this.isSitting = true;
+        this.facing = 'up';
+        this.thoughtTimer = 0;
+
+        this.updatePose();
+        charLayer.addChild(this.container);
+      }
+
+      showThought(text, duration = 4.5) {
+        this.bubbleText.text = text;
+        const bw = Math.max(this.bubbleText.width + 12, 34);
+        const bh = this.bubbleText.height + 8;
+        this.bubbleBg.clear();
+        this.bubbleBg.beginFill(0xffffff);
+        this.bubbleBg.lineStyle(1.5, 0x000000, 1);
+        this.bubbleBg.drawRoundedRect(-bw / 2, -bh / 2, bw, bh, 4);
+        // Comic tail
+        this.bubbleBg.drawCircle(-bw / 4, bh / 2 + 2, 2.5);
+        this.bubbleBg.drawCircle(-bw / 4 - 3, bh / 2 + 5, 1.5);
+        this.bubbleBg.endFill();
+
+        this.thoughtBubble.visible = true;
+        this.thoughtTimer = duration;
+      }
+
+      updatePose() {
+        if (this.isSitting) {
+          this.sprite.texture = this.facing === 'up' ? this.textures.back : this.textures.stand;
+          this.sprite.scale.x = 1;
+        } else {
+          const frames = [this.textures.stand, this.textures.stepL, this.textures.stepR];
+          this.sprite.texture = frames[this.walkPhase];
+        }
+      }
+
+      walkTo(goal) {
+        const start = { x: Math.floor(this.px / 16), y: Math.floor((this.py - 1) / 16) };
+        const p = findBfsPath(start, goal);
+        if (p && p.length > 0) {
+          this.path = p;
+          this.isSitting = false;
+        }
+      }
+
+      update(dt) {
+        // Thought bubble timer
+        if (this.thoughtTimer > 0) {
+          this.thoughtTimer -= dt;
+          if (this.thoughtTimer <= 0) this.thoughtBubble.visible = false;
+        }
+
+        // Ambient work halo
+        this.glow.clear();
+        if (this.agent.status === 'working' && this.isSitting) {
+          const alpha = 0.25 + Math.sin(Date.now() * 0.006) * 0.12;
+          this.glow.beginFill(0xffd60a, alpha);
+          this.glow.drawCircle(0, -12, 14);
+          this.glow.endFill();
+        }
+
+        // Path walking
+        if (this.path.length > 0) {
+          const target = this.path[0];
+          const tx = target.x * 16 + 8;
+          const ty = target.y * 16 + 16;
+          const dx = tx - this.px;
+          const dy = ty - this.py;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 1) {
+            this.px = tx;
+            this.py = ty;
+            this.path.shift();
+            if (this.path.length === 0) {
+              this.isSitting = true;
+              this.facing = 'up';
+              this.updatePose();
+            }
+          } else {
+            const step = Math.min(48 * dt, dist);
+            this.px += (dx / dist) * step;
+            this.py += (dy / dist) * step;
+
+            this.walkTimer += dt;
+            if (this.walkTimer > 0.18) {
+              this.walkTimer = 0;
+              this.walkPhase = (this.walkPhase + 1) % 3;
+            }
+            if (Math.abs(dx) > Math.abs(dy)) {
+              this.sprite.scale.x = dx > 0 ? 1 : -1;
+            }
+            this.updatePose();
+          }
+
+          this.container.position.set(this.px, this.py);
+          this.container.zIndex = this.py;
+        }
+      }
+    }
+
+    function spawnCharacters() {
+      AGENTS.forEach(agent => {
+        const view = new CharacterView(agent);
+        characterEntities.set(agent.id, view);
+        view.showThought(agent.action.split(' ')[0] + '...', 3.5);
+      });
+      renderBottomDock();
+      document.getElementById('hud-agents').innerText = AGENTS.length;
+    }
+
+    /* BFS Pathfinding */
+    function findBfsPath(start, goal) {
       if (start.x === goal.x && start.y === goal.y) return [];
-      if (goal.x < 0 || goal.x >= MAP_COLS || goal.y < 0 || goal.y >= MAP_ROWS) return null;
-      if (GRID[goal.y][goal.x] === 1) return null;
+      if (!walkabilityGrid[goal.y] || !walkabilityGrid[goal.y][goal.x]) return null;
 
       const queue = [start];
       const visited = new Set([`${start.x},${start.y}`]);
@@ -382,7 +1427,12 @@
           const nx = curr.x + dir.x;
           const ny = curr.y + dir.y;
           const key = `${nx},${ny}`;
-          if (nx >= 0 && nx < MAP_COLS && ny >= 0 && ny < MAP_ROWS && GRID[ny][nx] === 0 && !visited.has(key)) {
+          if (
+            nx >= 0 && nx < mapData.width &&
+            ny >= 0 && ny < mapData.height &&
+            walkabilityGrid[ny][nx] &&
+            !visited.has(key)
+          ) {
             visited.add(key);
             parent.set(key, curr);
             queue.push({ x: nx, y: ny });
@@ -393,423 +1443,16 @@
     }
 
     /* ==========================================================================
-       3. Agent Store (Sample State Driver)
-       ========================================================================== */
-    const store = {
-      selectedId: 'agent-ceo',
-      agents: [
-        {
-          id: 'agent-ceo',
-          name: 'CEO Evaluator',
-          shirt: 0x6366f1,
-          accent: '#6366f1',
-          status: 'working',
-          action: 'Evaluating PRD market viability & requirements',
-          x: 4 * TILE_SIZE + 16,
-          y: 4 * TILE_SIZE + 28,
-          tileX: 4,
-          tileY: 4,
-          direction: 'up',
-          bubble: 'Ingesting Spec...',
-          bubbleTimer: 4.0,
-          isGod: true
-        },
-        {
-          id: 'agent-dev',
-          name: 'Developer Agent',
-          shirt: 0x38bdf8,
-          accent: '#38bdf8',
-          status: 'working',
-          action: 'qwen2.5:7b live token streaming into Monaco',
-          x: 11 * TILE_SIZE + 16,
-          y: 6 * TILE_SIZE + 28,
-          tileX: 11,
-          tileY: 6,
-          direction: 'up',
-          bubble: 'Writing endpoints in main.py',
-          bubbleTimer: 5.0
-        },
-        {
-          id: 'agent-qa',
-          name: 'QA Inspector',
-          shirt: 0x4ade80,
-          accent: '#4ade80',
-          status: 'idle',
-          action: 'Awaiting build artifacts for test verification',
-          x: 11 * TILE_SIZE + 16,
-          y: 10 * TILE_SIZE + 28,
-          tileX: 11,
-          tileY: 10,
-          direction: 'up',
-          bubble: 'Ready to run test suites',
-          bubbleTimer: 3.5
-        },
-        {
-          id: 'agent-sec',
-          name: 'Security Officer',
-          shirt: 0xf87171,
-          accent: '#f87171',
-          status: 'working',
-          action: 'Strix SAST vulnerability scan & Bandit AST',
-          x: 11 * TILE_SIZE + 16,
-          y: 14 * TILE_SIZE + 28,
-          tileX: 11,
-          tileY: 14,
-          direction: 'up',
-          bubble: 'Running Bandit security audit...',
-          bubbleTimer: 4.5
-        }
-      ],
-      envelopes: [],
-      listeners: new Set(),
-      subscribe(fn) { store.listeners.add(fn); return () => store.listeners.delete(fn); },
-      notify() { store.listeners.forEach(fn => fn(store)); }
-    };
-
-    /* ==========================================================================
-       4. Pixi.js Application & Layer Hierarchy Setup
-       ========================================================================== */
-    const containerEl = document.getElementById('canvas-container');
-    const app = new PIXI.Application({
-      background: 0x0c0c0e,
-      antialias: false,
-      autoDensity: true,
-      resolution: window.devicePixelRatio || 2,
-      resizeTo: containerEl
-    });
-    containerEl.appendChild(app.view);
-
-    // Camera World Root Container
-    const world = new PIXI.Container();
-    app.stage.addChild(world);
-
-    // Map Tile Layers
-    const floorLayer = new PIXI.Graphics();
-    const wallsLayer = new PIXI.Graphics();
-    const furnitureBelowLayer = new PIXI.Graphics();
-    const furnitureAboveLayer = new PIXI.Graphics();
-
-    // Characters & Dynamic Entities Layer (sortableChildren = true for Y-sorting)
-    const charLayer = new PIXI.Container();
-    charLayer.sortableChildren = true;
-
-    world.addChild(floorLayer);
-    world.addChild(wallsLayer);
-    world.addChild(furnitureBelowLayer);
-    world.addChild(charLayer);
-    world.addChild(furnitureAboveLayer);
-
-    /* Render Static Floor, Walls & Furniture */
-    function drawMap() {
-      floorLayer.clear();
-      wallsLayer.clear();
-      furnitureBelowLayer.clear();
-
-      // Floor tiles
-      for (let r = 0; r < MAP_ROWS; r++) {
-        for (let c = 0; c < MAP_COLS; c++) {
-          const isExec = (c < 9 && r < 8);
-          const isBreak = (c > 15 && r < 7);
-          const isMeeting = (c > 16 && r > 10);
-
-          let tileColor = ((c + r) % 2 === 0) ? 0x18181b : 0x1e1e24;
-          if (isExec) tileColor = ((c + r) % 2 === 0) ? 0x1e1b2e : 0x242038;
-          if (isBreak) tileColor = ((c + r) % 2 === 0) ? 0x1b2824 : 0x20302b;
-          if (isMeeting) tileColor = ((c + r) % 2 === 0) ? 0x2a1d1d : 0x332323;
-
-          floorLayer.beginFill(tileColor);
-          floorLayer.drawRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-          floorLayer.endFill();
-        }
-      }
-
-      // Walls
-      for (let r = 0; r < MAP_ROWS; r++) {
-        for (let c = 0; c < MAP_COLS; c++) {
-          if (GRID[r][c] === 1 && !DESKS.some(d => d.x === c && d.y === r)) {
-            wallsLayer.beginFill(0x27272a);
-            wallsLayer.lineStyle(1, 0x3f3f46, 0.8);
-            wallsLayer.drawRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            wallsLayer.endFill();
-            // Wall top shadow
-            wallsLayer.beginFill(0x18181b, 0.4);
-            wallsLayer.drawRect(c * TILE_SIZE, r * TILE_SIZE + 24, TILE_SIZE, 8);
-            wallsLayer.endFill();
-          }
-        }
-      }
-
-      // Desks & Computer Screens
-      DESKS.forEach(desk => {
-        const dx = desk.x * TILE_SIZE;
-        const dy = desk.y * TILE_SIZE;
-
-        // Desk wood
-        furnitureBelowLayer.beginFill(0x3f3f46);
-        furnitureBelowLayer.lineStyle(1, 0x52525b);
-        furnitureBelowLayer.drawRoundedRect(dx + 2, dy + 6, TILE_SIZE - 4, TILE_SIZE - 8, 4);
-        furnitureBelowLayer.endFill();
-
-        // Monitor Base
-        furnitureBelowLayer.beginFill(0x18181b);
-        furnitureBelowLayer.drawRect(dx + 12, dy + 18, 8, 4);
-        furnitureBelowLayer.endFill();
-
-        // Monitor Screen (Lit with cyan terminal glow)
-        furnitureBelowLayer.beginFill(0x0284c7);
-        furnitureBelowLayer.drawRoundedRect(dx + 8, dy + 8, 16, 11, 2);
-        furnitureBelowLayer.endFill();
-      });
-
-      // Break Room Coffee Machine
-      const cx = 22 * TILE_SIZE;
-      const cy = 2 * TILE_SIZE;
-      furnitureBelowLayer.beginFill(0xd97706);
-      furnitureBelowLayer.drawRect(cx, cy, 24, 20);
-      furnitureBelowLayer.endFill();
-    }
-    drawMap();
-
-    /* ==========================================================================
-       5. Camera Engine (Pan, Zoom, Bounds & Focus)
-       ========================================================================== */
-    class Camera {
-      constructor(container) {
-        this.container = container;
-        this.currentX = (MAP_COLS * TILE_SIZE) / 2;
-        this.currentY = (MAP_ROWS * TILE_SIZE) / 2;
-        this.currentZoom = 1.0;
-        this.targetX = this.currentX;
-        this.targetY = this.currentY;
-        this.targetZoom = 1.0;
-        this.lerpSpeed = 0.08;
-      }
-
-      fitToScreen() {
-        const vw = containerEl.clientWidth || 800;
-        const vh = containerEl.clientHeight || 600;
-        const mw = MAP_COLS * TILE_SIZE;
-        const mh = MAP_ROWS * TILE_SIZE;
-        this.targetZoom = Math.min((vw - 80) / mw, (vh - 80) / mh, 1.4);
-        this.targetX = mw / 2;
-        this.targetY = mh / 2;
-      }
-
-      focusOn(wx, wy, zoom = 1.35) {
-        this.targetX = wx;
-        this.targetY = wy;
-        this.targetZoom = zoom;
-      }
-
-      update(dt) {
-        this.currentX += (this.targetX - this.currentX) * this.lerpSpeed;
-        this.currentY += (this.targetY - this.currentY) * this.lerpSpeed;
-        this.currentZoom += (this.targetZoom - this.currentZoom) * this.lerpSpeed;
-
-        const vw = containerEl.clientWidth || 800;
-        const vh = containerEl.clientHeight || 600;
-
-        this.container.scale.set(this.currentZoom);
-        this.container.position.set(
-          vw / 2 - this.currentX * this.currentZoom,
-          vh / 2 - this.currentY * this.currentZoom
-        );
-      }
-    }
-    const camera = new Camera(world);
-    camera.fitToScreen();
-
-    // Mouse drag pan & scroll wheel zoom
-    let isDragging = false;
-    let dragStart = { x: 0, y: 0 };
-    containerEl.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      dragStart = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener('mouseup', () => isDragging = false);
-    containerEl.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const dx = (e.clientX - dragStart.x) / camera.currentZoom;
-      const dy = (e.clientY - dragStart.y) / camera.currentZoom;
-      camera.targetX -= dx;
-      camera.targetY -= dy;
-      dragStart = { x: e.clientX, y: e.clientY };
-    });
-    containerEl.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-      camera.targetZoom = Math.max(0.6, Math.min(camera.targetZoom * zoomFactor, 2.5));
-    });
-
-    /* ==========================================================================
-       6. Character Entity & Sprite Rendering
-       ========================================================================== */
-    class CharacterView {
-      constructor(agent) {
-        this.agent = agent;
-        this.path = [];
-        this.container = new PIXI.Container();
-
-        // 1. Work Glow Halo
-        this.glow = new PIXI.Graphics();
-        this.container.addChild(this.glow);
-
-        // 2. Character Body Sprite (Pixel Art Procedural)
-        this.sprite = new PIXI.Graphics();
-        this.container.addChild(this.sprite);
-
-        // 3. Nameplate Container
-        this.nameTag = new PIXI.Container();
-        const text = new PIXI.Text(agent.name, {
-          fontFamily: 'Inter',
-          fontSize: 9,
-          fontWeight: '600',
-          fill: 0xffffff,
-          align: 'center'
-        });
-        text.anchor.set(0.5, 0.5);
-        const bg = new PIXI.Graphics();
-        bg.beginFill(0x18181b, 0.85);
-        bg.lineStyle(1, 0x3f3f46, 0.8);
-        bg.drawRoundedRect(-text.width / 2 - 4, -8, text.width + 8, 16, 4);
-        bg.endFill();
-        this.nameTag.addChild(bg);
-        this.nameTag.addChild(text);
-        this.nameTag.position.set(0, -38);
-        this.container.addChild(this.nameTag);
-
-        // 4. Thought Bubble Container
-        this.bubbleContainer = new PIXI.Container();
-        this.bubbleBg = new PIXI.Graphics();
-        this.bubbleText = new PIXI.Text('', {
-          fontFamily: 'Inter',
-          fontSize: 10,
-          fontWeight: '500',
-          fill: 0x18181b,
-          wordWrap: true,
-          wordWrapWidth: 150
-        });
-        this.bubbleText.anchor.set(0.5, 0.5);
-        this.bubbleContainer.addChild(this.bubbleBg);
-        this.bubbleContainer.addChild(this.bubbleText);
-        this.bubbleContainer.position.set(0, -60);
-        this.container.addChild(this.bubbleContainer);
-
-        this.renderCharacter();
-        charLayer.addChild(this.container);
-      }
-
-      renderCharacter() {
-        this.sprite.clear();
-        this.glow.clear();
-
-        // Ambient work glow if active
-        if (this.agent.status === 'working') {
-          this.glow.beginFill(this.agent.shirt, 0.25);
-          this.glow.drawCircle(0, -12, 18);
-          this.glow.endFill();
-        }
-
-        // Head
-        this.sprite.beginFill(0xfde047); // Hair/Skin
-        this.sprite.drawCircle(0, -22, 6);
-        this.sprite.endFill();
-
-        // Torso / Shirt
-        this.sprite.beginFill(this.agent.shirt);
-        this.sprite.drawRoundedRect(-6, -16, 12, 12, 2);
-        this.sprite.endFill();
-
-        // Legs (seated crop logic)
-        const isSeated = this.agent.direction === 'up' && this.path.length === 0;
-        if (!isSeated) {
-          this.sprite.beginFill(0x3f3f46); // Pants
-          this.sprite.drawRect(-5, -4, 4, 6);
-          this.sprite.drawRect(1, -4, 4, 6);
-          this.sprite.endFill();
-        }
-      }
-
-      updateBubble(dt) {
-        if (this.agent.bubbleTimer > 0) {
-          this.agent.bubbleTimer -= dt;
-          this.bubbleContainer.visible = true;
-          this.bubbleText.text = this.agent.bubble;
-
-          const bw = Math.max(this.bubbleText.width + 16, 40);
-          const bh = this.bubbleText.height + 10;
-          this.bubbleBg.clear();
-          this.bubbleBg.beginFill(0xf4f4f5);
-          this.bubbleBg.lineStyle(1, 0xd4d4d8);
-          this.bubbleBg.drawRoundedRect(-bw / 2, -bh / 2, bw, bh, 5);
-          // Tail
-          this.bubbleBg.moveTo(-4, bh / 2);
-          this.bubbleBg.lineTo(0, bh / 2 + 5);
-          this.bubbleBg.lineTo(4, bh / 2);
-          this.bubbleBg.endFill();
-        } else {
-          this.bubbleContainer.visible = false;
-        }
-      }
-
-      update(dt) {
-        // Step pathfinding movement
-        if (this.path.length > 0) {
-          const target = this.path[0];
-          const targetX = target.x * TILE_SIZE + 16;
-          const targetY = target.y * TILE_SIZE + 28;
-
-          const dx = targetX - this.agent.x;
-          const dy = targetY - this.agent.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist > 0.1) {
-            this.agent.direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-          }
-
-          const step = Math.min(SPEED * dt, dist);
-          if (dist <= step) {
-            this.agent.x = targetX;
-            this.agent.y = targetY;
-            this.agent.tileX = target.x;
-            this.agent.tileY = target.y;
-            this.path.shift();
-            if (this.path.length === 0) {
-              this.renderCharacter(); // Recalculate seated crop
-            }
-          } else {
-            this.agent.x += (dx / dist) * step;
-            this.agent.y += (dy / dist) * step;
-          }
-        }
-
-        // Set World Container Position & Z-Index Y-Sorting
-        this.container.position.set(this.agent.x, this.agent.y);
-        this.container.zIndex = this.agent.y;
-
-        this.updateBubble(dt);
-      }
-    }
-
-    /* Instantiate Characters */
-    const characterViews = new Map();
-    store.agents.forEach(a => {
-      characterViews.set(a.id, new CharacterView(a));
-    });
-
-    /* ==========================================================================
-       7. Message Envelopes (Quadratic Sine Projectile Arcs)
+       6. Message Envelopes (Quadratic Sine Projectile Arcs)
        ========================================================================== */
     class EnvelopeProjectile {
       constructor(sender, recipient, act = 'request') {
-        this.sender = sender;
-        this.recipient = recipient;
-        this.sx = sender.x;
-        this.sy = sender.y - 18;
-        this.ex = recipient.x;
-        this.ey = recipient.y - 18;
+        this.sx = sender.px;
+        this.sy = sender.py - 12;
+        this.ex = recipient.px;
+        this.ey = recipient.py - 12;
         this.t = 0;
-        this.duration = 1.2;
+        this.duration = 1.1;
         this.burstTimer = 0;
 
         const colors = {
@@ -834,11 +1477,11 @@
       drawEnvelope() {
         this.body.clear();
         this.body.beginFill(this.color);
-        this.body.lineStyle(1, 0x09090b);
-        this.body.drawRect(-7, -5, 14, 10);
-        this.body.moveTo(-7, -5);
+        this.body.lineStyle(1.5, 0x000000);
+        this.body.drawRect(-6, -4, 12, 8);
+        this.body.moveTo(-6, -4);
         this.body.lineTo(0, 1);
-        this.body.lineTo(7, -5);
+        this.body.lineTo(6, -4);
         this.body.endFill();
       }
 
@@ -847,159 +1490,237 @@
           this.t += dt / this.duration;
           const ease = this.t < 0.5 ? 2 * this.t * this.t : 1 - Math.pow(-2 * this.t + 2, 2) / 2;
           const x = this.sx + (this.ex - this.sx) * ease;
-          const y = this.sy + (this.ey - this.sy) * ease - ARC_LIFT * Math.sin(Math.PI * ease);
+          const y = this.sy + (this.ey - this.sy) * ease - 38 * Math.sin(Math.PI * ease);
           this.container.position.set(x, y);
-          this.container.zIndex = 100000;
-        } else if (this.burstTimer < 0.3) {
+          this.container.zIndex = 1000000;
+        } else if (this.burstTimer < 0.28) {
           this.body.visible = false;
           this.burstTimer += dt;
-          const progress = this.burstTimer / 0.3;
+          const progress = this.burstTimer / 0.28;
           this.burst.clear();
-          this.burst.lineStyle(2, this.color, 1 - progress);
-          this.burst.drawCircle(0, 0, progress * 24);
+          this.burst.lineStyle(2, 0x000000, 1 - progress);
+          this.burst.drawCircle(0, 0, progress * 18);
         } else {
           charLayer.removeChild(this.container);
-          return true; // Finished
+          return true;
         }
         return false;
       }
     }
-    let activeEnvelopes = [];
 
     /* ==========================================================================
-       8. Simulation Actions & Event Triggers
+       7. Simulation Trigger Handlers
        ========================================================================== */
     function triggerHiveEnvelope() {
-      const dev = store.agents.find(a => a.id === 'agent-dev');
-      const ceo = store.agents.find(a => a.id === 'agent-ceo');
-      const sec = store.agents.find(a => a.id === 'agent-sec');
+      const dev = characterEntities.get('dev');
+      const sec = characterEntities.get('security');
+      const ceo = characterEntities.get('ceo');
 
-      activeEnvelopes.push(new EnvelopeProjectile(dev, sec, 'request'));
-      dev.bubble = "Sending patches for Bandit SAST review!";
-      dev.bubbleTimer = 3.0;
+      if (dev && sec) {
+        envelopes.push(new EnvelopeProjectile(dev, sec, 'request'));
+        dev.showThought("Sending code to Security for SAST scan!");
+        appendTerminal('HIVE', 'Routed Live packet from Dev to Security.');
 
-      setTimeout(() => {
-        activeEnvelopes.push(new EnvelopeProjectile(sec, ceo, 'agree'));
-        sec.bubble = "Zero high severity CVEs detected. Approved!";
-        sec.bubbleTimer = 3.5;
-      }, 1400);
+        setTimeout(() => {
+          if (sec && ceo) {
+            envelopes.push(new EnvelopeProjectile(sec, ceo, 'agree'));
+            sec.showThought("Bandit scan clean. Forwarding release to CEO!");
+            appendTerminal('PASS', 'Security passed audit: 0 high-severity CVEs.');
+          }
+        }, 1300);
+      }
+    }
+
+    function triggerEvaluatePRD() {
+      const ceo = characterEntities.get('ceo');
+      if (ceo) {
+        ceo.showThought("Appraising PRD viability & acceptance criteria...");
+        camera.focusOn(ceo.px, ceo.py, 2.2);
+        appendTerminal('EVAL', 'Michael Scott evaluating PRD requirements & architecture.');
+      }
+    }
+
+    function triggerRunTests() {
+      const qa = characterEntities.get('qa');
+      if (qa) {
+        qa.showThought("Running pytest suite: 17 integration tests passed!");
+        camera.focusOn(qa.px, qa.py, 2.2);
+        appendTerminal('PASS', 'QA passed 17 integration tests with 100% assertions.');
+      }
+    }
+
+    function triggerSecurityAudit() {
+      const sec = characterEntities.get('security');
+      if (sec) {
+        sec.showThought("Bandit AST scan running... 0 vulnerabilities!");
+        camera.focusOn(sec.px, sec.py, 2.2);
+        appendTerminal('SAST', 'Security running Bandit AST security scan: 0 vulnerabilities found.');
+      }
+    }
+
+    function triggerCoffeeBreak() {
+      const dev = characterEntities.get('dev');
+      if (dev) {
+        // Kitchen / coffee maker area around tile (29, 13)
+        dev.walkTo({ x: 29, y: 13 });
+        dev.showThought("Need fresh coffee for 10x velocity!");
+        appendTerminal('HIVE', 'Dev heading to break room for fresh brew.');
+      }
     }
 
     function triggerWander() {
-      store.agents.forEach(agent => {
-        const view = characterViews.get(agent.id);
-        const rx = 8 + Math.floor(Math.random() * 8);
-        const ry = 4 + Math.floor(Math.random() * 8);
-        const path = findPath({ x: agent.tileX, y: agent.tileY }, { x: rx, y: ry });
-        if (path) {
-          view.path = path;
-          agent.status = 'idle';
-          agent.bubble = "Stretching legs...";
-          agent.bubbleTimer = 2.5;
+      appendTerminal('HIVE', 'Staff stretching legs and wandering the floor.');
+      AGENTS.forEach(agent => {
+        const view = characterEntities.get(agent.id);
+        if (view) {
+          const rx = 8 + Math.floor(Math.random() * 12);
+          const ry = 6 + Math.floor(Math.random() * 7);
+          view.walkTo({ x: rx, y: ry });
+          view.showThought("Stretching legs...");
         }
       });
-      renderRoster();
     }
 
     function triggerReturnDesks() {
-      store.agents.forEach(agent => {
-        const view = characterViews.get(agent.id);
-        const seat = SEATS[agent.id];
-        if (seat) {
-          const path = findPath({ x: agent.tileX, y: agent.tileY }, { x: seat.x, y: seat.y });
-          if (path) {
-            view.path = path;
-            agent.status = 'working';
-            agent.bubble = "Heading back to work station.";
-            agent.bubbleTimer = 3.0;
-          }
+      appendTerminal('HIVE', 'All agents returned to assigned PC desks.');
+      AGENTS.forEach(agent => {
+        const view = characterEntities.get(agent.id);
+        if (view) {
+          view.walkTo({ x: agent.seatTile.x, y: agent.seatTile.y });
+          view.showThought("Back at station.");
         }
       });
-      renderRoster();
-    }
-
-    function triggerCoffeeRun() {
-      const dev = store.agents.find(a => a.id === 'agent-dev');
-      const view = characterViews.get(dev.id);
-      const path = findPath({ x: dev.tileX, y: dev.tileY }, { x: 21, y: 3 });
-      if (path) {
-        view.path = path;
-        dev.bubble = "Need fresh coffee for 10x velocity!";
-        dev.bubbleTimer = 4.0;
-      }
-      renderRoster();
-    }
-
-    function triggerBurstSprint() {
-      store.agents.forEach(agent => {
-        agent.status = 'working';
-        agent.bubble = "Sprint cycle engaged! 🚀";
-        agent.bubbleTimer = 3.5;
-        const view = characterViews.get(agent.id);
-        view.renderCharacter();
-      });
-      renderRoster();
     }
 
     function cameraFit() { camera.fitToScreen(); }
     function cameraFocusCEO() {
-      const ceo = store.agents.find(a => a.id === 'agent-ceo');
-      camera.focusOn(ceo.x, ceo.y, 1.8);
-      document.getElementById('hud-selected').innerText = ceo.name;
+      const ceo = characterEntities.get('ceo');
+      if (ceo) {
+        camera.focusOn(ceo.px, ceo.py, 2.2);
+        selectAgent('ceo');
+      }
+    }
+
+    function selectAgent(id) {
+      selectedAgentId = id;
+      const view = characterEntities.get(id);
+      if (view) {
+        camera.focusOn(view.px, view.py, 2.2);
+        view.showThought("Ready for directive!");
+      }
+      renderBottomDock();
+    }
+
+    function handlePromptKey(e) {
+      if (e.key === 'Enter') submitPrompt();
+    }
+
+    function submitPrompt() {
+      const input = document.getElementById('prompt-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const view = characterEntities.get(selectedAgentId);
+      if (view) {
+        view.showThought(val, 5.0);
+        appendTerminal('EXEC', `Directive to ${view.agent.name}: "${val}"`);
+      }
+      input.value = '';
+    }
+
+    function appendTerminal(tag, text) {
+      const term = document.getElementById('terminal-stream');
+      const d = new Date();
+      const ts = `[${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}]`;
+
+      const line = document.createElement('div');
+      line.className = 'term-line';
+      line.innerHTML = `
+        <span class="term-ts">${ts}</span>
+        <span class="term-badge ${tag.toLowerCase()}">[${tag}]</span>
+        <span class="term-text">${text}</span>
+      `;
+      term.appendChild(line);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function switchCcTab(tab) {
+      document.querySelectorAll('.cc-tab').forEach(t => t.classList.remove('active'));
+      const activeTab = event.target;
+      activeTab.classList.add('active');
+      if (tab === 'triggers') {
+        appendTerminal('HIVE', 'Trigger palette active: click any trigger button above.');
+      }
     }
 
     /* ==========================================================================
-       9. Main Animation Loop (app.ticker.add)
+       8. Bottom Dock Neobrutalist Cards Rendering
+       ========================================================================== */
+    function renderBottomDock() {
+      const dock = document.getElementById('bottom-dock');
+      dock.innerHTML = '';
+
+      AGENTS.forEach(agent => {
+        const card = document.createElement('div');
+        card.className = `dock-card-neo ${agent.themeClass} ${agent.id === selectedAgentId ? 'selected' : ''}`;
+        card.onclick = () => selectAgent(agent.id);
+
+        // Portrait canvas
+        const portraitBox = document.createElement('div');
+        portraitBox.className = 'dock-portrait-neo';
+        const canvas = document.createElement('canvas');
+        const recipe = CHARACTER_RECIPES[agent.character];
+        paintBufferToCanvas(canvas, renderPortraitBuffer(recipe), PORTRAIT_W, PORTRAIT_H);
+        canvas.style.width = '30px';
+        canvas.style.height = '42px';
+        portraitBox.appendChild(canvas);
+
+        // Body
+        const body = document.createElement('div');
+        body.className = 'dock-card-body';
+        body.innerHTML = `
+          <div class="dock-name-row">
+            <span class="dock-name">${agent.name}</span>
+            <span class="dock-badge-neo ${agent.statusBadgeClass}">${agent.statusLabel}</span>
+          </div>
+          <div class="dock-role">${agent.role}</div>
+          <div class="dock-card-actions">
+            <button class="btn-talk-neo" onclick="event.stopPropagation(); triggerTalk('${agent.id}')">💬 Talk</button>
+          </div>
+        `;
+
+        card.appendChild(portraitBox);
+        card.appendChild(body);
+        dock.appendChild(card);
+      });
+    }
+
+    function triggerTalk(id) {
+      selectAgent(id);
+      const view = characterEntities.get(id);
+      if (view) {
+        view.showThought("How can I assist your sprint?", 4.0);
+        appendTerminal('HIVE', `Direct radio link opened with ${view.agent.name}.`);
+      }
+    }
+
+    /* ==========================================================================
+       9. Animation Loop (app.ticker.add)
        ========================================================================== */
     app.ticker.add((delta) => {
-      const dt = delta / 60; // seconds
-
-      // 1. Step Camera
+      const dt = delta / 60;
       camera.update(dt);
+      characterEntities.forEach(view => view.update(dt));
+      envelopes = envelopes.filter(env => !env.update(dt));
 
-      // 2. Step Characters
-      characterViews.forEach(view => view.update(dt));
-
-      // 3. Step Envelopes
-      activeEnvelopes = activeEnvelopes.filter(env => !env.update(dt));
-
-      // 4. Update HUD
       document.getElementById('hud-zoom').innerText = `${camera.currentZoom.toFixed(1)}x`;
       document.getElementById('hud-fps').innerText = Math.round(app.ticker.FPS);
     });
 
-    /* ==========================================================================
-       10. UI Roster Rendering
-       ========================================================================== */
-    function renderRoster() {
-      const listEl = document.getElementById('agent-list');
-      listEl.innerHTML = '';
-
-      store.agents.forEach(agent => {
-        const card = document.createElement('div');
-        card.className = `agent-card ${store.selectedId === agent.id ? 'selected' : ''}`;
-        card.onclick = () => {
-          store.selectedId = agent.id;
-          camera.focusOn(agent.x, agent.y, 1.8);
-          document.getElementById('hud-selected').innerText = agent.name;
-          renderRoster();
-        };
-
-        card.innerHTML = `
-          <div class="agent-card-header">
-            <div class="agent-name">
-              <div class="agent-dot" style="background: ${agent.accent};"></div>
-              <span>${agent.name}</span>
-            </div>
-            <span class="status-badge status-${agent.status}">${agent.status}</span>
-          </div>
-          <div class="agent-action">${agent.action}</div>
-          <div class="agent-coords">Tile: [${agent.tileX}, ${agent.tileY}] · Direction: ${agent.direction}</div>
-        `;
-        listEl.appendChild(card);
-      });
-    }
-    renderRoster();
+    // Start loading on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadOfficeScene();
+    });
   </script>
 </body>
 </html>

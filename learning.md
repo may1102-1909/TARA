@@ -636,4 +636,36 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Provides a self-contained, interactive 2D graphical office floor that can visualize multi-agent collaboration, state transitions, and inter-agent message routing in real time.
 
+---
+
+### Step 35: Neobrutalism Workspace Redesign & 5-Agent Team Restructuring (`/office`)
+- **What was done:**
+  - **Neobrutalism Visual Design Overhaul (`backend/app/static/office.html`):**
+    * Transformed the dark theme workspace into a high-contrast Neobrutalist design system inspired by the user's reference mockup:
+      - Warm paper canvas background (`#fcf9ee` / `#faf6eb`).
+      - Bold black ink borders (`3px solid #000` on containers, `2.5px solid #000` on cards and buttons).
+      - Hard offset drop shadows with zero blur (`3px 3px 0 #000` and `4px 4px 0 #000`).
+      - Tactile interactive feedback (`transform: translate(-1.5px, -1.5px)` with increased shadow on hover, `translate(1.5px, 1.5px)` on active click).
+    * Restyled the header bar with bright yellow "TARA" badge (`#ffd60a`), bold title ("Autonomous Office Floor"), "ENGINE V2.0" pill badge, and neobrutalist pill buttons (`Fit Map`, `Focus CEO`, `Route Message`, `Open Web IDE`).
+    * Re-engineered the side panel into a vibrant **"COMMAND CENTER"** with:
+      - Bright orange header banner (`#ff9f1c`).
+      - High-contrast segmented tab controls ("Terminal Logs" / "Hive Triggers").
+      - Ivory terminal stream log with colorful status badge pills (`[PASS]`, `[HIVE]`, `[SAST]`, `[EVAL]`).
+      - 6 chunky, colorful neobrutalist action buttons (`Evaluate Spec` in yellow, `Run Test Suites` in sky blue, `Security Scan` in periwinkle, `Coffee Break` in orange, `Wander Floor` in mint green, `Return to Desks` in seafoam).
+      - Bold prompt input bar with black `Send ➔` button.
+  - **5-Agent Team Restructuring:**
+    * Reconfigured the active agent roster to exactly **5 agents**:
+      1. **CEO** (`Michael Scott`, yellow `#ffd60a`, executive corner desk `(3, 4)`, status `working`).
+      2. **Dev** (`Dev`, sky blue `#70d6ff`, workstation desk `(6, 14)`, status `coding`).
+      3. **QA** (`QA`, periwinkle blue `#a0c4ff`, workstation desk `(10, 14)`, status `testing`).
+      4. **Security** (`Security`, bright coral/orange `#ff758f` / `#ff9f1c`, workstation desk `(14, 14)`, status `alert`).
+      5. **Supervisor** (`Supervisor`, mint green `#b7e4c7`, workstation desk `(18, 14)`, status `patrolling`).
+    * Updated canvas nameplates into crisp black rectangular pills with bold white text matching the 5-agent tags (`CEO`, `Dev`, `QA`, `Security`, `Supervisor`).
+    * Updated the bottom dock into 5 distinct colorful neobrutalist agent cards, each displaying pixel portrait art, name, role, live status badge (`working`, `coding`, `testing`, `alert`, `patrolling`), and interactive `💬 Talk` buttons.
+  - **Live Verification:**
+    * Verified FastAPI server running on `http://127.0.0.1:8000/office` returning `200 OK` (58.7 KB).
+- **Why we built it:**
+  - Standardizes the autonomous multi-agent simulation to the exact 5 core production roles requested (CEO, Dev, QA, Security, Supervisor) and delivers a vibrant, tactile Neobrutalist aesthetic matching the user's design reference.
+
+
 
