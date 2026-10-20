@@ -27,6 +27,20 @@ class AuditSummary(TypedDict, total=False):
     unresolved_risks: List[str]
     completed_at: Optional[str]
 
+class PlannedFile(TypedDict, total=False):
+    path: str
+    responsibility: str
+
+class PlannerOutput(TypedDict, total=False):
+    project_summary: str
+    required_features: List[str]
+    architecture_type: str  # e.g. "web_app", "backend_api", "cli_tool", "library"
+    tech_stack: List[str]
+    file_plan: List[PlannedFile]
+    acceptance_criteria: List[str]
+    requires_web: bool
+    is_fallback: bool
+
 class AgentState(TypedDict, total=False):
     session_id: str
     prd_filename: str
@@ -37,17 +51,24 @@ class AgentState(TypedDict, total=False):
     user_action: Optional[Literal["approve", "request_changes", "reject"]]
     human_feedback_notes: Annotated[List[str], operator.add]
     revision_count: int
+
+    # Planner Artifacts
+    plan: Optional[PlannerOutput]
     
     # Developer Artifacts
     dev_code_files: Dict[str, str]  # filepath -> content
     generated_code: Optional[Dict[str, str]]
     code_summary: Optional[str]
     
-    # QA Refactoring Artifacts
+    # QA & Repair Artifacts
     qa_refactored_files: Dict[str, str]
     qa_changelog: List[Dict[str, str]]
     qa_report: Optional[Dict[str, Any]]
     qa_passed: Optional[bool]
+    repair_count: int
+    qa_repair_context: Optional[Dict[str, Any]]
+    test_output: Optional[str]
+    failing_files: Optional[List[str]]
     
     # Security Hardening & Audit
     security_patches: Dict[str, str]
@@ -75,9 +96,16 @@ def create_initial_state(
         "user_action": None,
         "human_feedback_notes": [],
         "revision_count": 0,
+        "plan": None,
         "dev_code_files": {},
         "qa_refactored_files": {},
         "qa_changelog": [],
+        "qa_report": None,
+        "qa_passed": None,
+        "repair_count": 0,
+        "qa_repair_context": None,
+        "test_output": None,
+        "failing_files": [],
         "security_patches": {},
         "security_findings": [],
         "audit_summary": None,
@@ -85,3 +113,4 @@ def create_initial_state(
         "logs": [],
         "error": None,
     }
+

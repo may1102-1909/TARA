@@ -194,7 +194,7 @@ class SessionManager:
                     })
 
                     # If code was generated or refactored/hardened, sync into live sandbox
-                    if node_name in ("dev_qa_node", "security_node"):
+                    if node_name in ("dev_qa_node", "developer_node", "qa_node", "security_node"):
                         try:
                             from app.sandbox.runner import get_or_create_session_sandbox
                             from app.routers.preview import broadcast_preview_reload_sync
@@ -215,7 +215,7 @@ class SessionManager:
                                 routes = sb.discover_openapi_routes()
                                 version_tag = (
                                     "Build v2 (Security Patched)" if node_name == "security_node"
-                                    else "Build v1 (Dev/QA)"
+                                    else ("Build v1.1 (QA Audited)" if node_name == "qa_node" else "Build v1 (Dev Scaffold)")
                                 )
                                 proxy_url = f"/api/preview/proxy/{session_id}"
                                 target_f = "index.html" if "index.html" in stage_files else "main.py"
@@ -340,14 +340,22 @@ class SessionManager:
             "ceo_critique": values.get("ceo_critique"),
             "user_action": values.get("user_action"),
             "human_feedback_notes": values.get("human_feedback_notes", []),
+            "plan": values.get("plan"),
             "dev_code_files": values.get("dev_code_files", {}),
             "qa_refactored_files": values.get("qa_refactored_files", {}),
             "qa_changelog": values.get("qa_changelog", []),
+            "qa_report": values.get("qa_report"),
+            "qa_passed": values.get("qa_passed"),
+            "repair_count": values.get("repair_count", 0),
+            "test_output": values.get("test_output"),
+            "failing_files": values.get("failing_files", []),
             "security_patches": values.get("security_patches", {}),
             "security_findings": values.get("security_findings", []),
             "audit_summary": values.get("audit_summary"),
+            "error": values.get("error"),
             "logs": values.get("logs", []),
         }
 
 
 session_manager = SessionManager()
+

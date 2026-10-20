@@ -102,7 +102,7 @@ def patch_codebase_with_chat_google(
     api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY", "")
     patched_map: Dict[str, str] = {}
 
-    if not api_key or not findings:
+    if not api_key or not api_key.startswith("AIzaSy") or not findings:
         patched_map = deterministic_patch_fallback(files, findings)
     else:
         model_name = getattr(settings, "default_model", None) or "gemini-2.0-flash"

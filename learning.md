@@ -667,5 +667,35 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Standardizes the autonomous multi-agent simulation to the exact 5 core production roles requested (CEO, Dev, QA, Security, Supervisor) and delivers a vibrant, tactile Neobrutalist aesthetic matching the user's design reference.
 
+---
 
-
+### Step 36: PRD-to-Code Architecture Planning, Modular Multi-File Separation, and QA Repair Loop
+- **What was done:**
+  - **Architecture Planner Agent (`backend/app/agents/planner.py`):**
+    * Added an explicit Planner step immediately after human approval of the CEO critique (`human_approval_gate` -> `planner_node`).
+    * Reads the approved PRD and generates:
+      - A concise project summary (`project_summary`).
+      - A list of required features (`required_features`).
+      - An appropriate technology and file plan (`file_plan`) with clear, single-responsibility files.
+      - Concrete acceptance criteria that QA can evaluate (`acceptance_criteria`).
+      - Differentiation between web applications (`requires_web = True`) and non-web services/libraries (`requires_web = False`).
+  - **PRD-Specific Developer Agent (`backend/app/agents/developer.py`):**
+    * Developer receives both the original PRD and the Planner's result.
+    * For Web PRDs: generates separate frontend files (`index.html`, `static/styles.css`, `static/app.js`) and a FastAPI backend (`main.py`, `models.py`, `utils.py`) when backend behavior is required.
+    * For Non-Web PRDs: does NOT force `index.html` or frontend files on projects that only need a backend, CLI, or library (e.g. cache engine, order microservice).
+    * Enforces safe relative file paths (rejecting absolute paths, `..`, drive letters, and sensitive secret file types).
+    * Eliminates placeholder code and canned templates. Clearly marks fallback generation with `[FALLBACK - MODEL UNAVAILABLE]` if remote models are unreachable.
+  - **QA Agent with Real Test Execution & Web Preview Validation (`backend/app/agents/qa.py`):**
+    * Performs static AST syntax analysis on all Python files.
+    * Verifies that web previews load cleanly when requested (validates `index.html`, semantic tags, and local asset references).
+    * Dynamically generates unit test suites tailored to the project and executes them in an isolated temporary subprocess runner.
+    * Detects prohibited placeholder markers (`TODO`, `FIXME`, `NotImplementedError`).
+  - **Automated Repair Loop with 3-Attempt Cutoff (`backend/app/graph/workflow.py` & `router.py`):**
+    * If QA checks fail, captures the actual failure traceback and failing file names into `qa_repair_context`.
+    * Routes back to `developer_node` for up to 3 repair attempts.
+    * If issues remain after 3 attempts, reports problems clearly without claiming false success, then cleanly completes the security and packaging stage.
+  - **Verification:**
+    * Passed all 6 tests in `backend/tests/test_workflow.py` (full approval path, web app generation, non-web differentiation, rejection, and QA repair loops).
+    * Passed all 4 tests in `backend/tests/test_api.py` (health, session lifecycle, revision loop, and direct graph execution).
+- **Why we built it:**
+  - Guarantees that generated projects directly reflect their unique PRD, are cleanly organized across modular single-responsibility files without forcing unnecessary web files, and autonomously repair themselves against real test failures before release.

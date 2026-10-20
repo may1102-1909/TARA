@@ -27,9 +27,13 @@ from app.core.llm import call_gemini_with_fallback
 
 logger = logging.getLogger(__name__)
 
-# Client picks up environment variable GEMINI_API_KEY automatically
+# Initialize GenAI client only if valid standard AIza key is present
 try:
-    client = genai.Client()
+    _key = os.getenv("GEMINI_API_KEY", "")
+    if _key and _key.startswith("AIzaSy"):
+        client = genai.Client(api_key=_key)
+    else:
+        client = None
 except Exception:
     client = None
 
@@ -111,8 +115,8 @@ def evaluate_prd(
 ) -> CEOCritique:
     """Evaluates a PRD from a CEO perspective and returns a structured CEOCritique."""
     global client
-    api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
-    if client is None and api_key:
+    api_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY", "")
+    if client is None and api_key and api_key.startswith("AIzaSy"):
         try:
             client = genai.Client(api_key=api_key)
         except Exception as init_exc:
