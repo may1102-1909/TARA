@@ -251,8 +251,8 @@ class LocalEphemeralSandbox(BaseSandbox):
 
         ep_content = files.get(target_ep, "")
         
-        # Check if project is static web app (index.html present and no FastAPI/Flask)
-        has_index_html = "index.html" in files
+        # Check if project is static web app (index.html or frontend/index.html present and no FastAPI/Flask)
+        has_index_html = "index.html" in files or "frontend/index.html" in files or any(k.endswith("index.html") for k in files)
         is_fastapi = "FastAPI" in ep_content or any("FastAPI" in c for c in files.values())
         is_flask = "Flask" in ep_content or any("Flask" in c for c in files.values())
 
@@ -269,7 +269,8 @@ class LocalEphemeralSandbox(BaseSandbox):
                 clean_env[k] = os.environ[k]
 
         if has_index_html and not is_fastapi and not is_flask:
-            cmd = [sys.executable, "-m", "http.server", str(alloc_port), "--bind", "127.0.0.1"]
+            serve_dir = str(self.root_path / "frontend") if (self.root_path / "frontend" / "index.html").exists() else str(self.root_path)
+            cmd = [sys.executable, "-m", "http.server", str(alloc_port), "--bind", "127.0.0.1", "--directory", serve_dir]
         elif is_fastapi:
             mod_name = Path(target_ep).stem
             cmd = [

@@ -53,11 +53,13 @@
           <div class="step-divider"></div>
           <div class="step-item" data-step="gate"><div class="step-bullet">3</div><span class="step-label">Gate</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="build"><div class="step-bullet">4</div><span class="step-label">Build</span></div>
+          <div class="step-item" data-step="plan"><div class="step-bullet">4</div><span class="step-label">Plan</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="security"><div class="step-bullet">5</div><span class="step-label">Security</span></div>
+          <div class="step-item" data-step="build"><div class="step-bullet">5</div><span class="step-label">Build</span></div>
           <div class="step-divider"></div>
-          <div class="step-item" data-step="package"><div class="step-bullet">6</div><span class="step-label">Release</span></div>
+          <div class="step-item" data-step="security"><div class="step-bullet">6</div><span class="step-label">Security</span></div>
+          <div class="step-divider"></div>
+          <div class="step-item" data-step="package"><div class="step-bullet">7</div><span class="step-label">Release</span></div>
         </div>
       </div>
 
@@ -159,6 +161,7 @@
         </div>
 
         <div class="sidebar-content" id="files-panel">
+          <div id="plan-summary-container" style="display: none; padding: 10px 14px 0 14px;"></div>
           <div class="file-tree-header">
             <span class="section-label">Filing Cabinet (Manila Folders)</span>
             <span class="files-tag" id="files-tag-total">0 files</span>
@@ -200,7 +203,29 @@
             <div class="desk-activity-line" id="desk-ceo-activity">Awaiting specification submission</div>
           </div>
 
-          <!-- Desk 2: Production Desk (Developer Agent) -->
+          <!-- Desk 2: Architecture Studio (Planner Agent) -->
+          <div class="desk-card" id="desk-planner" data-desk="planner">
+            <div class="desk-header">
+              <div class="desk-title-group">
+                <div class="desk-icon">
+                  <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                    <polyline points="2 17 12 22 22 17"/>
+                    <polyline points="2 12 12 17 22 12"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="desk-dept-name">Architecture Studio</div>
+                  <div class="desk-role-label">Planner agent • System blueprint</div>
+                </div>
+              </div>
+              <span class="desk-status-badge idle" id="desk-planner-badge">Idle</span>
+            </div>
+            <div class="desk-activity-line" id="desk-planner-activity">Standing by for approval</div>
+            <div class="desk-skills-container" id="desk-planner-skills" style="display: none;"></div>
+          </div>
+
+          <!-- Desk 3: Production Desk (Developer Agent) -->
           <div class="desk-card" id="desk-dev" data-desk="dev">
             <div class="desk-header">
               <div class="desk-title-group">
@@ -224,7 +249,7 @@
             <div class="desk-activity-line" id="desk-dev-activity">Ready for implementation</div>
           </div>
 
-          <!-- Desk 3: Quality Control (QA Agent) -->
+          <!-- Desk 4: Quality Control (QA Agent) -->
           <div class="desk-card" id="desk-qa" data-desk="qa">
             <div class="desk-header">
               <div class="desk-title-group">
@@ -244,6 +269,7 @@
               <span class="desk-status-badge idle" id="desk-qa-badge">Idle</span>
             </div>
             <div class="desk-activity-line" id="desk-qa-activity">Standing by for build</div>
+            <div class="desk-qa-tally" id="desk-qa-tally" style="display: none;">Repair Attempt: 0 of 3</div>
           </div>
 
           <!-- Desk 4: Accounting & Audit (Security Agent) -->

@@ -127,57 +127,80 @@ def _check_web_preview(code_files: Dict[str, str], requires_web: bool) -> Tuple[
     if not requires_web:
         return failing_files, issues
 
-    # 1. index.html presence
-    if "index.html" not in code_files:
-        failing_files.append("index.html")
+    # 1. index.html presence (accept root index.html or frontend/index.html)
+    html_file = None
+    for cand in ["frontend/index.html", "index.html"]:
+        if cand in code_files:
+            html_file = cand
+            break
+    if not html_file:
+        for k in code_files:
+            if k.endswith("index.html"):
+                html_file = k
+                break
+
+    if not html_file:
+        target_path = "frontend/index.html"
+        failing_files.append(target_path)
         issues.append(QAIssue(
-            file_path="index.html",
+            file_path=target_path,
             issue_type="WebPreviewError",
-            description="Web application requested by PRD, but index.html is missing.",
-            suggested_refactor="Generate index.html with semantic HTML5 structure.",
+            description="Web application requested by PRD, but index.html (or frontend/index.html) is missing.",
+            suggested_refactor="Generate frontend/index.html (or index.html) with semantic HTML5 structure.",
         ))
         return failing_files, issues
 
-    html_content = code_files["index.html"]
+    html_content = code_files[html_file]
+    html_dir = str(Path(html_file).parent).replace("\\", "/")
+    if html_dir == ".":
+        html_dir = ""
 
     # 2. Check semantic structure
     if "<!doctype html>" not in html_content.lower() and "<html" not in html_content.lower():
-        failing_files.append("index.html")
+        failing_files.append(html_file)
         issues.append(QAIssue(
-            file_path="index.html",
+            file_path=html_file,
             issue_type="WebPreviewError",
-            description="index.html lacks standard HTML5 document doctype or html declaration.",
+            description=f"{html_file} lacks standard HTML5 document doctype or html declaration.",
             suggested_refactor="Wrap content in valid <!doctype html><html>...</html> structure.",
         ))
+
+    def _asset_exists(ref: str) -> bool:
+        clean = ref.lstrip("/").split("?")[0]
+        if clean in code_files:
+            return True
+        if html_dir and f"{html_dir}/{clean}" in code_files:
+            return True
+        if f"frontend/{clean}" in code_files or f"static/{clean}" in code_files:
+            return True
+        # Match basename
+        base_name = Path(clean).name
+        return any(Path(k).name == base_name for k in code_files.keys())
 
     # 3. Check referenced stylesheets and scripts
     css_refs = re.findall(r'<link[^>]+rel=["\']stylesheet["\'][^>]+href=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
     for href in css_refs:
-        clean_path = href.lstrip("/").split("?")[0]
-        if not clean_path.startswith("http") and clean_path not in code_files:
-            failing_files.append("index.html")
+        if not href.startswith("http") and not _asset_exists(href):
+            clean_path = href.lstrip("/").split("?")[0]
+            failing_files.append(html_file)
             issues.append(QAIssue(
-                file_path="index.html",
+                file_path=html_file,
                 issue_type="WebPreviewError",
-                description=f"index.html references stylesheet '{href}' but file '{clean_path}' is missing.",
+                description=f"{html_file} references stylesheet '{href}' but file '{clean_path}' is missing.",
                 suggested_refactor=f"Generate {clean_path} or update stylesheet reference.",
             ))
 
     js_refs = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
     for src in js_refs:
-        clean_path = src.lstrip("/").split("?")[0]
-        if not clean_path.startswith("http") and clean_path not in code_files:
-            failing_files.append("index.html")
+        if not src.startswith("http") and not _asset_exists(src):
+            clean_path = src.lstrip("/").split("?")[0]
+            failing_files.append(html_file)
             issues.append(QAIssue(
-                file_path="index.html",
+                file_path=html_file,
                 issue_type="WebPreviewError",
-                description=f"index.html references script '{src}' but file '{clean_path}' is missing.",
+                description=f"{html_file} references script '{src}' but file '{clean_path}' is missing.",
                 suggested_refactor=f"Generate {clean_path} or update script reference.",
             ))
-
-    # 4. If backend exists with FastAPI, verify static files mount
-    if "main.py" in code_files and ("app.mount" in code_files["main.py"] or "FileResponse" in code_files["main.py"]):
-        pass  # Route configuration exists
 
     return failing_files, issues
 
@@ -327,7 +350,7 @@ def analyze_and_test_project(
     all_issues.extend(pl_issues)
 
     # 3. Web Preview check
-    requires_web = bool(plan.get("requires_web", False)) if plan else ("index.html" in code_files)
+    requires_web = bool(plan.get("requires_web", False)) if plan else ("index.html" in code_files or "frontend/index.html" in code_files)
     web_failing, web_issues = _check_web_preview(code_files, requires_web)
     failing_files_set.update(web_failing)
     all_issues.extend(web_issues)
@@ -342,9 +365,10 @@ def analyze_and_test_project(
             details = "Criterion verified."
 
             if "web preview" in crit_lower and requires_web:
-                if "index.html" not in code_files:
+                has_html = "index.html" in code_files or "frontend/index.html" in code_files or any(k.endswith("index.html") for k in code_files)
+                if not has_html:
                     crit_pass = False
-                    details = "Missing index.html for web preview."
+                    details = "Missing index.html or frontend/index.html for web preview."
             elif "syntax" in crit_lower or "parse" in crit_lower:
                 if syn_failing:
                     crit_pass = False
@@ -486,3 +510,14 @@ def qa_node(state: AgentState) -> Dict[str, Any]:
         "error": error_msg,
         "logs": [log_entry],
     }
+
+
+def analyze_code_qa(code_files: Dict[str, str], plan: Optional[Dict[str, Any]] = None, repair_count: int = 0) -> QAReport:
+    """Backward-compatible alias for full QA analysis and testing."""
+    return analyze_and_test_project(code_files, plan=plan, repair_count=repair_count)
+
+
+def analyze_code_qa_fallback(code_files: Dict[str, str], *args, **kwargs) -> QAReport:
+    """Backward-compatible fallback for QA analysis."""
+    return analyze_and_test_project(code_files)
+

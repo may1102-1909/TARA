@@ -25,6 +25,7 @@ from app.graph.state import AgentState
 from app.core.config import settings
 from app.core.llm import call_gemini_with_fallback
 from app.agents.planner import _detect_web_requirement
+from app.agents.skills_loader import load_skills, format_skills_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +67,11 @@ Generation Rules:
 2. Give each file a clear, distinct responsibility. Keep related code together and avoid monolithic single-file applications.
 3. Make files work together: imports, API routes, data structures, and asset paths must agree.
 4. For Web Applications (when requires_web is True):
-   - Generate separate frontend files: index.html (semantic markup), static/styles.css (responsive CSS), and static/app.js (interactive JavaScript).
-   - Generate Python backend files (e.g. main.py with FastAPI) when the requirements need backend or API behavior. Serve index.html at / and mount static files at /static.
+   - Generate separate frontend files: frontend/index.html (or index.html), frontend/styles.css (or static/styles.css), and frontend/app.js (or static/app.js).
+   - Generate Python backend files (e.g. main.py with FastAPI) when the requirements need backend or API behavior. Serve index.html at / and mount static files.
    - Do not add buttons or controls that do nothing. Hook real interaction handlers in app.js.
 5. For Non-Web Projects (when requires_web is False):
-   - DO NOT force web files (no index.html, static/styles.css, or static/app.js).
+   - DO NOT force web files (no index.html, styles.css, or app.js).
    - Generate a clean modular Python codebase (e.g. main.py, domain logic file, models.py, utils.py).
 6. Do not use generic app content or a canned project template unrelated to the PRD. Everything must be derived from the PRD requirements.
 7. Do not return TODOs, placeholder implementations, or fake claims that tests passed.
@@ -104,6 +105,13 @@ def _prompt(
         for ac in plan.get("acceptance_criteria", []):
             plan_desc += f"  * {ac}\n"
         parts.append(plan_desc)
+
+        # Inject selected engineering skills
+        selected_skills = plan.get("selected_skills", [])
+        if selected_skills:
+            loaded_skills = load_skills(selected_skills)
+            if loaded_skills:
+                parts.append(format_skills_for_prompt(loaded_skills))
 
     if ceo_critique:
         parts.append("CEO review guidance:\n" + str(ceo_critique))
@@ -149,10 +157,15 @@ def _validate_generated_files(output: DeveloperCodeOutput, requires_web: bool = 
             raise ValueError(f"Generated file is empty: {path}")
         normalized[path] = generated_file.content
 
-    # If web app is requested, verify index.html is present
+    # If web app is requested, verify index.html or frontend/index.html is present
     if requires_web:
-        if "index.html" not in normalized:
-            raise ValueError("Generated web project is missing required file: index.html")
+        has_html = (
+            "index.html" in normalized
+            or "frontend/index.html" in normalized
+            or any(k.endswith("index.html") for k in normalized)
+        )
+        if not has_html:
+            raise ValueError("Generated web project is missing required file: index.html or frontend/index.html")
 
     return output.model_copy(update={"files": [GeneratedFile(path=path, content=content) for path, content in normalized.items()]})
 
@@ -281,6 +294,9 @@ def generate_code_fallback(
     if requires_web:
         # Web Application: Separate frontend (HTML, CSS, JS) + FastAPI backend
         feature_items = "\n".join(f'        <li class="feature-item">{html.escape(req)}</li>' for req in requirements)
+        use_frontend_dir = any(f.get("path", "").startswith("frontend/") for f in plan.get("file_plan", [])) if plan else True
+        css_href = "styles.css" if use_frontend_dir else "/static/styles.css"
+        js_src = "app.js" if use_frontend_dir else "/static/app.js"
         
         index_html = f"""<!doctype html>
 <html lang="en">
@@ -288,7 +304,7 @@ def generate_code_fallback(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)}</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="{css_href}">
 </head>
 <body>
   <div class="app-container">
@@ -333,7 +349,7 @@ def generate_code_fallback(
       <p>TARA Engineering Agency · Automated Architecture</p>
     </footer>
   </div>
-  <script src="/static/app.js" defer></script>
+  <script src="{js_src}" defer></script>
 </body>
 </html>
 """
@@ -612,17 +628,37 @@ app.add_middleware(
 
 # Serve static assets if directory exists
 static_dir = Path(__file__).resolve().parent / "static"
+frontend_dir = Path(__file__).resolve().parent / "frontend"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+if frontend_dir.exists():
+    app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
 
 
 @app.get("/", tags=["UI"])
 def serve_index() -> FileResponse:
     """Serves the main application HTML interface."""
-    index_path = Path(__file__).resolve().parent / "index.html"
-    if not index_path.exists():
-        raise HTTPException(status_code=404, detail="index.html not found.")
-    return FileResponse(index_path)
+    for cand in [
+        Path(__file__).resolve().parent / "frontend" / "index.html",
+        Path(__file__).resolve().parent / "index.html",
+    ]:
+        if cand.exists():
+            return FileResponse(cand)
+    raise HTTPException(status_code=404, detail="index.html not found.")
+
+
+@app.get("/{{filename:path}}", include_in_schema=False)
+def serve_asset(filename: str) -> FileResponse:
+    """Serves static assets across frontend, static, or root directories."""
+    for folder in [
+        Path(__file__).resolve().parent / "frontend",
+        Path(__file__).resolve().parent / "static",
+        Path(__file__).resolve().parent,
+    ]:
+        target = (folder / filename).resolve()
+        if target.is_file():
+            return FileResponse(target)
+    raise HTTPException(status_code=404, detail="Asset not found.")
 
 
 @app.get("/health", response_model=HealthStatus, tags=["System"])
@@ -693,9 +729,15 @@ def format_status_response(payload: str) -> Dict[str, Any]:
         "mode": "deterministic_execution",
     }
 '''
-        files["index.html"] = index_html
-        files["static/styles.css"] = styles_css
-        files["static/app.js"] = app_js
+        if use_frontend_dir:
+            files["frontend/index.html"] = index_html
+            files["frontend/styles.css"] = styles_css
+            files["frontend/app.js"] = app_js
+        else:
+            files["index.html"] = index_html
+            files["static/styles.css"] = styles_css
+            files["static/app.js"] = app_js
+
         files["main.py"] = main_py
         files["models.py"] = models_py
         files["utils.py"] = utils_py
@@ -703,330 +745,380 @@ def format_status_response(payload: str) -> Dict[str, Any]:
     else:
         # Non-Web Application: Modular Python codebase without forcing web files
         if "cache" in prd_lower:
-            cache_py = '''"""Thread-safe In-Memory TTL Cache Implementation."""
-
-import threading
-import time
-from typing import Any, Dict, List, Optional, Tuple
-from models import CacheEntry, CacheStats
-
-
-class InProcessTTLCache:
-    """High-performance in-memory key-value cache with TTL expiration."""
-
-    def __init__(self, default_ttl: float = 300.0):
-        self._store: Dict[str, Tuple[Any, Optional[float]]] = {}
-        self._lock = threading.RLock()
-        self.default_ttl = default_ttl
-        self._hits = 0
-        self._misses = 0
-
-    def set(self, key: str, value: Any, ttl: Optional[float] = None) -> bool:
-        """Stores a key-value pair with optional TTL in seconds."""
-        if not key or not isinstance(key, str):
-            raise ValueError("Key must be a non-empty string.")
-        
-        expires_at = time.time() + (ttl if ttl is not None else self.default_ttl)
-        with self._lock:
-            self._store[key] = (value, expires_at)
-        return True
-
-    def get(self, key: str) -> Optional[Any]:
-        """Retrieves a value if not expired, returning None otherwise."""
-        now = time.time()
-        with self._lock:
-            if key not in self._store:
-                self._misses += 1
-                return None
-            val, exp = self._store[key]
-            if exp is not None and now > exp:
-                del self._store[key]
-                self._misses += 1
-                return None
-            self._hits += 1
-            return val
-
-    def delete(self, key: str) -> bool:
-        """Deletes a key from the cache, returning True if key existed."""
-        with self._lock:
-            if key in self._store:
-                del self._store[key]
-                return True
-            return False
-
-    def cleanup_expired(self) -> int:
-        """Removes expired entries and returns count of evicted items."""
-        now = time.time()
-        evicted = 0
-        with self._lock:
-            expired_keys = [k for k, (_, exp) in self._store.items() if exp is not None and now > exp]
-            for k in expired_keys:
-                del self._store[k]
-                evicted += 1
-        return evicted
-
-    def get_stats(self) -> CacheStats:
-        """Returns snapshot statistics for cache telemetry."""
-        with self._lock:
-            return CacheStats(
-                total_items=len(self._store),
-                hits=self._hits,
-                misses=self._misses,
-            )
-'''
-            models_py = '''"""Data schemas for Cache Service."""
-
-from typing import Any, Optional
-from pydantic import BaseModel, Field
-
-
-class CacheEntry(BaseModel):
-    key: str
-    value: Any
-    ttl_seconds: Optional[float] = 300.0
-
-
-class CacheStats(BaseModel):
-    total_items: int
-    hits: int
-    misses: int
-'''
-            utils_py = '''"""Utility routines and time helpers."""
-
-from datetime import datetime, timezone
-
-
-def get_iso_timestamp() -> str:
-    """Returns current UTC timestamp in ISO 8601 format."""
-    return datetime.now(timezone.utc).isoformat()
-'''
-            main_py = '''"""Cache Service Demonstration and Entrypoint."""
+            main_py = '''"""FastAPI In-Memory Distributed Cache Microservice generated by TARA Developer Agent."""
 
 import time
 import logging
-from cache import InProcessTTLCache
-from utils import get_iso_timestamp
+from typing import Any, Dict, List, Optional
+from fastapi import FastAPI, HTTPException, Query, status
+from pydantic import BaseModel, Field
+import uvicorn
+from cache import CacheStore, InProcessTTLCache
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("cache_service")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("tara_cache_service")
+
+app = FastAPI(
+    title="TARA In-Memory Distributed Cache Microservice",
+    description="High-throughput in-memory caching microservice with TTL expiration and metrics telemetry.",
+    version="1.0.0",
+)
+
+store = CacheStore()
 
 
-def run_demo():
-    """Executes verification and demonstration of in-memory TTL cache."""
-    logger.info("Initializing in-memory TTL cache at %s", get_iso_timestamp())
-    cache = InProcessTTLCache(default_ttl=2.0)
+class CacheSetRequest(BaseModel):
+    key: str = Field(..., min_length=1, description="Unique cache key", example="user:101:profile")
+    value: Any = Field(..., description="Arbitrary JSON payload or primitive value to store", example={"name": "Alice", "role": "admin"})
+    ttl: Optional[int] = Field(None, ge=1, description="Optional time-to-live in seconds", example=120)
 
-    # 1. Basic Set & Get
-    cache.set("session:user_101", {"name": "Alice", "role": "admin"})
-    val = cache.get("session:user_101")
-    logger.info("Retrieved key 'session:user_101': %s", val)
-    assert val is not None, "Failed to retrieve stored key"
 
-    # 2. TTL Expiration check
-    cache.set("ephemeral:token", "temp_secret_xyz", ttl=0.5)
-    time.sleep(0.6)
-    expired_val = cache.get("ephemeral:token")
-    logger.info("Retrieved expired key: %s (expected None)", expired_val)
-    assert expired_val is None, "Expired key was not evicted"
+class CacheGetResponse(BaseModel):
+    key: str
+    value: Optional[Any] = None
+    found: bool
+    expires_in_seconds: Optional[float] = None
 
-    # 3. Cleanup routine
-    evicted = cache.cleanup_expired()
-    logger.info("Ran cleanup_expired: evicted %d items", evicted)
 
-    stats = cache.get_stats()
-    logger.info("Cache stats: %s", stats.model_dump())
-    print("Cache demonstration completed successfully.")
+@app.get("/health", tags=["System"])
+def health_check() -> Dict[str, Any]:
+    """Health check endpoint providing service liveness and store size."""
+    return {
+        "status": "ok",
+        "service": "cache-microservice",
+        "keys_cached": store.size(),
+        "timestamp": time.time(),
+    }
+
+
+@app.post("/cache/set", status_code=status.HTTP_201_CREATED, tags=["Cache Operations"])
+def set_cache(req: CacheSetRequest) -> Dict[str, Any]:
+    """Sets a key-value pair in cache with optional TTL."""
+    store.set(req.key, req.value, req.ttl)
+    logger.info("Cached key: %s with TTL: %s", req.key, req.ttl)
+    return {"status": "success", "key": req.key, "ttl": req.ttl, "created_at": time.time()}
+
+
+@app.get("/cache/get/{key}", response_model=CacheGetResponse, tags=["Cache Operations"])
+def get_cache(key: str) -> CacheGetResponse:
+    """Retrieves a cached value by key, checking TTL expiry."""
+    val, found, rem = store.get_with_expiry(key)
+    return CacheGetResponse(key=key, value=val, found=found, expires_in_seconds=rem)
+
+
+@app.get("/cache/keys", tags=["Cache Operations"])
+def list_keys() -> Dict[str, Any]:
+    """Lists all active, non-expired keys currently in the cache."""
+    active = store.active_keys()
+    return {"keys": active, "total_active": len(active)}
+
+
+@app.get("/cache/metrics", tags=["Telemetry"])
+def cache_metrics() -> Dict[str, Any]:
+    """Returns runtime telemetry: hits, misses, sets, and eviction counts."""
+    return {
+        "metrics": store.get_metrics(),
+        "total_keys": store.size(),
+        "timestamp": time.time(),
+    }
 
 
 if __name__ == "__main__":
-    run_demo()
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
+'''
+            cache_py = '''"""In-memory cache storage implementation."""
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
+class InProcessTTLCache:
+    def __init__(self, default_ttl: float = 300.0):
+        self.default_ttl = default_ttl
+        self._store: Dict[str, Tuple[Any, Optional[float]]] = {}
+        self._metrics: Dict[str, int] = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "evictions": 0}
+
+    def set(self, key: str, value: Any, ttl: Optional[float] = None) -> bool:
+        actual_ttl = ttl if ttl is not None else self.default_ttl
+        expiry = (time.time() + actual_ttl) if actual_ttl and actual_ttl > 0 else None
+        self._store[key] = (value, expiry)
+        self._metrics["sets"] += 1
+        return True
+
+    def get(self, key: str) -> Optional[Any]:
+        val, found, _ = self.get_with_expiry(key)
+        return val if found else None
+
+    def get_with_expiry(self, key: str) -> Tuple[Optional[Any], bool, Optional[float]]:
+        now = time.time()
+        if key in self._store:
+            val, expiry = self._store[key]
+            if expiry and now > expiry:
+                del self._store[key]
+                self._metrics["misses"] += 1
+                self._metrics["evictions"] += 1
+                return None, False, 0.0
+            self._metrics["hits"] += 1
+            rem = (expiry - now) if expiry else None
+            return val, True, rem
+        self._metrics["misses"] += 1
+        return None, False, None
+
+    def delete(self, key: str) -> bool:
+        if key in self._store:
+            del self._store[key]
+            self._metrics["deletes"] += 1
+            return True
+        return False
+
+    def active_keys(self) -> List[str]:
+        now = time.time()
+        return [k for k, (_, exp) in list(self._store.items()) if not exp or exp > now]
+
+    def get_metrics(self) -> Dict[str, int]:
+        return dict(self._metrics)
+
+    def size(self) -> int:
+        return len(self._store)
+
+CacheStore = InProcessTTLCache
+'''
+            models_py = '''"""Data schemas for Cache Service."""
+from typing import Any, Optional
+from pydantic import BaseModel, Field
+
+class CacheSetRequest(BaseModel):
+    key: str = Field(..., min_length=1)
+    value: Any
+    ttl: Optional[int] = 300
+
+class CacheGetResponse(BaseModel):
+    key: str
+    value: Optional[Any] = None
+    found: bool
+    expires_in_seconds: Optional[float] = None
+'''
+            utils_py = '''"""Utility routines and time helpers."""
+import time
+from datetime import datetime, timezone
+
+def get_current_timestamp() -> float:
+    return time.time()
 '''
             files["main.py"] = main_py
             files["cache.py"] = cache_py
             files["models.py"] = models_py
             files["utils.py"] = utils_py
 
-        elif "order" in prd_lower or "api" in prd_lower:
-            models_py = '''"""Data models for Order Microservice."""
+        elif "auth" in prd_lower or "token" in prd_lower:
+            main_py = '''"""FastAPI Authentication and Rate Limiting Microservice."""
 
-from typing import List, Optional
-from pydantic import BaseModel, Field
-
-
-class OrderItem(BaseModel):
-    item_id: str = Field(..., min_length=1)
-    name: str = Field(..., min_length=1)
-    price: float = Field(..., gt=0)
-    quantity: int = Field(default=1, gt=0)
-
-
-class OrderCreate(BaseModel):
-    customer_id: str = Field(..., min_length=1)
-    items: List[OrderItem] = Field(..., min_items=1)
-
-
-class OrderResponse(BaseModel):
-    order_id: str
-    customer_id: str
-    items: List[OrderItem]
-    total_amount: float
-    status: str
-    created_at: str
-'''
-            service_py = '''"""Order processing business logic."""
-
-import uuid
-from typing import Dict, List, Optional
-from models import OrderCreate, OrderResponse
-from utils import get_current_timestamp
-
-
-class OrderService:
-    """Manages order creation, calculation, and retrieval."""
-
-    def __init__(self):
-        self._orders: Dict[str, OrderResponse] = {}
-
-    def create_order(self, order_data: OrderCreate) -> OrderResponse:
-        order_id = f"ord_{uuid.uuid4().hex[:10]}"
-        total = sum(item.price * item.quantity for item in order_data.items)
-        created = OrderResponse(
-            order_id=order_id,
-            customer_id=order_data.customer_id,
-            items=order_data.items,
-            total_amount=round(total, 2),
-            status="confirmed",
-            created_at=get_current_timestamp(),
-        )
-        self._orders[order_id] = created
-        return created
-
-    def get_order(self, order_id: str) -> Optional[OrderResponse]:
-        return self._orders.get(order_id)
-
-    def list_orders(self) -> List[OrderResponse]:
-        return list(self._orders.values())
-'''
-            utils_py = '''"""Utility routines and timestamp formatters."""
-
-from datetime import datetime, timezone
-
-
-def get_current_timestamp() -> str:
-    """Returns current UTC timestamp in ISO 8601 format."""
-    return datetime.now(timezone.utc).isoformat()
-'''
-            main_py = '''"""Order Processing Microservice REST API."""
-
-from typing import Dict, List
+import time
+import secrets
+import logging
+from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, status
-from models import OrderCreate, OrderResponse
-from service import OrderService
-from utils import get_current_timestamp
+from pydantic import BaseModel, Field
+import uvicorn
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("tara_auth_service")
 
 app = FastAPI(
-    title="Order Processing Microservice",
-    description="PRD-compliant microservice generated by TARA.",
+    title="TARA Authentication & Rate Limiting Microservice",
+    description="Stateless token issuance, session verification, and sliding window rate limiting.",
     version="1.0.0",
 )
 
-service = OrderService()
+_active_tokens: Dict[str, Dict[str, Any]] = {}
+_request_windows: Dict[str, List[float]] = {}
+MAX_REQUESTS_PER_MINUTE = 60
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=6)
+    role: Optional[str] = "developer"
+
+
+class VerifyRequest(BaseModel):
+    token: str = Field(..., min_length=10)
 
 
 @app.get("/health", tags=["System"])
-def health_check() -> Dict[str, str]:
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "order_service", "timestamp": get_current_timestamp()}
+def health_check() -> Dict[str, Any]:
+    return {"status": "ok", "service": "auth-microservice", "timestamp": time.time()}
 
 
-@app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED, tags=["Orders"])
-def create_order_endpoint(payload: OrderCreate) -> OrderResponse:
-    """Creates and confirms a new customer order."""
-    return service.create_order(payload)
+@app.post("/auth/token", status_code=status.HTTP_201_CREATED, tags=["Authentication"])
+def issue_token(req: LoginRequest) -> Dict[str, Any]:
+    token = f"tara_sec_{secrets.token_hex(20)}"
+    claims = {
+        "sub": req.username,
+        "username": req.username,
+        "role": req.role,
+        "issued_at": time.time(),
+        "expires_at": time.time() + 3600,
+    }
+    _active_tokens[token] = claims
+    logger.info("Issued token for user %s with role %s", req.username, req.role)
+    return {"access_token": token, "token_type": "bearer", "expires_in": 3600, "claims": claims}
 
 
-@app.get("/orders/{order_id}", response_model=OrderResponse, tags=["Orders"])
-def get_order_endpoint(order_id: str) -> OrderResponse:
-    """Retrieves an existing order by ID."""
-    order = service.get_order(order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found.")
-    return order
+@app.post("/auth/verify", tags=["Authentication"])
+def verify_token(req: VerifyRequest) -> Dict[str, Any]:
+    if req.token not in _active_tokens:
+        raise HTTPException(status_code=401, detail="Invalid token.")
+    claims = _active_tokens[req.token]
+    if time.time() > claims["expires_at"]:
+        del _active_tokens[req.token]
+        raise HTTPException(status_code=401, detail="Token has expired.")
+    return {"valid": True, "claims": claims}
+
+
+@app.post("/auth/revoke", tags=["Authentication"])
+def revoke_token(req: VerifyRequest) -> Dict[str, Any]:
+    if req.token in _active_tokens:
+        del _active_tokens[req.token]
+        return {"status": "revoked", "token": req.token}
+    raise HTTPException(status_code=404, detail="Token not found.")
+
+
+@app.get("/rate-limit/status", tags=["Rate Limiting"])
+def rate_limit_status(client_id: str = "default_client") -> Dict[str, Any]:
+    now = time.time()
+    history = [t for t in _request_windows.get(client_id, []) if now - t < 60.0]
+    history.append(now)
+    _request_windows[client_id] = history
+    remaining = max(0, MAX_REQUESTS_PER_MINUTE - len(history))
+    return {
+        "client_id": client_id,
+        "limit_per_minute": MAX_REQUESTS_PER_MINUTE,
+        "current_usage": len(history),
+        "remaining_quota": remaining,
+    }
 
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
+'''
+            models_py = '''"""Authentication schemas."""
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    role: Optional[str] = "developer"
+
+class VerifyRequest(BaseModel):
+    token: str
+'''
+            utils_py = '''"""Auth utility helpers."""
+import secrets
+
+def generate_salt() -> str:
+    return secrets.token_hex(16)
 '''
             files["main.py"] = main_py
             files["models.py"] = models_py
-            files["service.py"] = service_py
             files["utils.py"] = utils_py
 
         else:
-            # Generic Python modular implementation
-            models_py = '''"""Data types and schemas."""
+            main_py = '''"""FastAPI General Service Application generated by TARA Developer Agent."""
 
-from typing import Any, Dict
+import time
+import logging
+from typing import Any, Dict, List, Optional
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
+import uvicorn
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("tara_service")
+
+app = FastAPI(
+    title="TARA Microservice Application",
+    description="Operational FastAPI REST microservice generated by TARA Multi-Agent Framework.",
+    version="1.0.0",
+)
+
+_items_db: Dict[str, Dict[str, Any]] = {}
 
 
-class ServicePayload(BaseModel):
-    name: str = Field(..., min_length=1)
-    parameters: Dict[str, Any] = Field(default_factory=dict)
-'''
-            core_py = f'''"""Core implementation satisfying {title}."""
-
-from typing import Any, Dict
-from models import ServicePayload
-from utils import get_timestamp
+class ItemCreateRequest(BaseModel):
+    name: str = Field(..., example="Primary Service Config")
+    description: Optional[str] = Field(None, example="Configuration and telemetry entity")
+    payload: Dict[str, Any] = Field(default_factory=dict, example={"status": "enabled", "workers": 4})
 
 
-class CoreEngine:
-    """Domain engine implementing core business requirements."""
-
-    def __init__(self):
-        self.state: Dict[str, Any] = {{"initialized": True}}
-
-    def process(self, payload: ServicePayload) -> Dict[str, Any]:
-        result = {{
-            "name": payload.name,
-            "processed": True,
-            "timestamp": get_timestamp(),
-            "details": payload.parameters,
-        }}
-        return result
-'''
-            utils_py = '''"""Utility routines and helpers."""
-
-from datetime import datetime, timezone
+@app.get("/health", tags=["System"])
+def health_check() -> Dict[str, Any]:
+    """Health check endpoint."""
+    return {
+        "status": "ok",
+        "service": "tara-microservice",
+        "items_count": len(_items_db),
+        "timestamp": time.time(),
+    }
 
 
-def get_timestamp() -> str:
-    """Returns current UTC timestamp in ISO 8601 format."""
-    return datetime.now(timezone.utc).isoformat()
-'''
-            main_py = f'''"""Entrypoint and CLI orchestrator for {title}."""
+@app.post("/api/items", status_code=status.HTTP_201_CREATED, tags=["Items"])
+def create_item(item: ItemCreateRequest) -> Dict[str, Any]:
+    """Creates a new record in the service store."""
+    item_id = str(len(_items_db) + 1)
+    record = {
+        "id": item_id,
+        "name": item.name,
+        "description": item.description,
+        "payload": item.payload,
+        "created_at": time.time(),
+    }
+    _items_db[item_id] = record
+    return {"status": "created", "item": record}
 
-from core import CoreEngine
-from models import ServicePayload
-from utils import get_timestamp
+
+@app.get("/api/items", tags=["Items"])
+def list_items() -> Dict[str, Any]:
+    """Lists all stored items."""
+    return {"items": list(_items_db.values()), "total": len(_items_db)}
 
 
-def main():
-    print(f"Starting {title} at {{get_timestamp()}}")
-    engine = CoreEngine()
-    payload = ServicePayload(name="default_task", parameters={{"mode": "automated"}})
-    res = engine.process(payload)
-    print("Execution result:", res)
-    return res
+@app.get("/api/items/{item_id}", tags=["Items"])
+def get_item(item_id: str) -> Dict[str, Any]:
+    """Retrieves an item by identifier."""
+    if item_id in _items_db:
+        return _items_db[item_id]
+    raise HTTPException(status_code=404, detail=f"Item '{item_id}' not found.")
+
+
+@app.get("/api/metrics", tags=["Telemetry"])
+def get_metrics() -> Dict[str, Any]:
+    """Returns application metrics and inventory."""
+    return {
+        "active_items": len(_items_db),
+        "status": "healthy",
+        "timestamp": time.time(),
+    }
 
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)
+'''
+            models_py = '''"""Data models generated by TARA Developer Agent."""
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
+
+class ItemCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+'''
+            utils_py = '''"""Utility routines and helpers."""
+from datetime import datetime, timezone
+
+def get_current_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()
 '''
             files["main.py"] = main_py
-            files["core.py"] = core_py
             files["models.py"] = models_py
             files["utils.py"] = utils_py
 
@@ -1038,18 +1130,21 @@ if __name__ == "__main__":
 
 
 def generate_code_from_prd(
-    prd_content: str,
+    prd_content: str = "",
     human_notes: str = "",
     ceo_critique: Optional[Dict[str, Any]] = None,
     plan: Optional[Dict[str, Any]] = None,
     repair_context: Optional[Dict[str, Any]] = None,
     repair_count: int = 0,
+    *args,
+    **kwargs,
 ) -> DeveloperCodeOutput:
     """Generates a PRD-specific project, preferring local coding model, falling back to cloud or deterministic fallback."""
-    requires_web = bool(plan.get("requires_web", False)) if plan else _detect_web_requirement(prd_content)
+    actual_prd = prd_content or (args[0] if args else "") or kwargs.get("prd", "") or kwargs.get("prd_text", "")
+    requires_web = bool(plan.get("requires_web", False)) if plan else _detect_web_requirement(actual_prd)
 
     ollama_output = call_ollama_qwen_coder(
-        prd_content=prd_content,
+        prd_content=actual_prd,
         human_notes=human_notes,
         ceo_critique=ceo_critique,
         plan=plan,
@@ -1061,7 +1156,7 @@ def generate_code_from_prd(
         return ollama_output
 
     gemini_output = call_gemini_codegen(
-        prd_content=prd_content,
+        prd_content=actual_prd,
         human_notes=human_notes,
         ceo_critique=ceo_critique,
         plan=plan,
@@ -1073,7 +1168,7 @@ def generate_code_from_prd(
         return gemini_output
 
     logger.warning("Local and cloud code models are unavailable; using PRD-derived deterministic fallback.")
-    return generate_code_fallback(prd_content, plan=plan, repair_context=repair_context)
+    return generate_code_fallback(actual_prd, plan=plan, repair_context=repair_context)
 
 
 def developer_node(state: AgentState) -> Dict[str, Any]:
@@ -1095,12 +1190,12 @@ def developer_node(state: AgentState) -> Dict[str, Any]:
 
     try:
         code_output: DeveloperCodeOutput = generate_code_from_prd(
-            prd_content=prd_text,
-            human_notes=notes_str,
-            ceo_critique=ceo_critique,
-            plan=plan,
-            repair_context=repair_context,
-            repair_count=repair_count,
+            prd_text,
+            notes_str,
+            ceo_critique,
+            plan,
+            repair_context,
+            repair_count,
         )
         code_output = _validate_generated_files(code_output, requires_web=requires_web)
         generated_files = {f.path: f.content for f in code_output.files}

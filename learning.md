@@ -699,3 +699,38 @@ Here is the journey of your project requirements document (PRD) from start to fi
     * Passed all 4 tests in `backend/tests/test_api.py` (health, session lifecycle, revision loop, and direct graph execution).
 - **Why we built it:**
   - Guarantees that generated projects directly reflect their unique PRD, are cleanly organized across modular single-responsibility files without forcing unnecessary web files, and autonomously repair themselves against real test failures before release.
+
+---
+
+### Step 37: Skill-Aware LangGraph Workflow, Safe Skill Loader, and Dynamic UI Updates
+- **What was done:**
+  - **Explicit Role Instructions (`.agents/rules/`):**
+    * Created dedicated instruction sets for each core role:
+      - `ceo.md`: Strategic PRD appraisal, market fit, feature gap discovery, and human-in-the-loop gate feedback loops.
+      - `planner.md`: Systematic PRD decomposition, architecture choice, file plan, skill selection, and acceptance criteria formulation.
+      - `developer.md`: Adherence to PRD and skill guidance, generating complete, connected multi-file code without placeholders or canned templates.
+      - `qa.md`: AST syntax verification, prohibited placeholder detection, acceptance criteria validation, isolated test execution, and repair routing.
+      - `security.md`: OWASP Top 10 SAST scanning, AST code patching, and audit logging.
+  - **Safe Skill Loader (`backend/app/agents/skills_loader.py`):**
+    * Implemented a secure loader under `backend/app/agents/skills/<skill-name>/SKILL.md`.
+    * Enforces strict slug validation (`^[a-z0-9_-]+$`) and path traversal protection against `..`, absolute paths, and external symlinks.
+    * Initial application engineering skills created:
+      - `web-frontend`: Modern semantic HTML5, CSS layout, and modular JavaScript without heavy bundlers.
+      - `fastapi`: Production-grade ASGI endpoints, Pydantic schemas, dependency injection, and automatic OpenAPI documentation.
+      - `database`: In-memory storage engines, repository patterns, thread safety, and migration-friendly schemas.
+      - `testing`: Standard library `unittest` suites, isolated temporary runner execution, and regression assertion checks.
+  - **Skill-Aware Workflow Integration:**
+    * Planner evaluates the PRD and automatically selects relevant trusted skills (`selected_skills`).
+    * Developer receives both the original PRD and formatted markdown skill guidance, generating connected code (`frontend/index.html`, `frontend/styles.css`, `frontend/app.js` for web applications; modular Python microservices for backend systems).
+    * QA validates acceptance criteria and checks both `frontend/index.html` and root `index.html` assets.
+    * Sandbox runner and preview reverse-proxy natively serve nested `frontend/` files without 404s.
+  - **Dynamic Neobrutalist UI Updates (`backend/app/static/`):**
+    * **7-Step Workflow Stepper:** Expanded header stepper to `Spec` -> `CEO` -> `Gate` -> `Plan` -> `Build` -> `Security` -> `Release`.
+    * **Architecture Studio Desk (`#desk-planner`):** Added the 5th desk in the office floor strip between CEO and Developer, complete with live status badges and skill pills (`⚡ web-frontend`, `⚡ fastapi`, `⚡ database`, `⚡ testing`).
+    * **Quality Control Repair Tally (`#desk-qa-tally`):** Displays real-time repair loop tallies (`Repair Attempt X of 3`) with paper-jam animations.
+    * **Blueprint & Criteria Panel (`#plan-summary-container`):** Renders the Planner's project summary, selected skills badges, and an interactive acceptance criteria checklist with pass/fail indicators.
+  - **Automated Verification:**
+    * Created `backend/tests/test_skills_workflow.py` (7 tests covering skill listing, loading, path traversal prevention, prompt formatting, web planning, non-web planning, and end-to-end skill-aware workflow).
+    * Verified full approval, revision loops, web generation, non-web differentiation, and QA repair loops.
+- **Why we built it:**
+  - Equips TARA agents with reusable, domain-specific engineering best practices and real-time UI visibility, ensuring generated projects adhere to production architecture standards while remaining safe against path traversal and template bloat.

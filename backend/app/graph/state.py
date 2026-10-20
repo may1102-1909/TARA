@@ -39,6 +39,7 @@ class PlannerOutput(TypedDict, total=False):
     file_plan: List[PlannedFile]
     acceptance_criteria: List[str]
     requires_web: bool
+    selected_skills: List[str]
     is_fallback: bool
 
 class AgentState(TypedDict, total=False):
@@ -54,6 +55,7 @@ class AgentState(TypedDict, total=False):
 
     # Planner Artifacts
     plan: Optional[PlannerOutput]
+    selected_skills: List[str]
     
     # Developer Artifacts
     dev_code_files: Dict[str, str]  # filepath -> content
@@ -97,6 +99,7 @@ def create_initial_state(
         "human_feedback_notes": [],
         "revision_count": 0,
         "plan": None,
+        "selected_skills": [],
         "dev_code_files": {},
         "qa_refactored_files": {},
         "qa_changelog": [],

@@ -218,7 +218,10 @@ class SessionManager:
                                     else ("Build v1.1 (QA Audited)" if node_name == "qa_node" else "Build v1 (Dev Scaffold)")
                                 )
                                 proxy_url = f"/api/preview/proxy/{session_id}"
-                                target_f = "index.html" if "index.html" in stage_files else "main.py"
+                                target_f = (
+                                    "index.html" if "index.html" in stage_files
+                                    else ("frontend/index.html" if "frontend/index.html" in stage_files else "main.py")
+                                )
                                 broadcast_preview_reload_sync(
                                     files=stage_files,
                                     target_file=target_f,
@@ -273,9 +276,13 @@ class SessionManager:
                     else "Build v1 (Dev/QA)"
                 )
                 proxy_url = f"/api/preview/proxy/{session_id}"
+                final_target = (
+                    "index.html" if "index.html" in final_files
+                    else ("frontend/index.html" if "frontend/index.html" in final_files else "main.py")
+                )
                 broadcast_preview_reload_sync(
                     files=final_files,
-                    target_file="index.html" if "index.html" in final_files else "main.py",
+                    target_file=final_target,
                     trigger="pipeline_complete",
                     url=proxy_url,
                     session_id=session_id,
@@ -341,6 +348,7 @@ class SessionManager:
             "user_action": values.get("user_action"),
             "human_feedback_notes": values.get("human_feedback_notes", []),
             "plan": values.get("plan"),
+            "selected_skills": values.get("selected_skills", (values.get("plan") or {}).get("selected_skills", [])),
             "dev_code_files": values.get("dev_code_files", {}),
             "qa_refactored_files": values.get("qa_refactored_files", {}),
             "qa_changelog": values.get("qa_changelog", []),

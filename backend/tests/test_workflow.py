@@ -189,9 +189,9 @@ def test_workflow_web_app_generation():
     assert plan["requires_web"] is True, "Web PRD must set requires_web=True"
     
     dev_files = final_state.values["dev_code_files"]
-    assert "index.html" in dev_files, "Web app must generate index.html"
-    assert "static/styles.css" in dev_files, "Web app must generate static/styles.css"
-    assert "static/app.js" in dev_files, "Web app must generate static/app.js"
+    assert "index.html" in dev_files or "frontend/index.html" in dev_files, "Web app must generate index.html"
+    assert "static/styles.css" in dev_files or "frontend/styles.css" in dev_files, "Web app must generate CSS"
+    assert "static/app.js" in dev_files or "frontend/app.js" in dev_files, "Web app must generate JS"
     assert "main.py" in dev_files, "Web app with backend behavior must generate main.py"
     
     assert final_state.values["qa_passed"] is True

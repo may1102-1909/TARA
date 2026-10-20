@@ -192,10 +192,12 @@ class TaraIDE {
     // Office Floor Strip Desks & Jam Counter
     this.desks = {
       ceo: { card: document.getElementById("desk-ceo"), badge: document.getElementById("desk-ceo-badge"), activity: document.getElementById("desk-ceo-activity") },
+      planner: { card: document.getElementById("desk-planner"), badge: document.getElementById("desk-planner-badge"), activity: document.getElementById("desk-planner-activity"), skills: document.getElementById("desk-planner-skills") },
       dev: { card: document.getElementById("desk-dev"), badge: document.getElementById("desk-dev-badge"), activity: document.getElementById("desk-dev-activity") },
-      qa: { card: document.getElementById("desk-qa"), badge: document.getElementById("desk-qa-badge"), activity: document.getElementById("desk-qa-activity") },
+      qa: { card: document.getElementById("desk-qa"), badge: document.getElementById("desk-qa-badge"), activity: document.getElementById("desk-qa-activity"), tally: document.getElementById("desk-qa-tally") },
       sec: { card: document.getElementById("desk-sec"), badge: document.getElementById("desk-sec-badge"), activity: document.getElementById("desk-sec-activity") },
     };
+    this.planSummaryContainer = document.getElementById("plan-summary-container");
     this.jamCounterBadge = document.getElementById("jam-counter-badge");
     this.jamCount = 0;
     this._lastRevisionCount = 0;
@@ -1746,7 +1748,7 @@ class TaraIDE {
   }
 
   setStepperStep(step) {
-    const steps = ["spec", "ceo", "gate", "build", "security", "package"];
+    const steps = ["spec", "ceo", "gate", "plan", "build", "security", "package"];
     const targetIdx = steps.indexOf(step);
 
     document.querySelectorAll(".step-item").forEach((el, idx) => {
@@ -1773,6 +1775,7 @@ class TaraIDE {
 
     // Update Office Floor Desks
     this.setDeskStatus("ceo", "working", "Evaluating PRD Viability...");
+    this.setDeskStatus("planner", "idle", "Standing by for CEO evaluation");
     this.setDeskStatus("dev", "idle", "Standing by for plan sign-off");
     this.setDeskStatus("qa", "idle", "Standing by for build");
     this.setDeskStatus("sec", "idle", "Auditing rules primed");
@@ -1814,11 +1817,17 @@ class TaraIDE {
       snapshot.logs.forEach((l) => this.appendLog(l.agent, l.message, l.timestamp));
     }
 
+    // Render Architecture Plan & Skills
+    if (snapshot.plan) {
+      this.renderPlanDetails(snapshot.plan, snapshot.qa_report, snapshot.repair_count);
+    }
+
     // HITL Gate check
     if (snapshot.status === "awaiting_approval" && snapshot.ceo_critique) {
       this.setStepperStep("gate");
       this.stageStatusText.textContent = "Awaiting Human-in-the-Loop Sign-off";
       this.setDeskStatus("ceo", "done", "Critique rendered: viability evaluated");
+      this.setDeskStatus("planner", "waiting", "Standing by for approval");
       this.setDeskStatus("dev", "waiting", "Memo awaiting client sign-off");
       this.openApprovalModal(snapshot.ceo_critique, snapshot.revision_count);
     } else if (snapshot.status === "completed") {
@@ -1830,6 +1839,7 @@ class TaraIDE {
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Run New Iteration</span>`;
       this.setDeskStatus("ceo", "done");
+      this.setDeskStatus("planner", "done", "Blueprint finalized");
       this.setDeskStatus("dev", "done");
       this.setDeskStatus("qa", "done");
       this.setDeskStatus("sec", "done", "Security audit complete. Package ready.");
@@ -1839,14 +1849,85 @@ class TaraIDE {
       this.stageStatusText.textContent = "Workflow Rejected by Stakeholder";
       this.appendLog("HITL", "Pipeline halted per human decision.");
       this.setDeskStatus("ceo", "done", "Proposal rejected by client");
+      this.setDeskStatus("planner", "idle", "Planning cancelled");
       this.setDeskStatus("dev", "idle", "Implementation halted");
       this.btnStartPipeline.disabled = false;
       this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Restart Pipeline</span>`;
     }
 
-    if (snapshot.revision_count && snapshot.revision_count > (this._lastRevisionCount || 0)) {
+    if (snapshot.repair_count && snapshot.repair_count > (this._lastRevisionCount || 0)) {
+      this._lastRevisionCount = snapshot.repair_count;
+      this.triggerRetryLoop("qa", "dev");
+    } else if (snapshot.revision_count && snapshot.revision_count > (this._lastRevisionCount || 0)) {
       this._lastRevisionCount = snapshot.revision_count;
       this.triggerRetryLoop("qa", "dev");
+    }
+  }
+
+  renderPlanDetails(plan, qaReport = null, repairCount = 0) {
+    if (!plan) return;
+
+    // Render badges in Planner Desk
+    const plannerDesk = this.desks && this.desks.planner;
+    if (plannerDesk && plannerDesk.skills) {
+      plannerDesk.skills.innerHTML = "";
+      plannerDesk.skills.style.display = "flex";
+      const skills = plan.selected_skills || [];
+      if (skills.length > 0) {
+        skills.forEach((skill) => {
+          const badge = document.createElement("span");
+          badge.className = `skill-badge ${skill}`;
+          badge.textContent = `⚡ ${skill}`;
+          plannerDesk.skills.appendChild(badge);
+        });
+      } else {
+        const badge = document.createElement("span");
+        badge.className = "skill-badge";
+        badge.textContent = plan.architecture_type || "core-py";
+        plannerDesk.skills.appendChild(badge);
+      }
+    }
+
+    // Update QA repair tally if present
+    const qaDesk = this.desks && this.desks.qa;
+    if (qaDesk && qaDesk.tally) {
+      const tallyCount = repairCount || (qaReport && qaReport.repair_count) || 0;
+      if (tallyCount > 0) {
+        qaDesk.tally.style.display = "block";
+        qaDesk.tally.textContent = `Repair Attempt: ${tallyCount} of 3`;
+      } else {
+        qaDesk.tally.style.display = "none";
+      }
+    }
+
+    // Render in filing cabinet / sidebar
+    if (this.planSummaryContainer) {
+      this.planSummaryContainer.style.display = "block";
+      const skillsBadges = (plan.selected_skills || [])
+        .map((s) => `<span class="skill-badge ${s}">⚡ ${s}</span>`)
+        .join(" ");
+
+      const criteriaList = (plan.acceptance_criteria || [])
+        .map((c) => {
+          const passed = !qaReport || !qaReport.issues || !qaReport.issues.some((iss) => iss.description && iss.description.includes(c));
+          const icon = passed ? "✓" : "✗";
+          const statusClass = passed ? "pass" : "fail";
+          return `<div class="criteria-item ${statusClass}"><span class="criteria-icon">${icon}</span><span>${this.escapeHtml(c)}</span></div>`;
+        })
+        .join("");
+
+      this.planSummaryContainer.innerHTML = `
+        <div class="plan-summary-box">
+          <div class="plan-summary-header">
+            <span>📐 Blueprint: ${this.escapeHtml(plan.project_summary || "System Architecture")}</span>
+            <span style="font-size: 0.65rem; color: var(--text-muted);">${this.escapeHtml(plan.architecture_type || "")}</span>
+          </div>
+          <div style="margin-bottom: 6px;">
+            ${skillsBadges || '<span class="skill-badge">python</span>'}
+          </div>
+          ${criteriaList ? `<div style="font-weight: 700; font-size: 0.7rem; margin-top: 6px;">Acceptance Criteria:</div><div class="criteria-list">${criteriaList}</div>` : ""}
+        </div>
+      `;
     }
   }
 
@@ -1898,11 +1979,13 @@ class TaraIDE {
     this.btnGateReject.disabled = true;
 
     if (action === "approve") {
-      this.setStepperStep("build");
-      this.stageStatusText.textContent = "⚡ Approved! Streaming live code for your PRD...";
-      this.appendLog("HITL", `Human Approved: Proceeding to build code for PRD` + (notes ? ` with directives: "${notes}"` : ""));
+      this.setStepperStep("plan");
+      this.stageStatusText.textContent = "⚡ Approved! Architecting blueprint & streaming live code...";
+      this.setDeskStatus("planner", "working", "Drafting system blueprint & selecting skills");
+      this.setDeskStatus("dev", "working", "Implementing modular codebase");
+      this.appendLog("HITL", `Human Approved: Proceeding to plan and build code for PRD` + (notes ? ` with directives: "${notes}"` : ""));
       this.btnStartPipeline.disabled = true;
-      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Writing Code Live...</span>`;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚡</span><span>Planning & Building...</span>`;
 
       // 1. Focus Code tab immediately so user sees live code writing
       const editorTab = document.getElementById("tab-editor-view");
