@@ -777,4 +777,23 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Streamlines the top navigation header to maximize visual focus on code editing, previews, and autonomous agent operations without unnecessary top-bar clutter.
 
+---
+
+### Step 40: Bidirectional Navigation Between Web IDE and Office Floor Simulation
+- **What was done:**
+  - **Inspected Route Structure (`backend/app/main.py`):**
+    * Confirmed existing project routing: `/` serves `backend/app/static/index.html` (main Web IDE) and `/office` serves `backend/app/static/office.html` (interactive Pixi.js Office Floor simulation). Both endpoints support clean direct loading and browser refreshes.
+  - **Wired "Open Office Floor" Button on Web IDE (`backend/app/static/index.html` & `app.js`):**
+    * Added an accessible `#btn-open-office` button to the header right controls linking directly to `/office`, styled with the project's Neobrutalist design tokens (`btn btn-outline btn-sm`).
+    * Added click event listener in `TaraIDE.bindEvents()` to smoothly route navigation to `/office`.
+  - **Maintained & Reinforced "Open Web IDE" on Office Page (`backend/app/static/office.html`):**
+    * Verified existing `#btn-open-ide` button (`💻 Open Web IDE`) in the header actions bar.
+    * Added explicit DOM click listener to ensure reliable navigation back to `/`.
+  - **Verification:**
+    * Automated test script verified both endpoints return HTTP 200, contain their respective navigation buttons, and handle page refreshes identically.
+    * All existing API, preview, and prompt bar test suites passed cleanly.
+- **Why we built it:**
+  - Enables effortless, native bidirectional switching between the code editing / preview workspace and the 2D multi-agent office floor simulation without altering the visual design or duplicating pages.
+
+
 

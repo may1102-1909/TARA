@@ -543,7 +543,7 @@
       <button class="btn-neo btn-fit" onclick="cameraFit()">🎯 Fit Map</button>
       <button class="btn-neo btn-focus" onclick="cameraFocusCEO()">👑 Focus CEO</button>
       <button class="btn-neo btn-route" onclick="triggerHiveEnvelope()">✉️ Route Message</button>
-      <a href="/" class="btn-neo btn-ide">💻 Open Web IDE</a>
+      <a href="/" id="btn-open-ide" class="btn-neo btn-ide">💻 Open Web IDE</a>
     </div>
   </header>
 
@@ -1720,6 +1720,14 @@
     // Start loading on page load
     window.addEventListener('DOMContentLoaded', () => {
       loadOfficeScene();
+      const btnOpenIde = document.getElementById('btn-open-ide');
+      if (btnOpenIde) {
+        btnOpenIde.addEventListener('click', (e) => {
+          if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+            window.location.href = '/';
+          }
+        });
+      }
     });
   </script>
 </body>

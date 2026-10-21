@@ -70,6 +70,7 @@ class TaraIDE {
   initElements() {
     // Top & Header
     this.sessionBadgeText = document.getElementById("session-id-text");
+    this.btnOpenOffice = document.getElementById("btn-open-office");
     this.btnDownloadZip = document.getElementById("btn-download-zip");
 
     // Dock & Panels
@@ -1335,6 +1336,15 @@ class TaraIDE {
       this.allLogs = [];
       this.renderLogs();
     });
+
+    // Open Office Floor
+    if (this.btnOpenOffice) {
+      this.btnOpenOffice.addEventListener("click", (e) => {
+        if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+          window.location.href = "/office";
+        }
+      });
+    }
 
     // Download ZIP
     this.btnDownloadZip.addEventListener("click", () => {
