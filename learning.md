@@ -764,3 +764,17 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Transforms TARA from a retro-office parody prototype into a serious, modern autonomous engineering IDE with clean initial state, accurate professional terminology, and direct responsiveness to custom developer requirements.
 
+---
+
+### Step 39: Cleaned Header Bar (Removed Sandbox, Stepper, Retries & Session Badges)
+- **What was done:**
+  - **Header Cleanup (`backend/app/static/index.html`):**
+    * Removed the middle status indicators: sandbox status indicator (`#sandbox-wall-sign`), QA retry badge (`#jam-counter-badge`), and multi-step pipeline stepper (`#workflow-stepper`).
+    * Removed the session ID badge (`#session-badge`) from the header right controls.
+    * Retained the main title/brand and the "Download Release Package" button without affecting any other workspace or editor features.
+  - **Graceful Null-Safety Handling (`backend/app/static/app.js`):**
+    * Added safe null-checking in `updateSessionBadge` to prevent runtime exceptions when the session badge element is not in the DOM.
+- **Why we built it:**
+  - Streamlines the top navigation header to maximize visual focus on code editing, previews, and autonomous agent operations without unnecessary top-bar clutter.
+
+

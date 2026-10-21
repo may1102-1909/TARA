@@ -1700,7 +1700,9 @@ class TaraIDE {
   }
 
   updateSessionBadge() {
-    this.sessionBadgeText.textContent = `Session: ${this.sessionId}`;
+    if (this.sessionBadgeText) {
+      this.sessionBadgeText.textContent = `Session: ${this.sessionId}`;
+    }
   }
 
   appendLog(agent, message, timestamp = null) {
