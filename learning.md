@@ -734,3 +734,33 @@ Here is the journey of your project requirements document (PRD) from start to fi
     * Verified full approval, revision loops, web generation, non-web differentiation, and QA repair loops.
 - **Why we built it:**
   - Equips TARA agents with reusable, domain-specific engineering best practices and real-time UI visibility, ensuring generated projects adhere to production architecture standards while remaining safe against path traversal and template bloat.
+
+---
+
+### Step 38: Professional IDE Interface Modernization & Dummy Data Elimination
+- **What was done:**
+  - **Removed Auto-Injected Mock Data on Boot (`backend/app/static/app.js`):**
+    * Eliminated `this.applyPreset("cache")` on application load so the user starts with a clean slate ready for their custom PRD or prompt instead of a pre-filled mock cache specification.
+    * Added an empty default option (`-- Select a template (optional) --`) to the specification template selector.
+    * Initialized `this.activeFile = null` on boot so file paths dynamically resolve to actual workspace files or placeholder indicators (`workspace / —`) instead of assuming `main.py` before any project is built.
+    * Cleaned fallback prompts in Monaco streaming from `"In-Memory Cache Microservice"` to `"Production Application Specification"`.
+  - **Standardized UI Terminology to Professional Software Engineering IDE Standards (`backend/app/static/index.html`):**
+    * Modernized application title and branding to `TARA — Autonomous Multi-Agent Web IDE (v2.0)`.
+    * Upgraded sidebar tabs and headers from parody labels (`Filing Cabinet / Manila Folders`) to industry-standard `Explorer` and `Project Files`.
+    * Replaced carbon-copy stage labels (`White/Yellow/Pink copy`) with clear engineering tabs: `Source Code`, `QA Review (Diff)`, and `Security Audit`.
+    * Cleaned up desk card personas across the 5 core agents to professional software roles:
+      - `Executive (CEO)` • Spec appraisal & Viability
+      - `Architect (Planner)` • System blueprint & Skill selection
+      - `Engineer (Developer)` • Full-stack implementation
+      - `Quality Assurance (QA)` • Automated tests & Criteria validation
+      - `Security Officer` • SAST scanning & AST hardening
+    * Replaced comic status indicators (`Jams: 0 of 3`, `Sandbox: sealed`) with engineering equivalents (`Retries: 0 of 3`, `Sandbox: Ready`).
+    * Replaced parody intercom drawer (`📢 Intercom:`) with an engineering developer console (`⚡ Console:`) with dedicated role filtering (`CEO`, `Planner`, `Developer`, `QA`, `Security`, `Runtime`, `Terminal`).
+    * Replaced hardcoded cache-specific prompt chips (`TTL Eviction`) with general software engineering actions (`🛡 Error Handling`, `📝 Types & Docs`, `⚡ Async Refactor`, `🧪 Generate Tests`, `🔒 Security Hardening`).
+  - **Cleaned Mock Agent Personas (`backend/app/static/office.html`):**
+    * Replaced mock character references (`Michael Scott`) with standard autonomous `CEO` agent metadata and terminal logging.
+  - **Verification:**
+    * Full test suite verification with 55 passing tests across API, workflow, LangGraph planner/skills, Monaco split preview, prompt bar, and persistence.
+- **Why we built it:**
+  - Transforms TARA from a retro-office parody prototype into a serious, modern autonomous engineering IDE with clean initial state, accurate professional terminology, and direct responsiveness to custom developer requirements.
+

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TARA — The Office Floor (Autonomous Multi-Agent Web IDE)</title>
-  <meta name="description" content="TARA: Autonomous Tech-Architecture & Automated Review Assistant. The Office Floor multi-agent developer environment.">
+  <title>TARA — Autonomous Multi-Agent Web IDE</title>
+  <meta name="description" content="TARA: Autonomous Tech-Architecture & Engineering Assistant. Multi-agent developer environment.">
   <link rel="icon" type="image/png" href="/assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
 <body class="office-theme">
   <div id="app" class="ide-container">
 
-    <!-- ─── Top Header: Company Letterhead ─── -->
+    <!-- ─── Top Header ─── -->
     <header class="ide-header">
       <div class="header-left">
         <div class="brand-section">
@@ -30,21 +30,21 @@
           <div class="brand-text">
             <div class="title-row">
               <h1 class="brand-title">TARA</h1>
-              <span class="version-badge">The Office Floor</span>
+              <span class="version-badge">IDE v2.0</span>
             </div>
-            <span class="brand-tagline">Tech-Architecture & Review Agency | Est. 2026</span>
+            <span class="brand-tagline">Autonomous Multi-Agent Architecture & Engineering IDE</span>
           </div>
         </div>
       </div>
 
       <div class="header-center">
-        <div class="sandbox-wall-sign sealed" id="sandbox-wall-sign" title="Sandbox status wall sign">
+        <div class="sandbox-wall-sign sealed" id="sandbox-wall-sign" title="Isolated Sandbox Environment Status">
           <span class="sign-bullet">●</span>
-          <span id="sandbox-wall-sign-text">Sandbox: sealed</span>
+          <span id="sandbox-wall-sign-text">Sandbox: Ready</span>
         </div>
-        <div class="jam-counter-badge" id="jam-counter-badge" title="Paper jam / retry tally">
-          <span>📄</span>
-          <span id="jam-counter-text">Jams: 0 of 3</span>
+        <div class="jam-counter-badge" id="jam-counter-badge" title="QA Repair Retries">
+          <span>🔄</span>
+          <span id="jam-counter-text">Retries: 0 of 3</span>
         </div>
         <div class="stepper-container" id="workflow-stepper">
           <div class="step-item active" data-step="spec"><div class="step-bullet">1</div><span class="step-label">Spec</span></div>
@@ -122,7 +122,7 @@
             <span>Specification</span>
           </button>
           <button class="sidebar-tab" data-panel="files-panel" id="tab-btn-files">
-            <span>Filing Cabinet</span>
+            <span>Explorer</span>
             <span class="badge" id="files-count-badge">0</span>
           </button>
         </div>
@@ -130,8 +130,9 @@
         <div class="sidebar-content active" id="spec-panel">
           <div class="spec-section-card">
             <div class="sample-preset-row">
-              <label for="preset-select">Preset</label>
+              <label for="preset-select">Template</label>
               <select id="preset-select" class="preset-dropdown">
+                <option value="" selected>-- Select a template (optional) --</option>
                 <option value="cache">In-Memory Cache Microservice</option>
                 <option value="auth">JWT Auth & Rate Limiter</option>
                 <option value="webhook">Webhook Dispatcher Service</option>
@@ -143,19 +144,19 @@
               <div class="upload-icon-wrap">
                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               </div>
-              <p class="upload-hint">Drop PRD file or <strong>browse</strong></p>
+              <p class="upload-hint">Drop PRD document (.md, .pdf, .txt) or <strong>browse</strong></p>
             </div>
 
             <div class="editor-textarea-wrapper">
               <div class="textarea-header">
-                <label class="section-label">PRD Content</label>
+                <label class="section-label">PRD / Architecture Specification</label>
                 <span class="char-counter" id="prd-char-counter">0 chars</span>
               </div>
-              <textarea id="prd-input-textarea" class="prd-textarea" spellcheck="false" placeholder="Paste product requirements, architecture specs, or user stories..."></textarea>
+              <textarea id="prd-input-textarea" class="prd-textarea" spellcheck="false" placeholder="Paste or type your product requirements, architecture specification, features, or user stories here..."></textarea>
             </div>
 
             <button id="btn-start-pipeline" class="btn btn-primary btn-block glow-button">
-              Launch Pipeline
+              Launch Multi-Agent Pipeline
             </button>
           </div>
         </div>
@@ -163,13 +164,13 @@
         <div class="sidebar-content" id="files-panel">
           <div id="plan-summary-container" style="display: none; padding: 10px 14px 0 14px;"></div>
           <div class="file-tree-header">
-            <span class="section-label">Filing Cabinet (Manila Folders)</span>
+            <span class="section-label">Project Files</span>
             <span class="files-tag" id="files-tag-total">0 files</span>
           </div>
           <div class="file-tree-view" id="file-tree-container">
             <div class="empty-state-notice">
-              <p>No files yet</p>
-              <small>Launch pipeline or prompt TARA to generate code.</small>
+              <p>No files generated yet</p>
+              <small>Provide a PRD or prompt TARA to scaffold and write code.</small>
             </div>
           </div>
         </div>
@@ -179,7 +180,7 @@
       <main class="center-stage" id="center-stage">
         <!-- Office Floor Strip (Pipeline Desks) -->
         <div class="office-floor-strip" id="office-floor-strip">
-          <!-- Desk 1: Regional Manager (CEO Agent) -->
+          <!-- Desk 1: Executive Review (CEO Agent) -->
           <div class="desk-card" id="desk-ceo" data-desk="ceo">
             <div class="desk-header">
               <div class="desk-title-group">
@@ -194,13 +195,13 @@
                   </svg>
                 </div>
                 <div>
-                  <div class="desk-dept-name">Regional Manager</div>
-                  <div class="desk-role-label">CEO agent • Spec appraisal</div>
+                  <div class="desk-dept-name">Executive (CEO)</div>
+                  <div class="desk-role-label">Spec appraisal • Viability</div>
                 </div>
               </div>
               <span class="desk-status-badge idle" id="desk-ceo-badge">Idle</span>
             </div>
-            <div class="desk-activity-line" id="desk-ceo-activity">Awaiting specification submission</div>
+            <div class="desk-activity-line" id="desk-ceo-activity">Awaiting specification input</div>
           </div>
 
           <!-- Desk 2: Architecture Studio (Planner Agent) -->
@@ -215,8 +216,8 @@
                   </svg>
                 </div>
                 <div>
-                  <div class="desk-dept-name">Architecture Studio</div>
-                  <div class="desk-role-label">Planner agent • System blueprint</div>
+                  <div class="desk-dept-name">Architect (Planner)</div>
+                  <div class="desk-role-label">System blueprint • Skill selection</div>
                 </div>
               </div>
               <span class="desk-status-badge idle" id="desk-planner-badge">Idle</span>
@@ -240,8 +241,8 @@
                   </svg>
                 </div>
                 <div>
-                  <div class="desk-dept-name">Production Desk</div>
-                  <div class="desk-role-label">Developer agent • Code drafting</div>
+                  <div class="desk-dept-name">Engineer (Developer)</div>
+                  <div class="desk-role-label">Full-stack implementation</div>
                 </div>
               </div>
               <span class="desk-status-badge idle" id="desk-dev-badge">Idle</span>
@@ -249,7 +250,7 @@
             <div class="desk-activity-line" id="desk-dev-activity">Ready for implementation</div>
           </div>
 
-          <!-- Desk 4: Quality Control (QA Agent) -->
+          <!-- Desk 4: Quality Assurance (QA Agent) -->
           <div class="desk-card" id="desk-qa" data-desk="qa">
             <div class="desk-header">
               <div class="desk-title-group">
@@ -262,17 +263,17 @@
                   </svg>
                 </div>
                 <div>
-                  <div class="desk-dept-name">Quality Control</div>
-                  <div class="desk-role-label">QA agent • Lint & test audit</div>
+                  <div class="desk-dept-name">Quality Assurance (QA)</div>
+                  <div class="desk-role-label">Automated tests • Criteria validation</div>
                 </div>
               </div>
               <span class="desk-status-badge idle" id="desk-qa-badge">Idle</span>
             </div>
             <div class="desk-activity-line" id="desk-qa-activity">Standing by for build</div>
-            <div class="desk-qa-tally" id="desk-qa-tally" style="display: none;">Repair Attempt: 0 of 3</div>
+            <div class="desk-qa-tally" id="desk-qa-tally" style="display: none;">Retries: 0 of 3</div>
           </div>
 
-          <!-- Desk 4: Accounting & Audit (Security Agent) -->
+          <!-- Desk 5: Security & Hardening (Security Agent) -->
           <div class="desk-card" id="desk-sec" data-desk="sec">
             <div class="desk-header">
               <div class="desk-title-group">
@@ -285,8 +286,8 @@
                   </svg>
                 </div>
                 <div>
-                  <div class="desk-dept-name">Accounting & Audit</div>
-                  <div class="desk-role-label">Security agent • SAST & hardening</div>
+                  <div class="desk-dept-name">Security Officer</div>
+                  <div class="desk-role-label">SAST scanning • AST hardening</div>
                 </div>
               </div>
               <span class="desk-status-badge idle" id="desk-sec-badge">Idle</span>
@@ -298,14 +299,14 @@
         <div class="canvas-top-bar">
           <div class="canvas-nav-left">
             <div class="breadcrumbs-row">
-              <span class="breadcrumb-item">src</span>
+              <span class="breadcrumb-item">workspace</span>
               <span class="breadcrumb-sep">/</span>
-              <span class="breadcrumb-item active" id="active-filename-pill">main.py</span>
+              <span class="breadcrumb-item active" id="active-filename-pill">—</span>
             </div>
             <div class="nav-tabs">
-              <button class="stage-tab active" data-view="editor-view" id="tab-editor-view">White copy (Developer)</button>
-              <button class="stage-tab" data-view="diff-view" id="tab-diff-view">Yellow copy (QA)</button>
-              <button class="stage-tab" data-view="audit-view" id="tab-audit-view">Pink copy (Security)</button>
+              <button class="stage-tab active" data-view="editor-view" id="tab-editor-view">Source Code</button>
+              <button class="stage-tab" data-view="diff-view" id="tab-diff-view">QA Review (Diff)</button>
+              <button class="stage-tab" data-view="audit-view" id="tab-audit-view">Security Audit</button>
             </div>
           </div>
           <div class="canvas-nav-right">
@@ -339,20 +340,20 @@
                   <div class="editor-ai-title">
                     <span class="editor-ai-icon">✨</span>
                     <span>TARA Interactive Edit</span>
-                    <span class="editor-ai-target-pill" id="editor-ai-target-pill">src / main.py</span>
+                    <span class="editor-ai-target-pill" id="editor-ai-target-pill">—</span>
                   </div>
                   <button class="editor-ai-close" id="btn-editor-ai-close" title="Close (Esc)">✕</button>
                 </div>
                 <div class="editor-ai-bar-input-row">
-                  <input type="text" id="editor-ai-input" class="editor-ai-input" placeholder="Tell TARA what to edit or add (e.g. 'Add TTL eviction', 'Add docstrings', 'Refactor to async')...">
+                  <input type="text" id="editor-ai-input" class="editor-ai-input" placeholder="Tell TARA what to implement or refactor (e.g. 'Add input validation', 'Add docstrings', 'Refactor to async')...">
                   <button id="btn-editor-ai-submit" class="btn btn-primary btn-sm">Apply Edit ↵</button>
                 </div>
                 <div class="editor-ai-chips">
-                  <button class="editor-ai-chip" data-edit="Add thread-safe TTL expiration and key eviction to cache in main.py">⚡ TTL Eviction</button>
-                  <button class="editor-ai-chip" data-edit="Add robust try/except error handling and logging to main.py">🛡 Error Handling</button>
-                  <button class="editor-ai-chip" data-edit="Add complete PEP 484 type annotations and docstrings to main.py">📝 Types & Docs</button>
-                  <button class="editor-ai-chip" data-edit="Refactor methods in main.py to use async / await">⚡ Async Refactor</button>
-                  <button class="editor-ai-chip" data-edit="Generate pytest unit tests with mock fixtures for main.py">🧪 Generate Tests</button>
+                  <button class="editor-ai-chip" data-edit="Add robust try/except error handling and structured logging">🛡 Error Handling</button>
+                  <button class="editor-ai-chip" data-edit="Add complete PEP 484 type annotations and docstrings">📝 Types & Docs</button>
+                  <button class="editor-ai-chip" data-edit="Refactor functions to use async / await for non-blocking I/O">⚡ Async Refactor</button>
+                  <button class="editor-ai-chip" data-edit="Generate pytest unit tests with mock fixtures">🧪 Generate Tests</button>
+                  <button class="editor-ai-chip" data-edit="Sanitize user inputs and apply OWASP security hardening">🔒 Security Hardening</button>
                 </div>
               </div>
 
@@ -360,7 +361,7 @@
               <div id="editor-edit-review-bar" class="editor-edit-review-bar" style="display: none;">
                 <div class="review-status-text">
                   <span class="review-pulse">●</span>
-                  <span id="editor-review-message">TARA applied edit to main.py</span>
+                  <span id="editor-review-message">TARA applied edit</span>
                 </div>
                 <div class="review-actions">
                   <button id="btn-review-accept" class="btn btn-primary btn-xs">✓ Accept</button>
@@ -429,16 +430,17 @@
         <section class="console-drawer" id="console-drawer">
           <div class="console-bar">
             <div class="console-intercom-badge">
-              <span class="intercom-icon">📢</span>
-              <span class="intercom-title">Intercom:</span>
+              <span class="intercom-icon">⚡</span>
+              <span class="intercom-title">Console:</span>
             </div>
             <div class="console-tabs">
               <button class="console-tab active" data-agent="all">All</button>
-              <button class="console-tab" data-agent="CEO" title="Regional Manager (CEO)">Manager</button>
-              <button class="console-tab" data-agent="Developer" title="Production (Dev)">Production</button>
-              <button class="console-tab" data-agent="QA" title="Quality Control (QA)">QC</button>
-              <button class="console-tab" data-agent="Security" title="Accounting & Audit (Security)">Audit</button>
-              <button class="console-tab" data-agent="ANTIGRAVITY">Agent</button>
+              <button class="console-tab" data-agent="CEO" title="Executive (CEO)">CEO</button>
+              <button class="console-tab" data-agent="Planner" title="Architect (Planner)">Planner</button>
+              <button class="console-tab" data-agent="Developer" title="Engineer (Developer)">Developer</button>
+              <button class="console-tab" data-agent="QA" title="Quality Assurance (QA)">QA</button>
+              <button class="console-tab" data-agent="Security" title="Security & Hardening">Security</button>
+              <button class="console-tab" data-agent="ANTIGRAVITY">Runtime</button>
               <button class="console-tab" data-agent="terminal" id="tab-terminal">Terminal</button>
             </div>
             <div class="console-controls">
@@ -486,15 +488,15 @@
         </div>
 
         <div class="copilot-chips-row">
-          <button class="copilot-chip" data-prompt="Add thread-safe TTL expiration and key eviction to cache in main.py">Add TTL Eviction</button>
-          <button class="copilot-chip" data-prompt="Inspect main.py with SAST rules and add input sanitization">SAST Hardening</button>
-          <button class="copilot-chip" data-prompt="Generate pytest unit tests with mock fixtures for main.py">Generate Tests</button>
+          <button class="copilot-chip" data-prompt="Review workspace architecture and suggest optimizations">Architecture Review</button>
+          <button class="copilot-chip" data-prompt="Inspect active files with SAST rules and add security hardening">SAST Hardening</button>
+          <button class="copilot-chip" data-prompt="Generate pytest unit tests with mock fixtures">Generate Tests</button>
         </div>
 
         <div class="copilot-input-box">
           <div class="copilot-input-meta">
             <span class="input-target-label">Target:</span>
-            <span class="input-target-file" id="copilot-target-display">main.py</span>
+            <span class="input-target-file" id="copilot-target-display">—</span>
           </div>
           <!-- React Bits PromptBar Component -->
           <div id="tara-prompt-bar-root"></div>

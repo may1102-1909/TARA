@@ -48,7 +48,7 @@ class TaraIDE {
     this.sessionId = "tara-" + Math.random().toString(36).substring(2, 10);
     this.currentSession = null;
     this.editor = null;
-    this.activeFile = "main.py";
+    this.activeFile = null;
     this.activeAgentFilter = "all";
     this.activePersona = "antigravity";
     this.allLogs = [];
@@ -64,7 +64,6 @@ class TaraIDE {
     this.initTaraStreamWebSocket();
     this.initSecurityWebSocket();
     this.bindEvents();
-    this.applyPreset("cache");
     this.updateSessionBadge();
   }
 
@@ -212,7 +211,7 @@ class TaraIDE {
       working: "Working",
       done: "Done",
       waiting: "Waiting for you",
-      jammed: "Jammed",
+      jammed: "Revising",
     };
 
     if (desk.badge) {
@@ -245,7 +244,7 @@ class TaraIDE {
   triggerRetryLoop(fromDeskKey = "qa", toDeskKey = "dev") {
     this.jamCount = Math.min(3, this.jamCount + 1);
     if (this.jamCounterBadge) {
-      this.jamCounterBadge.textContent = `Jams: ${this.jamCount} of 3`;
+      this.jamCounterBadge.textContent = `Retries: ${this.jamCount} of 3`;
       this.jamCounterBadge.classList.add("has-jams");
     }
 
@@ -253,7 +252,7 @@ class TaraIDE {
     const toDesk = this.desks && this.desks[toDeskKey];
 
     if (fromDesk && fromDesk.card && toDesk && toDesk.card) {
-      this.setDeskStatus(fromDeskKey, "jammed", "Paper jam: revisions requested");
+      this.setDeskStatus(fromDeskKey, "jammed", "Revisions requested: resolving QA issues");
       const sheet = document.createElement("div");
       sheet.className = "paper-sheet-slide";
       fromDesk.card.appendChild(sheet);
@@ -275,7 +274,7 @@ class TaraIDE {
       window.require(["vs/editor/editor.main"], () => {
         // Main Code Editor
         this.editor = monaco.editor.create(container, {
-          value: "# TARA Autonomous AI Developer Environment\n# Awaiting PRD input or Antigravity prompt to inspect & generate code...",
+          value: "# TARA Autonomous Multi-Agent Web IDE\n# Provide a PRD or prompt TARA to scaffold and write code...\n",
           language: "python",
           theme: "vs-dark",
           fontSize: 13,
@@ -1642,9 +1641,11 @@ class TaraIDE {
   applyPreset(presetKey) {
     if (PRESETS[presetKey]) {
       this.prdTextarea.value = PRESETS[presetKey];
-      if (this.prdCharCounter) {
-        this.prdCharCounter.textContent = `${this.prdTextarea.value.length.toLocaleString()} chars`;
-      }
+    } else if (presetKey === "") {
+      this.prdTextarea.value = "";
+    }
+    if (this.prdCharCounter) {
+      this.prdCharCounter.textContent = `${this.prdTextarea.value.length.toLocaleString()} chars`;
     }
   }
 
@@ -1828,7 +1829,7 @@ class TaraIDE {
       this.stageStatusText.textContent = "Awaiting Human-in-the-Loop Sign-off";
       this.setDeskStatus("ceo", "done", "Critique rendered: viability evaluated");
       this.setDeskStatus("planner", "waiting", "Standing by for approval");
-      this.setDeskStatus("dev", "waiting", "Memo awaiting client sign-off");
+      this.setDeskStatus("dev", "waiting", "Awaiting client sign-off");
       this.openApprovalModal(snapshot.ceo_critique, snapshot.revision_count);
     } else if (snapshot.status === "completed") {
       this.closeApprovalModal();
@@ -2003,7 +2004,7 @@ class TaraIDE {
       }
 
       // 3. Immediately launch token-by-token live stream into Monaco Editor
-      const prdText = (this.prdTextarea && this.prdTextarea.value.trim()) || "In-Memory Cache Microservice";
+      const prdText = (this.prdTextarea && this.prdTextarea.value.trim()) || "Production Application Specification";
       const streamPrompt = `Generate the complete, production-ready Python codebase implementing this PRD:\n\n${prdText}` + (notes ? `\n\nStakeholder Directives: ${notes}` : "");
       this.sendTaraStreamPrompt(streamPrompt, "main.py");
     } else if (action === "request_changes") {
