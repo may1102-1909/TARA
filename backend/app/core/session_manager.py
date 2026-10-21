@@ -339,6 +339,7 @@ class SessionManager:
         
         return {
             "session_id": session_id,
+            "prd_filename": values.get("prd_filename") or self.session_meta.get(session_id, {}).get("prd_filename", "PRD.md"),
             "status": status,
             "is_interrupted": is_interrupted,
             "interrupt_payload": interrupt_payload,

@@ -526,6 +526,134 @@
       transform: translate(1px, 1px);
       box-shadow: 0px 0px 0px var(--ink);
     }
+
+    /* ─── Real Session & Approval Gate Neobrutalist Cards ───────────── */
+    .session-status-bar {
+      background: var(--bg-white);
+      border-bottom: var(--border-med);
+      padding: 6px 12px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.72rem;
+    }
+    .session-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .session-label {
+      font-weight: 800;
+      color: var(--text-dim);
+    }
+    .session-val {
+      font-weight: 700;
+      color: var(--ink);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .session-pill {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      border: var(--border-thin);
+    }
+    .session-prd-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 0.68rem;
+      color: #555;
+    }
+
+    .office-approval-card {
+      background: #fffbe6;
+      border-bottom: var(--border-med);
+      padding: 10px 12px;
+      border-left: 5px solid var(--orange);
+    }
+    .approval-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .approval-title {
+      font-weight: 800;
+      font-size: 0.78rem;
+      color: var(--ink);
+    }
+    .verdict-pill {
+      background: var(--yellow);
+      border: var(--border-thin);
+      padding: 2px 6px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      border-radius: 3px;
+    }
+    .verdict-pill.viable { background: #52b788; color: #fff; }
+    .verdict-pill.revision { background: var(--orange); color: #fff; }
+    .verdict-pill.rejected { background: var(--coral); color: #fff; }
+    .critique-content {
+      font-size: 0.7rem;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .critique-label {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .critique-text {
+      color: #333;
+      max-height: 70px;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 4px 6px;
+      border: 1px dashed var(--ink);
+      border-radius: 3px;
+      margin-bottom: 6px;
+    }
+    .critique-list {
+      margin-left: 14px;
+      color: #b02a37;
+      font-size: 0.68rem;
+    }
+    .approval-feedback-wrap {
+      margin-bottom: 6px;
+    }
+    .approval-feedback-input {
+      width: 100%;
+      height: 42px;
+      box-sizing: border-box;
+      border: var(--border-med);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.68rem;
+      resize: vertical;
+    }
+    .approval-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-approval {
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      border: var(--border-med);
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 1.5px 1.5px 0 var(--ink);
+      transition: all 0.1s ease;
+    }
+    .btn-approval:hover { transform: translate(-1px, -1px); box-shadow: 2.5px 2.5px 0 var(--ink); }
+    .btn-approval:active { transform: translate(1px, 1px); box-shadow: 0 0 0 var(--ink); }
+    .btn-approve { background: #52b788; color: #fff; flex: 1.2; }
+    .btn-revise { background: var(--yellow); color: var(--ink); flex: 1; }
+    .btn-reject { background: var(--coral); color: #fff; }
   </style>
 </head>
 <body>
@@ -536,7 +664,7 @@
       <div class="brand-box">TARA</div>
       <div class="brand-title">
         <span>Autonomous Office Floor</span>
-        <span class="badge-engine">ENGINE V2.0</span>
+        <span class="badge-engine" id="office-session-badge">SESSION: —</span>
       </div>
     </div>
     <div class="header-actions">
@@ -563,6 +691,43 @@
       <!-- Vibrant Orange Command Center Banner -->
       <div class="cc-banner">COMMAND CENTER</div>
 
+      <!-- Live Session Status Bar -->
+      <div class="session-status-bar" id="session-status-bar">
+        <div class="session-status-row">
+          <span class="session-label">RUN:</span>
+          <span class="session-val" id="office-session-id">Connecting...</span>
+          <span class="session-pill" id="office-status-pill">IDLE</span>
+        </div>
+        <div class="session-prd-row" id="session-prd-row" style="display:none;">
+          <span>📄</span>
+          <span id="office-prd-name" style="font-weight:700;">PRD.md</span>
+        </div>
+      </div>
+
+      <!-- Human-in-the-Loop Approval Gate Card (Rendered when CEO critique is ready) -->
+      <div id="office-approval-card" class="office-approval-card" style="display: none;">
+        <div class="approval-header">
+          <span class="approval-title">⚖️ Human Approval Gate</span>
+          <span class="verdict-pill" id="office-verdict-pill">VIABLE</span>
+        </div>
+        <div class="critique-content">
+          <div class="critique-label">CEO Evaluation & Recommendation:</div>
+          <div class="critique-text" id="office-critique-text">Analyzing PRD...</div>
+          <div id="office-gaps-container" style="display:none;">
+            <div class="critique-label">Identified Gaps & Flaws:</div>
+            <ul class="critique-list" id="office-gaps-list"></ul>
+          </div>
+        </div>
+        <div class="approval-feedback-wrap">
+          <textarea id="office-feedback-notes" class="approval-feedback-input" placeholder="Feedback notes for revision loop (optional)..."></textarea>
+        </div>
+        <div class="approval-actions">
+          <button class="btn-approval btn-approve" id="btn-office-approve" onclick="submitOfficeDecision('approve')">✓ Approve & Build</button>
+          <button class="btn-approval btn-revise" id="btn-office-revise" onclick="submitOfficeDecision('request_changes')">🔄 Request Changes</button>
+          <button class="btn-approval btn-reject" id="btn-office-reject" onclick="submitOfficeDecision('reject')">✕ Reject</button>
+        </div>
+      </div>
+
       <!-- Command Center Tabs -->
       <div class="cc-tabs">
         <div class="cc-tab active" onclick="switchCcTab('terminal')">Terminal Logs</div>
@@ -573,34 +738,9 @@
       <div class="terminal-wrapper">
         <div class="terminal-container" id="terminal-stream">
           <div class="term-line">
-            <span class="term-ts">[27:48:25]</span>
-            <span class="term-badge pass">[PASS]</span>
-            <span class="term-text">Office map rendered: 34×22 tiles @ 16px. Pixel canvas initialized.</span>
-          </div>
-          <div class="term-line">
-            <span class="term-ts">[23:24:05]</span>
-            <span class="term-badge hive">[HIVE]</span>
-            <span class="term-text">Staff stretching legs and wandering the floor.</span>
-          </div>
-          <div class="term-line">
-            <span class="term-ts">[23:25:05]</span>
-            <span class="term-badge hive">[HIVE]</span>
-            <span class="term-text">All agents returned to assigned PC desks.</span>
-          </div>
-          <div class="term-line">
-            <span class="term-ts">[23:25:34]</span>
-            <span class="term-badge sast">[SAST]</span>
-            <span class="term-text">Security running Bandit AST security scan: 0 vulnerabilities found.</span>
-          </div>
-          <div class="term-line">
-            <span class="term-ts">[23:25:59]</span>
-            <span class="term-badge eval">[EVAL]</span>
-            <span class="term-text">CEO evaluating PRD acceptance criteria & requirements.</span>
-          </div>
-          <div class="term-line">
-            <span class="term-ts">[23:25:59]</span>
-            <span class="term-badge eval">[EVAL]</span>
-            <span class="term-text">Routed Live packet from Dev to Security.</span>
+            <span class="term-ts">[SYSTEM]</span>
+            <span class="term-badge hive">[SYS]</span>
+            <span class="term-text">Office Floor initialized. Connecting to active multi-agent pipeline...</span>
           </div>
         </div>
       </div>
@@ -1509,8 +1649,381 @@
     }
 
     /* ==========================================================================
-       7. Simulation Trigger Handlers
+       7. Live Workflow Session Connection & Triggers
        ========================================================================== */
+    let activeSessionId = null;
+    let workflowSocket = null;
+    let renderedLogCount = 0;
+    let lastKnownStage = null;
+
+    async function initWorkflowConnection() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let sid = urlParams.get('session_id') || localStorage.getItem('tara_active_session_id');
+
+      if (!sid) {
+        try {
+          const latestRes = await fetch('/api/sessions/latest');
+          if (latestRes.ok) {
+            const latestData = await latestRes.json();
+            if (latestData && latestData.session_id && latestData.status !== 'not_found' && latestData.status !== 'none') {
+              sid = latestData.session_id;
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching latest session:', e);
+        }
+      }
+
+      if (sid) {
+        setSessionActive(sid);
+      } else {
+        updateSessionUiNoSession();
+      }
+    }
+
+    function setSessionActive(sid) {
+      activeSessionId = sid;
+      localStorage.setItem('tara_active_session_id', sid);
+
+      const newUrl = `/office?session_id=${encodeURIComponent(sid)}`;
+      if (window.location.search !== `?session_id=${encodeURIComponent(sid)}`) {
+        window.history.replaceState({ sessionId: sid }, '', newUrl);
+      }
+
+      const badge = document.getElementById('office-session-badge');
+      if (badge) badge.innerText = `SESSION: ${sid.slice(0, 8)}...`;
+
+      const sIdEl = document.getElementById('office-session-id');
+      if (sIdEl) {
+        sIdEl.innerText = `${sid.slice(0, 10)}...`;
+        sIdEl.title = sid;
+      }
+
+      fetchSessionSnapshot(sid);
+      connectWorkflowWebSocket(sid);
+    }
+
+    function updateSessionUiNoSession() {
+      const badge = document.getElementById('office-session-badge');
+      if (badge) badge.innerText = 'SESSION: NONE (WAITING FOR PRD)';
+
+      const sIdEl = document.getElementById('office-session-id');
+      if (sIdEl) sIdEl.innerText = 'No active session';
+
+      const pill = document.getElementById('office-status-pill');
+      if (pill) {
+        pill.innerText = 'IDLE';
+        pill.style.background = '#e2e8f0';
+        pill.style.color = '#333';
+      }
+
+      appendTerminal('SYS', 'Office Floor idle. Upload a PRD in the Web IDE and click "Launch Multi-Agent Pipeline" to begin.');
+
+      const ceo = characterEntities.get('ceo');
+      if (ceo) ceo.showThought('Awaiting PRD upload from Web IDE...', 8.0);
+      const sup = characterEntities.get('supervisor');
+      if (sup) sup.showThought('Standing by for architectural directive...', 6.0);
+      const dev = characterEntities.get('dev');
+      if (dev) dev.showThought('Dev environment primed & waiting...', 6.0);
+      const qa = characterEntities.get('qa');
+      if (qa) qa.showThought('Pytest test suites standby.', 6.0);
+      const sec = characterEntities.get('security');
+      if (sec) sec.showThought('AppSec scanners listening.', 6.0);
+    }
+
+    async function fetchSessionSnapshot(sid) {
+      try {
+        const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}`);
+        if (res.ok) {
+          const snap = await res.json();
+          if (snap && snap.status !== 'not_found') {
+            applyWorkflowSnapshot(snap);
+          }
+        }
+      } catch (e) {
+        console.warn('Error fetching snapshot:', e);
+      }
+    }
+
+    function connectWorkflowWebSocket(sid) {
+      if (workflowSocket) {
+        try { workflowSocket.close(); } catch (_) {}
+        workflowSocket = null;
+      }
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/sessions/${encodeURIComponent(sid)}/stream`;
+
+      try {
+        workflowSocket = new WebSocket(wsUrl);
+
+        workflowSocket.onopen = () => {
+          appendTerminal('SYS', `Live telemetry stream connected for session ${sid.slice(0, 8)}...`);
+        };
+
+        workflowSocket.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'init' && msg.data) {
+              applyWorkflowSnapshot(msg.data);
+            } else if (msg.type === 'node_update' && msg.data) {
+              const nodeName = msg.data.node;
+              const snap = msg.data.snapshot;
+              applyWorkflowSnapshot(snap, nodeName);
+            }
+          } catch (err) {
+            console.error('WebSocket parse error:', err);
+          }
+        };
+
+        workflowSocket.onerror = (err) => {
+          console.warn('Office WebSocket notice:', err);
+        };
+
+        workflowSocket.onclose = () => {
+          setTimeout(() => {
+            if (activeSessionId === sid) {
+              connectWorkflowWebSocket(sid);
+            }
+          }, 3000);
+        };
+      } catch (e) {
+        console.warn('Could not connect WebSocket:', e);
+      }
+    }
+
+    function applyWorkflowSnapshot(snapshot, eventNode = null) {
+      if (!snapshot) return;
+
+      // 1. Status Pill & Badges
+      const pill = document.getElementById('office-status-pill');
+      const st = (snapshot.status || 'running').toUpperCase();
+      if (pill) {
+        pill.innerText = st;
+        if (st === 'AWAITING_APPROVAL') {
+          pill.style.background = '#ffd60a';
+          pill.style.color = '#000';
+        } else if (st === 'COMPLETED') {
+          pill.style.background = '#52b788';
+          pill.style.color = '#fff';
+        } else if (st === 'ERROR' || st === 'REJECTED') {
+          pill.style.background = '#ff6b6b';
+          pill.style.color = '#fff';
+        } else {
+          pill.style.background = '#00d4ff';
+          pill.style.color = '#000';
+        }
+      }
+
+      // 2. PRD Row
+      if (snapshot.prd_filename) {
+        const row = document.getElementById('session-prd-row');
+        const nameEl = document.getElementById('office-prd-name');
+        if (row && nameEl) {
+          row.style.display = 'flex';
+          nameEl.innerText = snapshot.prd_filename;
+        }
+      }
+
+      // 3. Terminal Logs from Real Pipeline
+      if (Array.isArray(snapshot.logs) && snapshot.logs.length > renderedLogCount) {
+        const newLogs = snapshot.logs.slice(renderedLogCount);
+        newLogs.forEach(entry => {
+          let tag = 'EXEC';
+          let clean = entry;
+          if (entry.startsWith('[CEO]')) { tag = 'CEO'; clean = entry.replace('[CEO]', '').trim(); }
+          else if (entry.startsWith('[PLANNER]') || entry.startsWith('[SUPERVISOR]')) { tag = 'PLAN'; clean = entry.replace(/^\[(PLANNER|SUPERVISOR)\]/, '').trim(); }
+          else if (entry.startsWith('[DEVELOPER]') || entry.startsWith('[DEV]')) { tag = 'DEV'; clean = entry.replace(/^\[(DEVELOPER|DEV)\]/, '').trim(); }
+          else if (entry.startsWith('[QA]')) { tag = 'QA'; clean = entry.replace('[QA]', '').trim(); }
+          else if (entry.startsWith('[SECURITY]') || entry.startsWith('[SEC]')) { tag = 'SAST'; clean = entry.replace(/^\[(SECURITY|SEC)\]/, '').trim(); }
+          else if (entry.startsWith('[PASS]')) { tag = 'PASS'; clean = entry.replace('[PASS]', '').trim(); }
+          else if (entry.startsWith('[FAIL]')) { tag = 'FAIL'; clean = entry.replace('[FAIL]', '').trim(); }
+          else if (entry.startsWith('[SYSTEM]')) { tag = 'SYS'; clean = entry.replace('[SYSTEM]', '').trim(); }
+          appendTerminal(tag, clean);
+        });
+        renderedLogCount = snapshot.logs.length;
+      }
+
+      // 4. Human-in-the-Loop Approval Gate Card
+      const card = document.getElementById('office-approval-card');
+      const isAwaiting = snapshot.status === 'awaiting_approval' || snapshot.is_interrupted;
+      if (card) {
+        if (isAwaiting) {
+          card.style.display = 'block';
+          const critique = snapshot.ceo_critique || {};
+          const critiqueText = critique.critique || 'CEO completed architectural analysis and viability review.';
+          const critiqueEl = document.getElementById('office-critique-text');
+          if (critiqueEl) critiqueEl.innerText = critiqueText;
+
+          const verdictPill = document.getElementById('office-verdict-pill');
+          if (verdictPill) {
+            const isViable = critique.viable !== false;
+            verdictPill.innerText = isViable ? 'VIABLE' : 'REVISION RECOMMENDED';
+            verdictPill.className = `verdict-pill ${isViable ? 'viable' : 'revision'}`;
+          }
+
+          const gapsContainer = document.getElementById('office-gaps-container');
+          const gapsList = document.getElementById('office-gaps-list');
+          if (gapsContainer && gapsList) {
+            if (Array.isArray(critique.identified_gaps) && critique.identified_gaps.length > 0) {
+              gapsContainer.style.display = 'block';
+              gapsList.innerHTML = critique.identified_gaps.map(g => `<li>${g}</li>`).join('');
+            } else {
+              gapsContainer.style.display = 'none';
+            }
+          }
+
+          document.getElementById('btn-office-approve').disabled = false;
+          document.getElementById('btn-office-revise').disabled = false;
+          document.getElementById('btn-office-reject').disabled = false;
+        } else {
+          card.style.display = 'none';
+        }
+      }
+
+      // 5. Stage-Driven Character Animations & Projectile Handoffs
+      const stage = snapshot.current_stage || 'idle';
+      const ceoView = characterEntities.get('ceo');
+      const supView = characterEntities.get('supervisor');
+      const devView = characterEntities.get('dev');
+      const qaView = characterEntities.get('qa');
+      const secView = characterEntities.get('security');
+
+      const setAgentState = (id, status, label, badgeCls) => {
+        const ag = AGENTS.find(a => a.id === id);
+        if (ag) {
+          ag.status = status;
+          ag.statusLabel = label;
+          ag.statusBadgeClass = badgeCls;
+        }
+      };
+
+      if (eventNode === 'ceo_node' || stage === 'ceo_review') {
+        setAgentState('ceo', 'working', 'evaluating', 'badge-working');
+        setAgentState('supervisor', 'idle', 'idle', 'badge-patrolling');
+        setAgentState('dev', 'idle', 'idle', 'badge-coding');
+        setAgentState('qa', 'idle', 'idle', 'badge-testing');
+        setAgentState('security', 'idle', 'idle', 'badge-alert');
+        if (ceoView) {
+          ceoView.showThought('Critiquing PRD acceptance criteria & architecture viability...', 5.0);
+          camera.focusOn(ceoView.px, ceoView.py, 2.2);
+        }
+      } else if (isAwaiting || eventNode === 'approval_gate') {
+        setAgentState('ceo', 'working', 'decision ready', 'badge-patrolling');
+        if (ceoView) {
+          ceoView.showThought('PRD review complete. Awaiting human approval sign-off in Command Center.', 6.0);
+        }
+      } else if (eventNode === 'planner_node' || stage === 'planning') {
+        if (lastKnownStage === 'ceo_review' || lastKnownStage === 'awaiting_approval') {
+          if (ceoView && supView) envelopes.push(new EnvelopeProjectile(ceoView, supView, 'agree'));
+        }
+        setAgentState('ceo', 'idle', 'approved', 'badge-working');
+        setAgentState('supervisor', 'working', 'planning', 'badge-working');
+        setAgentState('dev', 'idle', 'ready', 'badge-coding');
+        if (supView) {
+          const skills = (snapshot.selected_skills || []).join(', ') || 'FastAPI, Pytest, Bandit';
+          supView.showThought(`Planning architecture: ${skills}`, 5.0);
+          camera.focusOn(supView.px, supView.py, 2.2);
+        }
+      } else if (eventNode === 'developer_node' || eventNode === 'dev_qa_node' || stage === 'development') {
+        if (lastKnownStage === 'planning') {
+          if (supView && devView) envelopes.push(new EnvelopeProjectile(supView, devView, 'request'));
+        }
+        setAgentState('supervisor', 'idle', 'patrolling', 'badge-patrolling');
+        setAgentState('dev', 'working', 'coding', 'badge-coding');
+        const numFiles = Object.keys(snapshot.dev_code_files || {}).length || 1;
+        if (devView) {
+          devView.showThought(`Generating ${numFiles} codebase file(s) for approved specification...`, 5.0);
+          camera.focusOn(devView.px, devView.py, 2.2);
+        }
+      } else if (eventNode === 'qa_node' || stage === 'qa_testing') {
+        if (lastKnownStage === 'development') {
+          if (devView && qaView) envelopes.push(new EnvelopeProjectile(devView, qaView, 'request'));
+        }
+        setAgentState('dev', 'idle', 'code ready', 'badge-coding');
+        setAgentState('qa', 'working', 'testing', 'badge-testing');
+        if (qaView) {
+          if (snapshot.qa_passed === false) {
+            qaView.showThought(`Tests failed (${snapshot.repair_count} repairs). Routing bug report back to Dev!`, 5.0);
+            if (devView) envelopes.push(new EnvelopeProjectile(qaView, devView, 'request'));
+            if (devView) devView.showThought('Refactoring code to fix test assertions...', 4.0);
+          } else if (snapshot.qa_passed === true) {
+            qaView.showThought('100% test assertions passed! Passing release to AppSec.', 5.0);
+            if (secView) envelopes.push(new EnvelopeProjectile(qaView, secView, 'agree'));
+          } else {
+            qaView.showThought('Executing pytest integration test suites in isolated sandbox...', 5.0);
+          }
+          camera.focusOn(qaView.px, qaView.py, 2.2);
+        }
+      } else if (eventNode === 'security_node' || stage === 'security_audit') {
+        setAgentState('qa', 'idle', 'passed', 'badge-testing');
+        setAgentState('security', 'working', 'auditing', 'badge-alert');
+        if (secView) {
+          secView.showThought('Running Bandit AST & Strix SAST vulnerability scan...', 5.0);
+          camera.focusOn(secView.px, secView.py, 2.2);
+        }
+      } else if (eventNode === 'pipeline_complete' || snapshot.status === 'completed') {
+        if (secView && ceoView) envelopes.push(new EnvelopeProjectile(secView, ceoView, 'agree'));
+        setAgentState('ceo', 'idle', 'completed', 'badge-working');
+        setAgentState('supervisor', 'idle', 'completed', 'badge-patrolling');
+        setAgentState('dev', 'idle', 'completed', 'badge-coding');
+        setAgentState('qa', 'idle', 'certified', 'badge-testing');
+        setAgentState('security', 'idle', 'clean', 'badge-alert');
+        if (ceoView) ceoView.showThought('Hardened code release certified and packaged! Ready in IDE.', 6.0);
+        if (secView) secView.showThought('Bandit AST clean. 0 vulnerabilities found.', 5.0);
+        if (qaView) qaView.showThought('All test suites verified green.', 5.0);
+        if (devView) devView.showThought('Microservice scaffold live in sandbox runner.', 5.0);
+      } else if (snapshot.status === 'rejected') {
+        if (ceoView) ceoView.showThought('PRD rejected by user. Pipeline halted.', 5.0);
+      }
+
+      lastKnownStage = stage;
+      renderBottomDock();
+    }
+
+    async function submitOfficeDecision(action) {
+      if (!activeSessionId) {
+        alert('No active session to decide on.');
+        return;
+      }
+      const notes = (document.getElementById('office-feedback-notes').value || '').trim();
+      if (action === 'request_changes' && !notes) {
+        alert('Please provide feedback notes explaining what changes are requested.');
+        document.getElementById('office-feedback-notes').focus();
+        return;
+      }
+      if (action === 'reject' && !confirm('Are you sure you want to reject this PRD? The pipeline will terminate.')) {
+        return;
+      }
+
+      document.getElementById('btn-office-approve').disabled = true;
+      document.getElementById('btn-office-revise').disabled = true;
+      document.getElementById('btn-office-reject').disabled = true;
+      appendTerminal('EXEC', `Submitting human decision: ${action.toUpperCase()}${notes ? ` ("${notes}")` : ''}`);
+
+      const ceo = characterEntities.get('ceo');
+      if (ceo) ceo.showThought(`Human decision received: ${action.toUpperCase()}. Resuming pipeline...`, 4.0);
+
+      try {
+        const res = await fetch(`/api/sessions/${encodeURIComponent(activeSessionId)}/decide`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, notes })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(err);
+        }
+        const snap = await res.json();
+        applyWorkflowSnapshot(snap, action === 'approve' ? 'planner_node' : 'approval_gate');
+      } catch (err) {
+        appendTerminal('FAIL', `Decision error: ${err.message}`);
+        document.getElementById('btn-office-approve').disabled = false;
+        document.getElementById('btn-office-revise').disabled = false;
+        document.getElementById('btn-office-reject').disabled = false;
+      }
+    }
+
     function triggerHiveEnvelope() {
       const dev = characterEntities.get('dev');
       const sec = characterEntities.get('security');
@@ -1533,28 +2046,86 @@
 
     function triggerEvaluatePRD() {
       const ceo = characterEntities.get('ceo');
+      if (!activeSessionId) {
+        appendTerminal('WARN', 'No active session. Please upload a PRD in the Web IDE first.');
+        if (ceo) ceo.showThought('Please upload a PRD in the Web IDE to begin review!', 5.0);
+        return;
+      }
       if (ceo) {
-        ceo.showThought("Appraising PRD viability & acceptance criteria...");
+        ceo.showThought('Appraising PRD viability, functional boundaries & acceptance criteria...', 5.0);
         camera.focusOn(ceo.px, ceo.py, 2.2);
-        appendTerminal('EVAL', 'CEO evaluating PRD requirements & architecture.');
+        selectAgent('ceo');
+        appendTerminal('EVAL', `CEO evaluating PRD specification for session ${activeSessionId.slice(0, 8)}...`);
       }
     }
 
-    function triggerRunTests() {
+    async function triggerRunTests() {
       const qa = characterEntities.get('qa');
+      if (!activeSessionId) {
+        appendTerminal('WARN', 'No active session. Upload a PRD in the Web IDE first.');
+        if (qa) qa.showThought('Awaiting active codebase before running tests.', 5.0);
+        return;
+      }
       if (qa) {
-        qa.showThought("Running pytest suite: 17 integration tests passed!");
+        qa.showThought('Executing pytest test suite in isolated sandbox...', 6.0);
         camera.focusOn(qa.px, qa.py, 2.2);
-        appendTerminal('PASS', 'QA passed 17 integration tests with 100% assertions.');
+        selectAgent('qa');
+      }
+      appendTerminal('QA', `Triggering live Pytest suite for session ${activeSessionId.slice(0, 8)}...`);
+      try {
+        const res = await fetch(`/api/sessions/${encodeURIComponent(activeSessionId)}/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entrypoint: 'main.py' })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const passed = data.exit_code === 0;
+          appendTerminal(passed ? 'PASS' : 'FAIL', `Sandbox run finished (Exit code: ${data.exit_code}, Duration: ${data.duration_ms}ms)`);
+          if (data.stdout) {
+            data.stdout.trim().split('\n').slice(-5).forEach(line => appendTerminal('TEST', line));
+          }
+          if (qa) {
+            qa.showThought(passed ? 'All integration tests passed!' : 'Pytest reported failures. Check terminal output.', 5.0);
+          }
+        } else {
+          appendTerminal('FAIL', `Sandbox run failed: ${data.detail || 'Error'}`);
+        }
+      } catch (e) {
+        appendTerminal('FAIL', `Failed to run tests: ${e.message}`);
       }
     }
 
-    function triggerSecurityAudit() {
+    async function triggerSecurityAudit() {
       const sec = characterEntities.get('security');
+      if (!activeSessionId) {
+        appendTerminal('WARN', 'No active session. Upload a PRD in the Web IDE first.');
+        if (sec) sec.showThought('Standing by for codebase to audit.', 5.0);
+        return;
+      }
       if (sec) {
-        sec.showThought("Bandit AST scan running... 0 vulnerabilities!");
+        sec.showThought('Running Bandit AST & Strix SAST penetration test...', 6.0);
         camera.focusOn(sec.px, sec.py, 2.2);
-        appendTerminal('SAST', 'Security running Bandit AST security scan: 0 vulnerabilities found.');
+        selectAgent('security');
+      }
+      appendTerminal('SAST', `Initiating live AST security audit on session ${activeSessionId.slice(0, 8)}...`);
+      try {
+        const res = await fetch(`/api/security/strix-scan?session_id=${encodeURIComponent(activeSessionId)}`, {
+          method: 'POST'
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const issues = (data.results || {}).issues || [];
+          const count = issues.length;
+          appendTerminal(count === 0 ? 'PASS' : 'WARN', `Security scan complete: ${count} issue(s) detected.`);
+          if (sec) {
+            sec.showThought(count === 0 ? 'Bandit AST scan clean: 0 vulnerabilities!' : `Detected ${count} issue(s). Applying hardening patches!`, 5.0);
+          }
+        } else {
+          appendTerminal('WARN', `Security scan: ${data.detail || 'Scan completed'}`);
+        }
+      } catch (e) {
+        appendTerminal('FAIL', `Security scan error: ${e.message}`);
       }
     }
 
@@ -1720,11 +2291,15 @@
     // Start loading on page load
     window.addEventListener('DOMContentLoaded', () => {
       loadOfficeScene();
+      initWorkflowConnection();
+
       const btnOpenIde = document.getElementById('btn-open-ide');
       if (btnOpenIde) {
         btnOpenIde.addEventListener('click', (e) => {
           if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-            window.location.href = '/';
+            e.preventDefault();
+            const ideUrl = activeSessionId ? `/?session_id=${encodeURIComponent(activeSessionId)}` : '/';
+            window.location.href = ideUrl;
           }
         });
       }

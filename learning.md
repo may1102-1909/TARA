@@ -795,5 +795,36 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Enables effortless, native bidirectional switching between the code editing / preview workspace and the 2D multi-agent office floor simulation without altering the visual design or duplicating pages.
 
+---
+
+### Step 41: Connecting Autonomous Office Floor to Real PRD Multi-Agent Pipeline
+- **What was done:**
+  - **Connected Main IDE PRD Upload to Active Session Persistence:**
+    * Main IDE (`backend/app/static/app.js` and `backend/app/static/index.html`) accepts `.pdf` (parsed server-side via `pypdf` in `/api/sessions/upload`), `.md`, and `.txt` files.
+    * When "Launch Multi-Agent Pipeline" is clicked, TARA sends the PRD text and filename to `POST /api/sessions/start`, sets `localStorage.setItem('tara_active_session_id', sessionId)`, and updates the Office Floor link to `/office?session_id=${sessionId}`.
+  - **Implemented `/api/sessions/latest` Endpoint (`backend/app/api/sessions.py`):**
+    * Added a dedicated route returning the most recently updated session state snapshot so navigation or direct `/office` visits seamlessly reconnect without requiring query parameters.
+    * Added `prd_filename` into `session_manager.get_state_snapshot()` so the exact uploaded document name displays across both interfaces.
+  - **Live Office Floor Pipeline Synchronization (`backend/app/static/office.html`):**
+    * Wired `initWorkflowConnection()` on load to inspect `?session_id=...`, `localStorage`, or `/api/sessions/latest`.
+    * Established live WebSocket connection to `/api/sessions/${sessionId}/stream` for synchronous node transition events.
+    * Replaced all mock/dummy activity loops with real LangGraph workflow stages:
+      - **CEO Review (`ceo_node`):** Camera focuses on CEO desk; CEO evaluates viability and writes real log entries.
+      - **Human Approval Gate (`approval_gate`):** Displays `#office-approval-card` with real critique, gaps, and decision buttons (`✓ Approve & Build`, `🔄 Request Changes`, `✕ Reject`).
+      - **Planning (`planner_node`):** Dispatches animated envelope projectile from CEO to Supervisor; Supervisor selects skills and plans architecture.
+      - **Development (`developer_node`):** Dispatches animated envelope projectile from Supervisor to Dev; Dev generates modular code files.
+      - **QA Testing (`qa_node`):** Dispatches projectile from Dev to QA; QA runs test suites in isolated sandbox. If tests fail, triggers repair loop projectile back to Dev.
+      - **AppSec Hardening (`security_node`):** QA passes release to Security Officer; Security runs AST scan and applies patches.
+      - **Release Completion (`pipeline_complete`):** Security routes verified release envelope to CEO; all 5 agents reflect completed status in the bottom dock.
+  - **Live Interactive Triggers in Office Floor:**
+    * `⚡ Evaluate Spec`: Focuses on CEO and reviews active PRD criteria.
+    * `🧪 Run Test Suites`: Calls `POST /api/sessions/{session_id}/run` to execute pytest in sandbox runner and stream live stdout to terminal.
+    * `🛡️ Security Scan`: Calls `POST /api/security/strix-scan` to run live Bandit AST checks on generated code.
+  - **Verification:**
+    * Automated end-to-end verification script tested PRD upload, pipeline start, session synchronization via WebSocket, human approval submission, downstream agent node execution, and sandbox test execution.
+- **Why we built it:**
+  - Unifies the Web IDE and the 2D pixel-art Office Floor into one single, live multi-agent system where every character's movements, thoughts, envelopes, and terminal logs represent real LangGraph workflow execution.
+
+
 
 

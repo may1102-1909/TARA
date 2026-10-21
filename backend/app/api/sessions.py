@@ -90,6 +90,17 @@ async def list_sessions_endpoint():
     return {"sessions": session_manager.list_sessions()}
 
 
+@router.get("/latest")
+async def get_latest_session_endpoint():
+    """Returns the snapshot of the most recently created or updated session."""
+    sessions = session_manager.list_sessions()
+    if not sessions:
+        return {"status": "none", "session_id": None}
+    latest_id = sessions[0]["session_id"]
+    snapshot = session_manager.get_state_snapshot(latest_id)
+    return snapshot
+
+
 @router.post("/cleanup")
 async def trigger_cleanup_endpoint(req: Optional[CleanupRequest] = None):
     """Manually triggers TTL cleanup job for expired sessions, zip packages, and sandbox folders."""

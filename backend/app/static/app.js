@@ -45,7 +45,11 @@ An asynchronous webhook dispatcher with exponential backoff and payload signing.
 
 class TaraIDE {
   constructor() {
-    this.sessionId = "tara-" + Math.random().toString(36).substring(2, 10);
+    const urlParams = new URLSearchParams(window.location.search);
+    const existingSessionId = urlParams.get("session_id") || localStorage.getItem("tara_active_session_id");
+    this.sessionId = existingSessionId || ("tara-" + Math.random().toString(36).substring(2, 10));
+    localStorage.setItem("tara_active_session_id", this.sessionId);
+    this.uploadedPrdFilename = "PRD.md";
     this.currentSession = null;
     this.editor = null;
     this.activeFile = null;
@@ -65,12 +69,19 @@ class TaraIDE {
     this.initSecurityWebSocket();
     this.bindEvents();
     this.updateSessionBadge();
+
+    if (existingSessionId) {
+      this.restoreExistingSession(existingSessionId);
+    }
   }
 
   initElements() {
     // Top & Header
     this.sessionBadgeText = document.getElementById("session-id-text");
     this.btnOpenOffice = document.getElementById("btn-open-office");
+    if (this.btnOpenOffice) {
+      this.btnOpenOffice.href = `/office?session_id=${encodeURIComponent(this.sessionId)}`;
+    }
     this.btnDownloadZip = document.getElementById("btn-download-zip");
 
     // Dock & Panels
@@ -1341,7 +1352,9 @@ class TaraIDE {
     if (this.btnOpenOffice) {
       this.btnOpenOffice.addEventListener("click", (e) => {
         if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-          window.location.href = "/office";
+          e.preventDefault();
+          localStorage.setItem("tara_active_session_id", this.sessionId);
+          window.location.href = `/office?session_id=${encodeURIComponent(this.sessionId)}`;
         }
       });
     }
@@ -1661,6 +1674,7 @@ class TaraIDE {
 
   async handleFileSelect(file) {
     if (!file) return;
+    this.uploadedPrdFilename = file.name;
 
     const isPdf = file.name.toLowerCase().endsWith(".pdf");
     const dropZoneHint = this.dropZone.querySelector(".upload-hint");
@@ -1706,6 +1720,21 @@ class TaraIDE {
       if (dropZoneHint) {
         dropZoneHint.innerHTML = originalHint;
       }
+    }
+  }
+
+  async restoreExistingSession(sessionId) {
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`);
+      if (res.ok) {
+        const snap = await res.json();
+        if (snap && snap.status !== "not_found") {
+          this.handleSessionUpdate(snap);
+          this.appendLog("SYSTEM", `Resumed active workflow session: ${sessionId}`);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not resume previous session:", e);
     }
   }
 
@@ -1794,10 +1823,15 @@ class TaraIDE {
     this.setDeskStatus("sec", "idle", "Auditing rules primed");
 
     try {
+      localStorage.setItem("tara_active_session_id", this.sessionId);
+      if (this.btnOpenOffice) {
+        this.btnOpenOffice.href = `/office?session_id=${encodeURIComponent(this.sessionId)}`;
+      }
+
       const payload = {
         session_id: this.sessionId,
         prd_text: prdText,
-        prd_filename: "architecture_spec.md"
+        prd_filename: this.uploadedPrdFilename || "architecture_spec.md"
       };
 
       const res = await fetch("/api/sessions/start", {
