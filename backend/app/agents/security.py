@@ -1,3 +1,4 @@
+# cspell:words Strix strix STRIX genai GENAI
 """Agent 4: Security Officer / Ethical Hacker & Autonomous SAST Hardening.
 
 Executes a triple-layer dynamic security scan:

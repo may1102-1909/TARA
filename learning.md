@@ -825,6 +825,21 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Unifies the Web IDE and the 2D pixel-art Office Floor into one single, live multi-agent system where every character's movements, thoughts, envelopes, and terminal logs represent real LangGraph workflow execution.
 
+---
+
+### Step 42: Cleaned Spellcheck Linter Warnings in Security Agent
+- **What was done:**
+  - **Identified Linter Notice Source:**
+    * In `backend/app/agents/security.py`, the IDE's spell checker flagged domain-specific names (`Strix`, `strix`, `STRIX`, `genai`, `GENAI`) as unknown words.
+  - **Configured Project Dictionaries:**
+    * Added file-level `# cspell:words Strix strix STRIX genai GENAI` in `backend/app/agents/security.py`.
+    * Added `.vscode/settings.json` and `cspell.json` at the workspace root to permanently whitelist TARA architecture terms (`Strix`, `genai`, `LangGraph`, `pypdf`, `SAST`, `DAST`, `checkpointer`, etc.).
+  - **Verification:**
+    * Validated `security.py` syntax via `py_compile` with zero compilation or syntax errors.
+- **Why we built it:**
+  - Clears noisy spellcheck warnings and keeps the development environment clean and focused on actual code and test diagnostics.
+
+
 
 
 
