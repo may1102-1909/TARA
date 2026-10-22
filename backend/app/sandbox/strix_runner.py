@@ -1,3 +1,4 @@
+# cspell:words usestrix
 """Programmatic Strix Runner for Autonomous Security Penetration Testing.
 
 Executes Strix (https://github.com/usestrix/strix) in headless / non-interactive mode:

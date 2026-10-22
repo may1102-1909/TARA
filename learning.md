@@ -877,6 +877,18 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Clears all unknown-word notices in the Autonomous Office Floor simulation code while keeping spellchecking active for general text.
 
+---
+
+### Step 46: Cleaned Spellcheck Linter Notice in Strix Runner
+- **What was done:**
+  - **Identified Linter Notice in Runner:**
+    * In `backend/app/sandbox/strix_runner.py` line 106, the Docker image name `usestrix/strix:latest` was flagged by cSpell because `usestrix` is the official GitHub organization and Docker Hub namespace for the Strix project.
+  - **Configured Words Directive:**
+    * Added `# cspell:words usestrix` at line 1 of `backend/app/sandbox/strix_runner.py`.
+- **Why we built it:**
+  - Ensures clean diagnostics across the sandbox runner while accurately referencing the official upstream Strix container image.
+
+
 
 
 
