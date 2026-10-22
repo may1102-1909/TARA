@@ -839,6 +839,22 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Clears noisy spellcheck warnings and keeps the development environment clean and focused on actual code and test diagnostics.
 
+---
+
+### Step 43: Configured Python Interpreter & Pyright Paths for Language Server
+- **What was done:**
+  - **Identified Missing Module Warnings in Language Server:**
+    * The IDE language server reported `Cannot find module pydantic`, `Cannot find module langchain_google_genai`, and `Cannot find module langchain_core.messages`.
+    * Root cause: The language server had fallen back to an inactive system directory (`c:\venv`) instead of querying the active Python 3.11 environment (`C:\Users\tanma\AppData\Local\Programs\Python\Python311\Lib\site-packages`), where all packages are installed and functional.
+  - **Configured Language Server Resolution:**
+    * Created `pyrightconfig.json` specifying `extraPaths` pointing to `backend` and Python 3.11 `site-packages`, with `pythonPath` set to `Python311\python.exe`.
+    * Updated `.vscode/settings.json` with `python.defaultInterpreterPath`, `python.analysis.extraPaths`, and `python.autoComplete.extraPaths`.
+  - **Verification:**
+    * Verified successful imports of `pydantic`, `langchain_google_genai`, and `langchain_core` via Python 3.11 runtime.
+- **Why we built it:**
+  - Ensures the IDE's static analysis and autocomplete engines accurately locate and resolve all installed project dependencies without false import errors.
+
+
 
 
 

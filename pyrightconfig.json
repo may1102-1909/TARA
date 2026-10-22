@@ -1,0 +1,10 @@
+{
+  "include": [
+    "backend"
+  ],
+  "extraPaths": [
+    "backend",
+    "C:\\Users\\tanma\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages"
+  ],
+  "pythonPath": "C:\\Users\\tanma\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
+}
