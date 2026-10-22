@@ -865,6 +865,19 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Eliminates visual clutter in markdown documentation and ensures consistent spellchecking across all project files.
 
+---
+
+### Step 45: Registered Office Floor Simulation & Pixel-Art Engine Terminology
+- **What was done:**
+  - **Identified Linter Notices in Office Floor View:**
+    * In `backend/app/static/office.html`, the IDE's spell checker flagged procedural pixel-art character generator variables (`sbase`, `dressshirt`, `hairc`) and Pixi.js / Tiled map engine properties (`lerp`, `firstgid`, `tilewidth`, `tileheight`, `tileset`, `tilesets`, `walkability`, `Pathfinding`).
+  - **Configured Words in Dictionary:**
+    * Added `<!-- cspell:words ... -->` header directive in `backend/app/static/office.html`.
+    * Updated `cspell.json` and `.vscode/settings.json` with the full vocabulary for the 2D pixel rendering and pathfinding engine.
+- **Why we built it:**
+  - Clears all unknown-word notices in the Autonomous Office Floor simulation code while keeping spellchecking active for general text.
+
+
 
 
 
