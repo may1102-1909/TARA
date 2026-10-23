@@ -334,7 +334,8 @@ class SessionManager:
                     break
 
         status = "awaiting_approval" if is_interrupted else (
-            "completed" if len(graph_state.tasks) == 0 else "running"
+            ("completed_with_issues" if values.get("qa_passed") is False else "completed")
+            if len(graph_state.tasks) == 0 else "running"
         )
         
         return {
@@ -345,6 +346,8 @@ class SessionManager:
             "interrupt_payload": interrupt_payload,
             "current_stage": values.get("current_stage", "unknown"),
             "revision_count": values.get("revision_count", 0),
+            "prd_checklist": values.get("prd_checklist", []),
+            "unclear_requirements": values.get("unclear_requirements", []),
             "ceo_critique": values.get("ceo_critique"),
             "user_action": values.get("user_action"),
             "human_feedback_notes": values.get("human_feedback_notes", []),
@@ -358,6 +361,7 @@ class SessionManager:
             "repair_count": values.get("repair_count", 0),
             "test_output": values.get("test_output"),
             "failing_files": values.get("failing_files", []),
+            "qa_unresolved_summary": values.get("qa_unresolved_summary"),
             "security_patches": values.get("security_patches", {}),
             "security_findings": values.get("security_findings", []),
             "audit_summary": values.get("audit_summary"),

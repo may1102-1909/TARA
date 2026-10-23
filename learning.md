@@ -888,6 +888,37 @@ Here is the journey of your project requirements document (PRD) from start to fi
 - **Why we built it:**
   - Ensures clean diagnostics across the sandbox runner while accurately referencing the official upstream Strix container image.
 
+---
+
+### Step 47: Improved PRD-to-Code Workflow (Checklist, Planner Plan, Developer Structure, Rigorous QA Review, and Bounded Repair Loop)
+- **What was done:**
+  - **PRD Requirements Checklist & Missing Detail Flagging:**
+    * Added automated extraction of PRD requirements into a structured checklist (`id`, `description`, `category`, `clarity`, `flag_note`) upon document upload and CEO review.
+    * Flags unstated architectural assumptions (such as unspecified database persistence, omitted authentication rules, or missing API routes) directly to the user rather than guessing silently.
+    * The original PRD text remains intact in state so all downstream agents have complete context.
+  - **Structured Planner Output:**
+    * Upgraded the Architecture Planner to produce an `app_summary`, a prioritized `feature_list`, `proposed_files` with each file's specific `purpose`, and a step-by-step `implementation_order`.
+    * Distinguishes web applications from non-web utilities (such as CLI tools, data scrapers, and backend libraries). For web apps, it plans dedicated HTML, CSS, and JS files; for non-web projects, it avoids creating unnecessary web files.
+  - **Structured Developer Output:**
+    * Guided the Developer agent to follow the PRD checklist and implementation order sequentially.
+    * Generates modular files with separate responsibilities and verified cross-file connections (such as HTML linking to the correct stylesheet/script, and Python modules importing cleanly from each other).
+  - **Four-Dimensional QA Review:**
+    * Extended the QA agent to evaluate four concrete dimensions:
+      1. **Requirements Review**: Evaluates each PRD requirement as `passed`, `failed`, or `not_checked` with a clear explanation.
+      2. **Planned Files Review**: Verifies that every planned file exists, has valid syntax, and does not contain placeholders.
+      3. **Integration Review**: Verifies stylesheet/script references in HTML files and resolves internal Python module imports.
+      4. **Preview Review**: Validates whether the project can be rendered and tested using TARA's existing sandbox preview proxy (`/api/preview/proxy/{session_id}`).
+  - **Bounded 3-Attempt Repair Loop:**
+    * When QA detects defects, it generates a structured `qa_repair_context` object specifying exact failing files, failing requirements, and broken integrations, and routes back to the Developer.
+    * Limits the repair loop to a maximum of 3 attempts.
+    * If defects remain after 3 attempts, TARA clearly marks the session as `completed_with_issues`, presents an unresolved summary banner to the user, and proceeds to security auditing instead of falsely claiming success.
+  - **Full Web IDE & Office Floor Integration:**
+    * Added real-time checklist and unclear detail badges to the IDE specification panel and CEO approval modal.
+    * Added an implementation order stepper and file purpose cards to the plan panel.
+    * Added a dedicated QA review inspection panel to the files view showing per-requirement status pills, integration status, and unresolved repair warnings.
+- **Why we built it:**
+  - Gives users full transparency into how their requirements are interpreted, ensures generated code is modular and properly tested across multiple files, and prevents endless loops while honestly reporting any remaining issues.
+
 
 
 

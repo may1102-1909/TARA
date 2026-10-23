@@ -128,6 +128,15 @@
               <textarea id="prd-input-textarea" class="prd-textarea" spellcheck="false" placeholder="Paste or type your product requirements, architecture specification, features, or user stories here..."></textarea>
             </div>
 
+            <div id="prd-checklist-container" class="checklist-container" style="display: none;">
+              <div class="checklist-header">
+                <span class="section-label">Requirements Checklist</span>
+                <span class="checklist-badge" id="checklist-count-badge">0 items</span>
+              </div>
+              <div id="prd-unclear-warning" class="unclear-warning-box" style="display: none;"></div>
+              <div id="prd-checklist-items" class="checklist-items-list"></div>
+            </div>
+
             <button id="btn-start-pipeline" class="btn btn-primary btn-block glow-button">
               Launch Multi-Agent Pipeline
             </button>
@@ -145,6 +154,15 @@
               <p>No files generated yet</p>
               <small>Provide a PRD or prompt TARA to scaffold and write code.</small>
             </div>
+          </div>
+          <div id="qa-review-container" class="qa-review-panel" style="display: none; padding: 10px 14px 14px 14px; border-top: 1.5px solid var(--border-color, #27272a);">
+            <div class="qa-header">
+              <span class="section-label">QA Review</span>
+              <span class="qa-badge" id="qa-status-pill">Pending</span>
+            </div>
+            <div id="qa-issues-warning" class="qa-unresolved-banner" style="display: none;"></div>
+            <div id="qa-preview-summary" class="qa-preview-box" style="margin-bottom: 8px;"></div>
+            <div id="qa-requirements-breakdown" class="qa-reqs-list"></div>
           </div>
         </div>
       </aside>
@@ -505,6 +523,11 @@
               <h4>Structural Flaws</h4>
               <ul id="modal-flaws-list" class="styled-list flaws"></ul>
             </div>
+          </div>
+          <div class="critique-section" id="modal-checklist-section" style="display: none;">
+            <h4>PRD Requirements Checklist & Missing Detail Alerts</h4>
+            <div id="modal-unclear-alerts" class="unclear-warning-box" style="display: none;"></div>
+            <ul id="modal-checklist-list" class="styled-list checklist" style="margin-top: 6px;"></ul>
           </div>
           <div class="critique-section">
             <h4>Recommendation</h4>

@@ -178,6 +178,23 @@ class TaraIDE {
     this.btnGateRequestChanges = document.getElementById("btn-gate-request-changes");
     this.btnGateReject = document.getElementById("btn-gate-reject");
 
+    // PRD Checklist & QA Review Elements
+    this.prdChecklistContainer = document.getElementById("prd-checklist-container");
+    this.checklistCountBadge = document.getElementById("checklist-count-badge");
+    this.prdUnclearWarning = document.getElementById("prd-unclear-warning");
+    this.prdChecklistItems = document.getElementById("prd-checklist-items");
+
+    this.qaReviewContainer = document.getElementById("qa-review-container");
+    this.qaStatusPill = document.getElementById("qa-status-pill");
+    this.qaIssuesWarning = document.getElementById("qa-issues-warning");
+    this.qaPreviewSummary = document.getElementById("qa-preview-summary");
+    this.qaRequirementsBreakdown = document.getElementById("qa-requirements-breakdown");
+
+    this.modalChecklistSection = document.getElementById("modal-checklist-section");
+    this.modalUnclearAlerts = document.getElementById("modal-unclear-alerts");
+    this.modalChecklistList = document.getElementById("modal-checklist-list");
+    this.planSummaryContainer = document.getElementById("plan-summary-container");
+
     // Split Canvas & Live Preview elements (Davis UI Style)
     this.splitCanvasContainer = document.getElementById("split-canvas-container");
     this.splitEditorPane = document.getElementById("split-editor-pane");
@@ -1676,50 +1693,172 @@ class TaraIDE {
     if (!file) return;
     this.uploadedPrdFilename = file.name;
 
-    const isPdf = file.name.toLowerCase().endsWith(".pdf");
     const dropZoneHint = this.dropZone.querySelector(".upload-hint");
     const originalHint = dropZoneHint ? dropZoneHint.innerHTML : "";
 
     if (dropZoneHint) {
-      dropZoneHint.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Parsing ${file.name}...</span>`;
+      dropZoneHint.innerHTML = `<span style="color: var(--accent-cyan);">⏳ Parsing & extracting requirements from ${file.name}...</span>`;
     }
 
     try {
-      if (isPdf) {
-        const formData = new FormData();
-        formData.append("file", file);
+      const formData = new FormData();
+      formData.append("file", file);
 
-        const res = await fetch("/api/sessions/upload", {
-          method: "POST",
-          body: formData,
-        });
+      const res = await fetch("/api/sessions/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({ detail: res.statusText }));
-          throw new Error(errData.detail || "Failed to parse PDF document.");
-        }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(errData.detail || "Failed to parse document.");
+      }
 
-        const data = await res.json();
-        this.prdTextarea.value = data.extracted_text;
-        if (this.prdCharCounter) this.prdCharCounter.textContent = `${data.extracted_text.length.toLocaleString()} chars`;
-        this.appendLog("SYSTEM", `📄 Extracted ${data.page_count} page(s) from PDF "${data.filename}" (${data.char_count.toLocaleString()} characters)`);
-      } else {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          this.prdTextarea.value = e.target.result;
-          if (this.prdCharCounter) this.prdCharCounter.textContent = `${e.target.result.length.toLocaleString()} chars`;
-          this.appendLog("SYSTEM", `📄 Loaded document: ${file.name} (${file.size.toLocaleString()} bytes)`);
-        };
-        reader.readAsText(file);
+      const data = await res.json();
+      this.prdTextarea.value = data.extracted_text;
+      if (this.prdCharCounter) {
+        this.prdCharCounter.textContent = `${data.extracted_text.length.toLocaleString()} chars`;
+      }
+      this.appendLog("SYSTEM", `📄 Loaded PRD "${data.filename}" (${data.char_count.toLocaleString()} chars). Extracted ${data.checklist ? data.checklist.length : 0} requirements.`);
+
+      if (data.checklist && data.checklist.length > 0) {
+        this.renderChecklist(data.checklist, data.unclear_details);
       }
     } catch (err) {
-      console.error("Upload error:", err);
-      alert(`Error loading file: ${err.message}`);
-      this.appendLog("SYSTEM", `❌ Failed to parse ${file.name}: ${err.message}`);
+      console.warn("Upload endpoint notice, falling back to local file reader:", err);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.prdTextarea.value = e.target.result;
+        if (this.prdCharCounter) {
+          this.prdCharCounter.textContent = `${e.target.result.length.toLocaleString()} chars`;
+        }
+        this.appendLog("SYSTEM", `📄 Loaded document: ${file.name} (${file.size.toLocaleString()} bytes)`);
+      };
+      reader.readAsText(file);
     } finally {
       if (dropZoneHint) {
         dropZoneHint.innerHTML = originalHint;
       }
+    }
+  }
+
+  renderChecklist(checklist, unclearDetails = []) {
+    if (!this.prdChecklistContainer) return;
+    if (!checklist || checklist.length === 0) {
+      this.prdChecklistContainer.style.display = "none";
+      return;
+    }
+
+    this.prdChecklistContainer.style.display = "block";
+    if (this.checklistCountBadge) {
+      this.checklistCountBadge.textContent = `${checklist.length} items`;
+    }
+
+    // Flagged missing or unclear details
+    if (this.prdUnclearWarning) {
+      if (unclearDetails && unclearDetails.length > 0) {
+        this.prdUnclearWarning.style.display = "block";
+        const warningsHtml = unclearDetails.map(w => `<li>⚠️ ${this.escapeHtml(w)}</li>`).join("");
+        this.prdUnclearWarning.innerHTML = `<strong>Flagged Ambiguities / Missing Details:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">${warningsHtml}</ul>`;
+      } else {
+        this.prdUnclearWarning.style.display = "none";
+      }
+    }
+
+    if (this.prdChecklistItems) {
+      this.prdChecklistItems.innerHTML = checklist.map((item) => {
+        const clarityClass = (item.clarity || "clear").toLowerCase();
+        const flagHtml = item.flag_notes ? `<div class="flag-note">⚠️ ${this.escapeHtml(item.flag_notes)}</div>` : "";
+        return `
+          <div class="checklist-item">
+            <div class="checklist-item-title-row">
+              <span><strong>[${this.escapeHtml(item.id || "REQ")}]</strong> ${this.escapeHtml(item.title || "")}</span>
+              <span class="clarity-tag ${clarityClass}">${this.escapeHtml(item.clarity || "clear")}</span>
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.68rem; margin-top: 2px;">${this.escapeHtml(item.description || "")}</div>
+            ${flagHtml}
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  renderQAReport(qaReport, qaPassed, repairCount = 0) {
+    if (!this.qaReviewContainer || !qaReport) return;
+    this.qaReviewContainer.style.display = "block";
+
+    const passed = Boolean(qaPassed);
+    if (this.qaStatusPill) {
+      this.qaStatusPill.className = `qa-badge ${passed ? "passed" : "failed"}`;
+      this.qaStatusPill.textContent = passed ? "Passed" : (repairCount >= 3 ? "Unresolved" : `Repair #${repairCount}`);
+    }
+
+    // Issues banner
+    if (this.qaIssuesWarning) {
+      if (!passed && repairCount >= 3) {
+        this.qaIssuesWarning.style.display = "block";
+        this.qaIssuesWarning.innerHTML = `
+          <strong>Quality Audit Incomplete:</strong> Unresolved failures remain after 3 repair attempts.
+          <div style="margin-top: 4px;">${this.escapeHtml(qaReport.summary || "Issues remain")}</div>
+        `;
+      } else if (!passed) {
+        this.qaIssuesWarning.style.display = "block";
+        this.qaIssuesWarning.innerHTML = `
+          <strong>Quality Issues Found (Attempt ${repairCount}/3):</strong>
+          <div>${this.escapeHtml(qaReport.summary || "Repair loop active")}</div>
+        `;
+      } else {
+        this.qaIssuesWarning.style.display = "none";
+      }
+    }
+
+    // Preview summary
+    if (this.qaPreviewSummary && qaReport.preview_review) {
+      const prev = qaReport.preview_review;
+      const canPrev = prev.can_preview;
+      const urlLink = prev.preview_url ? `<a href="${prev.preview_url}" target="_blank" style="margin-left: 6px; text-decoration: underline;">Open Preview ↗</a>` : "";
+      this.qaPreviewSummary.innerHTML = `
+        <div style="font-size: 0.72rem; padding: 6px; background: ${canPrev ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${canPrev ? '#bbf7d0' : '#fecaca'};">
+          <span>${canPrev ? '✅' : '❌'} <strong>${this.escapeHtml(prev.preview_type || 'Preview')}:</strong> ${this.escapeHtml(prev.details || '')}</span>
+          ${urlLink}
+        </div>
+      `;
+    }
+
+    // Requirements breakdown
+    if (this.qaRequirementsBreakdown && qaReport.requirements_review) {
+      const reqRows = qaReport.requirements_review.map((r) => {
+        const st = (r.status || "not_checked").toLowerCase();
+        return `
+          <div class="qa-req-row">
+            <div>
+              <strong>[${this.escapeHtml(r.id || "REQ")}]</strong> ${this.escapeHtml(r.title || "")}
+              <div style="color: var(--text-muted); font-size: 0.65rem;">${this.escapeHtml(r.reason || "")}</div>
+            </div>
+            <span class="qa-status-pill ${st}">${st}</span>
+          </div>
+        `;
+      }).join("");
+
+      // Planned files breakdown
+      const filesRows = (qaReport.planned_files_review || []).map((f) => {
+        const st = (f.status || "missing").toLowerCase();
+        return `
+          <div class="qa-req-row">
+            <div>
+              <code>${this.escapeHtml(f.path)}</code>: ${this.escapeHtml(f.purpose || "")}
+              <div style="color: var(--text-muted); font-size: 0.65rem;">${this.escapeHtml(f.reason || "")}</div>
+            </div>
+            <span class="qa-status-pill ${st}">${st}</span>
+          </div>
+        `;
+      }).join("");
+
+      this.qaRequirementsBreakdown.innerHTML = `
+        <div style="margin-top: 8px; font-weight: 700; font-size: 0.7rem;">PRD Requirements:</div>
+        ${reqRows}
+        ${filesRows ? `<div style="margin-top: 8px; font-weight: 700; font-size: 0.7rem;">Planned Files Check:</div>${filesRows}` : ''}
+      `;
     }
   }
 
@@ -1864,9 +2003,19 @@ class TaraIDE {
       snapshot.logs.forEach((l) => this.appendLog(l.agent, l.message, l.timestamp));
     }
 
+    // Render PRD Checklist if present
+    if (snapshot.prd_checklist && snapshot.prd_checklist.length > 0) {
+      this.renderChecklist(snapshot.prd_checklist, snapshot.unclear_requirements);
+    }
+
     // Render Architecture Plan & Skills
     if (snapshot.plan) {
       this.renderPlanDetails(snapshot.plan, snapshot.qa_report, snapshot.repair_count);
+    }
+
+    // Render QA Review Report
+    if (snapshot.qa_report) {
+      this.renderQAReport(snapshot.qa_report, snapshot.qa_passed, snapshot.repair_count);
     }
 
     // HITL Gate check
@@ -1876,7 +2025,26 @@ class TaraIDE {
       this.setDeskStatus("ceo", "done", "Critique rendered: viability evaluated");
       this.setDeskStatus("planner", "waiting", "Standing by for approval");
       this.setDeskStatus("dev", "waiting", "Awaiting client sign-off");
-      this.openApprovalModal(snapshot.ceo_critique, snapshot.revision_count);
+      this.openApprovalModal(
+        snapshot.ceo_critique,
+        snapshot.revision_count,
+        snapshot.prd_checklist,
+        snapshot.unclear_requirements
+      );
+    } else if (snapshot.status === "completed_with_issues") {
+      this.closeApprovalModal();
+      this.setStepperStep("package");
+      this.stageStatusText.textContent = "Finished with Unresolved Quality Issues (3 Repair Attempts Reached)";
+      this.btnDownloadZip.disabled = false;
+      if (this.btnRunCode) this.btnRunCode.disabled = false;
+      this.btnStartPipeline.disabled = false;
+      this.btnStartPipeline.innerHTML = `<span class="btn-icon">⚠️</span><span>Finished with Issues</span>`;
+      this.setDeskStatus("ceo", "done");
+      this.setDeskStatus("planner", "done");
+      this.setDeskStatus("dev", "done");
+      this.setDeskStatus("qa", "alert", "3 repair attempts reached; remaining issues listed");
+      this.setDeskStatus("sec", "done", "Audit complete. Issues flagged.");
+      this.renderArtifacts(snapshot, true);
     } else if (snapshot.status === "completed") {
       this.closeApprovalModal();
       this.setStepperStep("package");
@@ -1954,6 +2122,21 @@ class TaraIDE {
         .map((s) => `<span class="skill-badge ${s}">⚡ ${s}</span>`)
         .join(" ");
 
+      const appSummary = plan.app_summary || plan.project_summary || "System Architecture";
+      const features = plan.feature_list || plan.required_features || [];
+      const featuresListHtml = features.map(f => `<li>${this.escapeHtml(f)}</li>`).join("");
+
+      const files = plan.proposed_files || plan.file_plan || [];
+      const filesHtml = files.map(f => {
+        const purp = f.purpose || f.responsibility || "Implementation file";
+        return `<div style="font-size: 0.68rem; padding: 2px 0;"><code>${this.escapeHtml(f.path)}</code>: <span style="color: var(--text-muted);">${this.escapeHtml(purp)}</span></div>`;
+      }).join("");
+
+      const order = plan.implementation_order || [];
+      const orderHtml = order.length > 0
+        ? `<div style="margin-top: 6px;"><strong>Implementation Order:</strong><div class="implementation-stepper">${order.map((o, idx) => `<span class="step-chip">${idx+1}. ${this.escapeHtml(o)}</span>`).join("")}</div></div>`
+        : "";
+
       const criteriaList = (plan.acceptance_criteria || [])
         .map((c) => {
           const passed = !qaReport || !qaReport.issues || !qaReport.issues.some((iss) => iss.description && iss.description.includes(c));
@@ -1966,19 +2149,22 @@ class TaraIDE {
       this.planSummaryContainer.innerHTML = `
         <div class="plan-summary-box">
           <div class="plan-summary-header">
-            <span>📐 Blueprint: ${this.escapeHtml(plan.project_summary || "System Architecture")}</span>
+            <span>📐 Blueprint: ${this.escapeHtml(appSummary)}</span>
             <span style="font-size: 0.65rem; color: var(--text-muted);">${this.escapeHtml(plan.architecture_type || "")}</span>
           </div>
           <div style="margin-bottom: 6px;">
             ${skillsBadges || '<span class="skill-badge">python</span>'}
           </div>
+          ${features.length > 0 ? `<div style="font-size: 0.7rem; font-weight: 700; margin-top: 6px;">Features:</div><ul style="margin: 2px 0 6px 14px; padding: 0; font-size: 0.68rem;">${featuresListHtml}</ul>` : ""}
+          ${files.length > 0 ? `<div style="font-size: 0.7rem; font-weight: 700; margin-top: 6px;">Proposed Files & Purpose:</div>${filesHtml}` : ""}
+          ${orderHtml}
           ${criteriaList ? `<div style="font-weight: 700; font-size: 0.7rem; margin-top: 6px;">Acceptance Criteria:</div><div class="criteria-list">${criteriaList}</div>` : ""}
         </div>
       `;
     }
   }
 
-  openApprovalModal(critique, revisionCount = 0) {
+  openApprovalModal(critique, revisionCount = 0, checklist = null, unclearDetails = null) {
     const verdict = (critique.verdict || "VIABLE").toUpperCase();
     this.modalVerdictText.textContent = verdict;
     this.modalMarketText.textContent = critique.market_viability || "Sound product market fit.";
@@ -2011,6 +2197,34 @@ class TaraIDE {
       li.textContent = flaw;
       this.modalFlawsList.appendChild(li);
     });
+
+    // PRD Checklist & Unclear detail warnings in Modal
+    const items = checklist || critique.checklist || [];
+    const unclears = unclearDetails || critique.unclear_details || [];
+    if (this.modalChecklistSection) {
+      if (items.length > 0 || unclears.length > 0) {
+        this.modalChecklistSection.style.display = "block";
+        if (this.modalUnclearAlerts) {
+          if (unclears.length > 0) {
+            this.modalUnclearAlerts.style.display = "block";
+            this.modalUnclearAlerts.innerHTML = `<strong>⚠️ Flagged Missing/Unclear Details:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">${unclears.map(u => `<li>${this.escapeHtml(u)}</li>`).join("")}</ul>`;
+          } else {
+            this.modalUnclearAlerts.style.display = "none";
+          }
+        }
+        if (this.modalChecklistList) {
+          this.modalChecklistList.innerHTML = items.map(item => `
+            <li>
+              <strong>[${this.escapeHtml(item.id || "REQ")}]</strong> ${this.escapeHtml(item.title || item.description)}
+              <span class="clarity-tag ${(item.clarity || 'clear').toLowerCase()}">${this.escapeHtml(item.clarity || 'clear')}</span>
+              ${item.flag_notes ? `<div style="color: #b45309; font-size: 0.68rem;">Notice: ${this.escapeHtml(item.flag_notes)}</div>` : ''}
+            </li>
+          `).join("");
+        }
+      } else {
+        this.modalChecklistSection.style.display = "none";
+      }
+    }
 
     this.approvalModal.classList.add("active");
   }

@@ -130,12 +130,18 @@ async def upload_document_endpoint(
             detail="Extracted document content is too short (minimum 10 characters required)."
         )
 
+    from app.agents.ceo import extract_prd_checklist_heuristic
+    checklist_models, unclear_details = extract_prd_checklist_heuristic(extracted_text)
+    checklist_data = [item.model_dump() for item in checklist_models]
+
     response_data = {
         "filename": file.filename,
         "file_type": file_type,
         "page_count": page_count,
         "char_count": len(extracted_text),
         "extracted_text": extracted_text,
+        "checklist": checklist_data,
+        "unclear_details": unclear_details,
     }
 
     if start_session:

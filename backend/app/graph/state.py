@@ -27,11 +27,48 @@ class AuditSummary(TypedDict, total=False):
     unresolved_risks: List[str]
     completed_at: Optional[str]
 
+class PRDChecklistItem(TypedDict, total=False):
+    id: str  # e.g. "REQ-1"
+    title: str
+    category: str  # e.g. "functional", "technical", "ui", "data"
+    description: str
+    clarity: Literal["clear", "unclear", "missing_detail"]
+    flag_notes: Optional[str]
+
+class RequirementReview(TypedDict, total=False):
+    id: str
+    title: str
+    status: Literal["passed", "failed", "not_checked"]
+    reason: str
+
+class PlannedFileReview(TypedDict, total=False):
+    path: str
+    purpose: str
+    status: Literal["passed", "failed", "missing"]
+    reason: str
+
+class IntegrationReview(TypedDict, total=False):
+    name: str
+    passed: bool
+    details: str
+
+class PreviewReview(TypedDict, total=False):
+    can_preview: bool
+    preview_type: str  # "web_preview", "api_docs", "terminal_cli"
+    preview_url: Optional[str]
+    details: str
+
 class PlannedFile(TypedDict, total=False):
     path: str
-    responsibility: str
+    purpose: str
+    responsibility: str  # backward-compatible alias for purpose
 
 class PlannerOutput(TypedDict, total=False):
+    app_summary: str
+    feature_list: List[str]
+    proposed_files: List[PlannedFile]
+    implementation_order: List[str]
+    # Backward-compatible fields
     project_summary: str
     required_features: List[str]
     architecture_type: str  # e.g. "web_app", "backend_api", "cli_tool", "library"
@@ -46,6 +83,8 @@ class AgentState(TypedDict, total=False):
     session_id: str
     prd_filename: str
     prd_text: str
+    prd_checklist: List[PRDChecklistItem]
+    unclear_requirements: List[str]
     
     # CEO Review & Revision Loop
     ceo_critique: Optional[CEOCritique]
@@ -71,6 +110,7 @@ class AgentState(TypedDict, total=False):
     qa_repair_context: Optional[Dict[str, Any]]
     test_output: Optional[str]
     failing_files: Optional[List[str]]
+    qa_unresolved_summary: Optional[str]
     
     # Security Hardening & Audit
     security_patches: Dict[str, str]
@@ -94,6 +134,8 @@ def create_initial_state(
         "session_id": session_id,
         "prd_filename": prd_filename,
         "prd_text": prd_text,
+        "prd_checklist": [],
+        "unclear_requirements": [],
         "ceo_critique": None,
         "user_action": None,
         "human_feedback_notes": [],
@@ -109,6 +151,7 @@ def create_initial_state(
         "qa_repair_context": None,
         "test_output": None,
         "failing_files": [],
+        "qa_unresolved_summary": None,
         "security_patches": {},
         "security_findings": [],
         "audit_summary": None,

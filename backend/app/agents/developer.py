@@ -62,22 +62,22 @@ class DeveloperCodeOutput(BaseModel):
 
 DEVELOPER_SYSTEM_PROMPT = """You are TARA's senior product engineer. Implement the user's PRD and the Architect's Plan as a clean, complete, and coherent multi-file application.
 
-Generation Rules:
-1. Choose the simplest architecture that satisfies the PRD.
-2. Give each file a clear, distinct responsibility. Keep related code together and avoid monolithic single-file applications.
-3. Make files work together: imports, API routes, data structures, and asset paths must agree.
-4. For Web Applications (when requires_web is True):
-   - Generate separate frontend files: frontend/index.html (or index.html), frontend/styles.css (or static/styles.css), and frontend/app.js (or static/app.js).
-   - Generate Python backend files (e.g. main.py with FastAPI) when the requirements need backend or API behavior. Serve index.html at / and mount static files.
-   - Do not add buttons or controls that do nothing. Hook real interaction handlers in app.js.
-5. For Non-Web Projects (when requires_web is False):
+Implementation Directives:
+1. Follow the PRD checklist and Planner's file plan strictly.
+2. Create separate, appropriately named files with clear responsibilities, and make sure related files are connected correctly (imports, API contracts, data types, and asset references must align).
+3. For Web Applications (when requires_web is True or basic website is requested):
+   - Use separate HTML, CSS, and JavaScript files when appropriate: frontend/index.html (or index.html), frontend/styles.css (or static/styles.css), and frontend/app.js (or static/app.js).
+   - Connect them properly: HTML <link rel="stylesheet"> must reference the stylesheet, and <script> must reference the JS file.
+   - For Python web servers (e.g. main.py with FastAPI), mount the static/frontend directory and serve index.html at root '/'.
+   - Do not leave empty buttons or controls that do nothing: hook interactive click/input handlers in app.js.
+4. For Non-Web Projects (when requires_web is False, e.g. cache service, backend API only, CLI tool, library):
    - DO NOT force web files (no index.html, styles.css, or app.js).
    - Generate a clean modular Python codebase (e.g. main.py, domain logic file, models.py, utils.py).
-6. Do not use generic app content or a canned project template unrelated to the PRD. Everything must be derived from the PRD requirements.
-7. Do not return TODOs, placeholder implementations, or fake claims that tests passed.
-8. Keep dependencies minimal. Include only packages the project actually needs.
-9. Use safe relative file paths. Reject absolute paths and paths containing '..'.
-10. If this is a repair attempt, carefully review the failing files and test output to fix the exact root causes of the failures.
+5. If details were flagged as missing or unclear in the checklist, implement robust, safe defaults with clear logging rather than silently guessing unsupported assumptions.
+6. Do not return TODOs, placeholder implementations, or fake claims.
+7. Keep dependencies minimal. Include only packages the project actually needs.
+8. Use safe relative file paths. Reject absolute paths and paths containing '..'.
+9. If this is a repair attempt, carefully review the failing files and QA failure traceback to resolve the root causes.
 
 Return complete file contents in a single JSON object matching DeveloperCodeOutput without markdown code fences."""
 
@@ -89,18 +89,44 @@ def _prompt(
     plan: Optional[Dict[str, Any]] = None,
     repair_context: Optional[Dict[str, Any]] = None,
     repair_count: int = 0,
+    prd_checklist: Optional[List[Dict[str, Any]]] = None,
+    unclear_requirements: Optional[List[str]] = None,
 ) -> str:
-    parts = [f"Approved PRD:\n{prd_content}"]
+    parts = [f"Approved PRD (Original Specification):\n{prd_content}"]
+
+    if prd_checklist:
+        checklist_lines = ["PRD Requirements Checklist (You must satisfy each requirement):"]
+        for item in prd_checklist:
+            req_id = item.get("id", "REQ")
+            title = item.get("title", "")
+            desc = item.get("description", "")
+            clarity = item.get("clarity", "clear")
+            flag = f" [NOTICE: {item.get('flag_notes')}]" if item.get("flag_notes") else ""
+            checklist_lines.append(f"- [{req_id}] ({clarity.upper()}) {title}: {desc}{flag}")
+        parts.append("\n".join(checklist_lines))
+
+    if unclear_requirements:
+        unclear_lines = ["Flagged Ambiguous or Missing Details (Handle safely with clean defaults, do not guess fragile behaviors):"]
+        for unc in unclear_requirements:
+            unclear_lines.append(f"- {unc}")
+        parts.append("\n".join(unclear_lines))
 
     if plan:
         plan_desc = f"""Architect Plan:
-- Project Summary: {plan.get('project_summary', '')}
+- App Summary: {plan.get('app_summary') or plan.get('project_summary', '')}
 - Architecture Type: {plan.get('architecture_type', '')}
 - Requires Web Frontend: {plan.get('requires_web', False)}
-- File Plan:
+- Proposed Files with Responsibilities:
 """
-        for f in plan.get("file_plan", []):
-            plan_desc += f"  * {f.get('path')}: {f.get('responsibility')}\n"
+        files = plan.get("proposed_files") or plan.get("file_plan") or []
+        for f in files:
+            purpose = f.get('purpose') or f.get('responsibility', 'Module implementation')
+            plan_desc += f"  * {f.get('path')}: {purpose}\n"
+
+        order = plan.get("implementation_order") or []
+        if order:
+            plan_desc += f"- Implementation Order: {' -> '.join(order)}\n"
+
         plan_desc += "- Acceptance Criteria:\n"
         for ac in plan.get("acceptance_criteria", []):
             plan_desc += f"  * {ac}\n"
@@ -178,11 +204,22 @@ def call_ollama_qwen_coder(
     repair_context: Optional[Dict[str, Any]] = None,
     repair_count: int = 0,
     requires_web: bool = False,
+    prd_checklist: Optional[List[Dict[str, Any]]] = None,
+    unclear_requirements: Optional[List[str]] = None,
 ) -> Optional[DeveloperCodeOutput]:
     """Queries local model qwen2.5-coder:7b to generate code with fast-fail connect timeout."""
     url = "http://localhost:11434/v1/chat/completions"
     model_name = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
-    user_prompt = _prompt(prd_content, human_notes, ceo_critique, plan, repair_context, repair_count)
+    user_prompt = _prompt(
+        prd_content,
+        human_notes,
+        ceo_critique,
+        plan,
+        repair_context,
+        repair_count,
+        prd_checklist=prd_checklist,
+        unclear_requirements=unclear_requirements,
+    )
 
     try:
         import httpx
@@ -222,6 +259,8 @@ def call_gemini_codegen(
     repair_context: Optional[Dict[str, Any]] = None,
     repair_count: int = 0,
     requires_web: bool = False,
+    prd_checklist: Optional[List[Dict[str, Any]]] = None,
+    unclear_requirements: Optional[List[str]] = None,
 ) -> Optional[DeveloperCodeOutput]:
     """Uses Google Gemini for code generation."""
     global client
@@ -245,7 +284,16 @@ def call_gemini_codegen(
             response_schema=DeveloperCodeOutput,
             temperature=0.2,
         )
-        user_prompt = _prompt(prd_content, human_notes, ceo_critique, plan, repair_context, repair_count)
+        user_prompt = _prompt(
+            prd_content,
+            human_notes,
+            ceo_critique,
+            plan,
+            repair_context,
+            repair_count,
+            prd_checklist=prd_checklist,
+            unclear_requirements=unclear_requirements,
+        )
         response = call_gemini_with_fallback(
             client=client,
             contents=user_prompt,
@@ -1136,12 +1184,17 @@ def generate_code_from_prd(
     plan: Optional[Dict[str, Any]] = None,
     repair_context: Optional[Dict[str, Any]] = None,
     repair_count: int = 0,
+    prd_checklist: Optional[List[Dict[str, Any]]] = None,
+    unclear_requirements: Optional[List[str]] = None,
     *args,
     **kwargs,
 ) -> DeveloperCodeOutput:
     """Generates a PRD-specific project, preferring local coding model, falling back to cloud or deterministic fallback."""
     actual_prd = prd_content or (args[0] if args else "") or kwargs.get("prd", "") or kwargs.get("prd_text", "")
     requires_web = bool(plan.get("requires_web", False)) if plan else _detect_web_requirement(actual_prd)
+
+    checklist = prd_checklist or kwargs.get("prd_checklist")
+    unclear = unclear_requirements or kwargs.get("unclear_requirements")
 
     ollama_output = call_ollama_qwen_coder(
         prd_content=actual_prd,
@@ -1151,6 +1204,8 @@ def generate_code_from_prd(
         repair_context=repair_context,
         repair_count=repair_count,
         requires_web=requires_web,
+        prd_checklist=checklist,
+        unclear_requirements=unclear,
     )
     if ollama_output is not None:
         return ollama_output
@@ -1163,6 +1218,8 @@ def generate_code_from_prd(
         repair_context=repair_context,
         repair_count=repair_count,
         requires_web=requires_web,
+        prd_checklist=checklist,
+        unclear_requirements=unclear,
     )
     if gemini_output is not None:
         return gemini_output
@@ -1180,6 +1237,8 @@ def developer_node(state: AgentState) -> Dict[str, Any]:
     plan = state.get("plan")
     repair_context = state.get("qa_repair_context")
     repair_count = state.get("repair_count", 0)
+    prd_checklist = state.get("prd_checklist", [])
+    unclear_requirements = state.get("unclear_requirements", [])
 
     is_repair = bool(repair_context)
     if is_repair:
@@ -1190,12 +1249,14 @@ def developer_node(state: AgentState) -> Dict[str, Any]:
 
     try:
         code_output: DeveloperCodeOutput = generate_code_from_prd(
-            prd_text,
-            notes_str,
-            ceo_critique,
-            plan,
-            repair_context,
-            repair_count,
+            prd_content=prd_text,
+            human_notes=notes_str,
+            ceo_critique=ceo_critique,
+            plan=plan,
+            repair_context=repair_context,
+            repair_count=repair_count,
+            prd_checklist=prd_checklist,
+            unclear_requirements=unclear_requirements,
         )
         code_output = _validate_generated_files(code_output, requires_web=requires_web)
         generated_files = {f.path: f.content for f in code_output.files}

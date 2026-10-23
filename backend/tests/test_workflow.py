@@ -9,6 +9,7 @@ Tests the complete PRD-to-code pipeline:
 6. Security hardening, release packaging, and audit reporting
 """
 
+import app  # noqa: F401 - Initialize app package and runtime shims
 import pytest
 from langgraph.types import Command
 from langgraph.checkpoint.memory import MemorySaver
